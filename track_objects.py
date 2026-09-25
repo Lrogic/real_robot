@@ -157,7 +157,8 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix="fp_debug_") as debug_dir:
         tracker = MultiObjectTracker(objects, args.foundationpose_dir, debug_dir,
-                                     batched=args.fp_mode == "batched")
+                                     batched=args.fp_mode == "batched",
+                                     batched_render=args.fp_mode == "batched-render")
         print(f"FoundationPose tracking mode: {args.fp_mode}")
         tracker.register(objects, run.capture.rgb, run.capture.depth, run.capture.K,
                          args.est_refine_iter)

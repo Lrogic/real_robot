@@ -37,9 +37,11 @@ def pipeline_parser(description: str) -> argparse.ArgumentParser:
     track = parser.add_argument_group("tracking (track_objects.py)")
     track.add_argument("--num-seconds", type=float, default=None,
                        help="Stop tracking after this many seconds (default: until q/Esc)")
-    track.add_argument("--fp-mode", choices=("sequential", "batched"), default="sequential",
+    track.add_argument("--fp-mode", choices=("sequential", "batched", "batched-render"),
+                       default="sequential",
                        help="sequential: FoundationPose track_one per object (default); "
-                            "batched: one refiner pass per iteration for all objects")
+                            "batched: one refiner pass per iteration for all objects; "
+                            "batched-render: batched, plus one render call for all objects")
     track.add_argument("--est-refine-iter", type=int, default=5)
     track.add_argument("--track-refine-iter", type=int, default=2)
     track.add_argument("--save-video", action="store_true",

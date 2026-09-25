@@ -48,10 +48,12 @@ class TrackedObject:
 
 class MultiObjectTracker:
     def __init__(self, objects: Sequence[SavedObject], fp_dir: Path, debug_dir: Path,
-                 batched: bool = False):
+                 batched: bool = False, batched_render: bool = False):
         import trimesh
 
         self.batched = batched
+        self.batched_render = batched_render
+        self._mesh_bank = None
         estimater, dr, self._utils = _import_foundationpose(fp_dir)
         scorer = estimater.ScorePredictor()
         refiner = estimater.PoseRefinePredictor()
@@ -84,6 +86,8 @@ class MultiObjectTracker:
 
     def track(self, rgb, depth, K, iterations: int) -> Dict[str, float]:
         """Update every object's pose on one frame; return FP seconds per object."""
+        if self.batched_render:
+            return self._track_batched_render(rgb, depth, K, iterations)
         if self.batched:
             return self._track_batched(rgb, depth, K, iterations)
         seconds = {}
@@ -103,6 +107,18 @@ class MultiObjectTracker:
             tracked.center_pose = pose @ np.linalg.inv(tracked.to_origin)
         # One pass covers every object, so there is no per-object split to report.
         return {"all (batched)": time.perf_counter() - started}
+
+    def _track_batched_render(self, rgb, depth, K, iterations: int) -> Dict[str, float]:
+        from .batched_render import MeshBank, track_batched_render
+
+        estimators = [t.estimator for t in self.objects]
+        if self._mesh_bank is None:
+            self._mesh_bank = MeshBank(estimators)
+        started = time.perf_counter()
+        poses = track_batched_render(estimators, self._mesh_bank, rgb, depth, K, iterations)
+        for tracked, pose in zip(self.objects, poses):
+            tracked.center_pose = pose @ np.linalg.inv(tracked.to_origin)
+        return {"all (batched render)": time.perf_counter() - started}
 
     def draw(self, rgb: np.ndarray, K: np.ndarray) -> np.ndarray:
         """Return rgb with each object's 3D box, axes, and name drawn at its current pose."""

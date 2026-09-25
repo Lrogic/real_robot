@@ -7,7 +7,8 @@
 #   ./run.sh --track       --save-path foundationpose_runs/run1 --fp-mode batched
 #
 # --fp-mode sequential (default) runs FoundationPose's track_one per object;
-# --fp-mode batched refines every object in one network pass per iteration.
+# --fp-mode batched refines every object in one network pass per iteration;
+# --fp-mode batched-render also renders every object's crop in one call.
 #
 # Exactly one mode flag is required; every other argument is forwarded to both
 # stages (see: python segment_objects.py --help).
@@ -18,7 +19,7 @@ SETUP_ENV="sam3"
 TRACK_ENV="fp_robot"
 
 usage() {
-    sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,14p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 2
 }
 
