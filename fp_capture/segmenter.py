@@ -7,14 +7,14 @@ import numpy as np
 import PIL.Image
 import torch
 
-SAM3_CHECKPOINT = Path("/bigdata/luka/models/sam3/sam3.pt")
+from .cli import DEFAULT_SAM3_CHECKPOINT
 
 Point = Tuple[float, float]
 Box = Tuple[float, float, float, float]  # x0, y0, x1, y1 in pixels
 
 
 class Sam3Segmenter:
-    def __init__(self, checkpoint: Path = SAM3_CHECKPOINT):
+    def __init__(self, checkpoint: Path = DEFAULT_SAM3_CHECKPOINT):
         from sam3 import build_sam3_image_model
         from sam3.model.sam3_image_processor import Sam3Processor
 
