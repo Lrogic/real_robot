@@ -9,7 +9,7 @@ from pathlib import Path
 
 from .camera import CameraSettings
 
-RESEARCH_DIR = Path(__file__).resolve().parents[2]
+RESEARCH_DIR = Path(__file__).resolve().parents[3]
 DEFAULT_MESHES_DIR = RESEARCH_DIR / "assets" / "meshes"
 DEFAULT_FOUNDATIONPOSE_DIR = RESEARCH_DIR / "FoundationPose"
 DEFAULT_SAM3_CHECKPOINT = Path("/bigdata/luka/models/sam3/sam3.pt")

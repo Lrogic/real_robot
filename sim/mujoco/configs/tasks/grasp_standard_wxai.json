@@ -1,0 +1,38 @@
+{
+  "lift_threshold": 0.01,
+  "stable_hold_duration_sec": 1.0,
+  "stable_linear_vel_tol": 0.05,
+  "stable_angular_vel_tol": 0.35,
+  "arm_joint_vel_tol": 0.5,
+  "gripper_joint_vel_tol": 0.05,
+  "reach_scale": 5.0,
+  "reach_saturation_dist": 0.05,
+  "w_reach": 0.5,
+  "w_grasp": 1.0,
+  "target_lift_height": 0.03,
+  "lift_target_scale": 30.0,
+  "w_lift_target": 1.0,
+  "w_hold": 1.0,
+  "w_success": 5.0,
+  "w_xy": 0.0,
+  "w_ori": 0.0,
+  "xy_tolerance": 0.05,
+  "orientation_tolerance": 0.3,
+  "reward_normalization": 10.0,
+  "include_is_grasped_obs": true,
+  "use_minimal_obs": false,
+  "grasp_min_force": 0.2,
+  "grasp_max_angle_deg": 110.0,
+  "timing": {
+    "sim_dt": 0.002,
+    "control_hz": 20.0,
+    "episode_steps": 300
+  },
+  "action": {
+    "ee_pos_scale": 0.01,
+    "ee_rot_scale": 0.05,
+    "joint_delta_scale": 0.1
+  },
+  "domain_randomization": {},
+  "curriculum": {}
+}

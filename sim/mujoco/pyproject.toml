@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tabletop-sim"
+version = "0.1.0"
+description = "Config-driven MuJoCo (mjlab) tabletop grasp environments for sim2real."
+requires-python = ">=3.10,<3.14"
+dependencies = [
+  "mjlab==1.6.0",
+  "mujoco==3.11.0",
+  "mujoco-warp==3.11.0",
+  # rsl-rl-lib 5.4 passes wandb.Settings(start_method=...), removed in wandb 0.29.
+  "wandb<0.29",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
