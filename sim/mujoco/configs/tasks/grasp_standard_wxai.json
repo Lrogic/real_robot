@@ -20,7 +20,6 @@
   "orientation_tolerance": 0.3,
   "reward_normalization": 10.0,
   "include_is_grasped_obs": true,
-  "use_minimal_obs": false,
   "grasp_min_force": 0.2,
   "grasp_max_angle_deg": 110.0,
   "timing": {

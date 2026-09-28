@@ -11,8 +11,10 @@ from mjlab.envs.mdp import time_out
 from mjlab.envs.mdp.events import reset_scene_to_default
 from mjlab.managers.action_manager import ActionTermCfg
 from mjlab.managers.event_manager import EventTermCfg
+from mjlab.managers.metrics_manager import MetricsTermCfg
 from mjlab.managers.observation_manager import ObservationGroupCfg, ObservationTermCfg
 from mjlab.managers.reward_manager import RewardTermCfg
+from mjlab.managers.scene_entity_config import SceneEntityCfg
 from mjlab.managers.termination_manager import TerminationTermCfg
 from mjlab.scene import SceneCfg
 from mjlab.sensor import ContactMatch, ContactSensorCfg
@@ -77,63 +79,171 @@ def _actions(emb: EmbodimentCfg, action_space: str, task: TaskConfig) -> dict[st
   return {"arm": arm, "gripper": gripper}
 
 
-def _observations(task: TaskConfig) -> dict[str, ObservationGroupCfg]:
+class _Entities:
+  """Fresh ``SceneEntityCfg``s per call, so no two terms share a resolved cfg."""
+
+  def __init__(self, emb: EmbodimentCfg, object_name: str):
+    self.emb = emb
+    self.object_name = object_name
+
+  def tcp(self) -> SceneEntityCfg:
+    return SceneEntityCfg("robot", site_names=(self.emb.tcp_site,), preserve_order=True)
+
+  def arm(self) -> SceneEntityCfg:
+    return SceneEntityCfg("robot", joint_names=self.emb.arm_joint_names, preserve_order=True)
+
+  def gripper(self) -> SceneEntityCfg:
+    return SceneEntityCfg(
+      "robot", joint_names=self.emb.gripper_joint_names, preserve_order=True
+    )
+
+  def fingers(self) -> SceneEntityCfg:
+    return SceneEntityCfg("robot", body_names=self.emb.finger_bodies, preserve_order=True)
+
+  def object(self) -> SceneEntityCfg:
+    return SceneEntityCfg(self.object_name)
+
+  def grasp_params(self, task: TaskConfig) -> dict:
+    return {
+      "sensor_names": FINGER_SENSORS,
+      "finger_cfg": self.fingers(),
+      "finger_outward_axes": self.emb.finger_outward_axes,
+      "min_force": task.grasp_min_force,
+      "max_angle_deg": task.grasp_max_angle_deg,
+    }
+
+  def static_params(self, task: TaskConfig) -> dict:
+    return {
+      "arm_cfg": self.arm(),
+      "gripper_cfg": self.gripper(),
+      "linear_vel_tol": task.stable_linear_vel_tol,
+      "angular_vel_tol": task.stable_angular_vel_tol,
+      "arm_joint_vel_tol": task.arm_joint_vel_tol,
+      "gripper_joint_vel_tol": task.gripper_joint_vel_tol,
+    }
+
+
+def hold_steps(task: TaskConfig) -> int:
+  return math.ceil(task.stable_hold_duration_sec * task.timing.control_hz - 1e-9)
+
+
+def _observations(task: TaskConfig, ent: _Entities) -> dict[str, ObservationGroupCfg]:
   obs = mdp.observations
-  p = {"command_name": COMMAND_NAME}
-  terms = {
-    "qpos": ObservationTermCfg(func=obs.joint_pos, params=p),
-    "qvel": ObservationTermCfg(func=obs.joint_vel, params=p),
-    "ee_pose": ObservationTermCfg(func=obs.ee_pose, params=p),
-    "gripper_width": ObservationTermCfg(func=obs.gripper_width, params=p),
-  }
-  if task.use_minimal_obs:
-    terms["tcp_to_goal_pos"] = ObservationTermCfg(func=obs.tcp_to_goal_pos, params=p)
-    terms["obj_initial_pose"] = ObservationTermCfg(func=obs.obj_initial_pose, params=p)
-  else:
-    terms["object_pose"] = ObservationTermCfg(func=obs.object_pose, params=p)
-    terms["tcp_to_obj_pos"] = ObservationTermCfg(func=obs.tcp_to_obj_pos, params=p)
-    terms["obj_to_goal_pos"] = ObservationTermCfg(func=obs.obj_to_goal_pos, params=p)
-    if task.include_is_grasped_obs:
-      terms["is_grasped"] = ObservationTermCfg(func=obs.is_grasped, params=p)
-  # Noise (and asymmetric critic terms) go here once domain randomization lands.
+
+  def terms(critic: bool) -> dict[str, ObservationTermCfg]:
+    joints = lambda: {"arm_cfg": ent.arm(), "gripper_cfg": ent.gripper()}  # noqa: E731
+    t = {
+      "qpos": ObservationTermCfg(func=obs.joint_pos, params=joints()),
+      "qvel": ObservationTermCfg(func=obs.joint_vel, params=joints()),
+      "ee_pose": ObservationTermCfg(func=obs.ee_pose, params={"tcp_cfg": ent.tcp()}),
+      "gripper_width": ObservationTermCfg(
+        func=obs.gripper_width,
+        params={
+          "gripper_cfg": ent.gripper(),
+          "open_pos": ent.emb.gripper_open,
+          "closed_pos": ent.emb.gripper_closed,
+        },
+      ),
+      "object_pose": ObservationTermCfg(
+        func=obs.object_pose, params={"object_cfg": ent.object()}
+      ),
+      "tcp_to_obj_pos": ObservationTermCfg(
+        func=obs.tcp_to_obj_pos, params={"tcp_cfg": ent.tcp(), "object_cfg": ent.object()}
+      ),
+      "obj_to_goal_pos": ObservationTermCfg(
+        func=obs.obj_to_goal_pos,
+        params={"command_name": COMMAND_NAME, "object_cfg": ent.object()},
+      ),
+    }
+    if critic and task.include_is_grasped_obs:
+      t["is_grasped"] = ObservationTermCfg(func=obs.is_grasped, params=ent.grasp_params(task))
+    return t
+
+  # Noise goes here once domain randomization lands.
   return {
-    "actor": ObservationGroupCfg(dict(terms), enable_corruption=False),
-    "critic": ObservationGroupCfg(dict(terms), enable_corruption=False),
+    "actor": ObservationGroupCfg(terms(critic=False), enable_corruption=False),
+    "critic": ObservationGroupCfg(terms(critic=True), enable_corruption=False),
   }
 
 
-def _rewards(task: TaskConfig) -> dict[str, RewardTermCfg]:
+def _rewards(task: TaskConfig, ent: _Entities) -> dict[str, RewardTermCfg]:
   r = mdp.rewards
   n = task.reward_normalization
-  p = {"command_name": COMMAND_NAME}
+  goal = lambda: {"command_name": COMMAND_NAME, "object_cfg": ent.object()}  # noqa: E731
   terms = {
     "reach": RewardTermCfg(
       func=r.reach,
       weight=task.w_reach / n,
-      params={**p, "scale": task.reach_scale, "saturation_dist": task.reach_saturation_dist},
+      params={
+        "tcp_cfg": ent.tcp(),
+        "object_cfg": ent.object(),
+        "scale": task.reach_scale,
+        "saturation_dist": task.reach_saturation_dist,
+      },
     ),
-    "grasp": RewardTermCfg(func=r.grasp, weight=task.w_grasp / n, params=p),
+    "grasp": RewardTermCfg(func=r.grasp, weight=task.w_grasp / n, params=ent.grasp_params(task)),
     "lift_target": RewardTermCfg(
       func=r.lift_target,
       weight=task.w_lift_target / n,
-      params={**p, "scale": task.lift_target_scale},
+      params={**goal(), **ent.grasp_params(task), "scale": task.lift_target_scale},
     ),
-    "stable_hold": RewardTermCfg(func=r.stable_hold, weight=task.w_hold / n, params=p),
-    "success": RewardTermCfg(func=r.success, weight=task.w_success / n, params=p),
+    "stable_hold": RewardTermCfg(
+      func=r.stable_hold,
+      weight=task.w_hold / n,
+      params={**goal(), **ent.grasp_params(task), "lift_threshold": task.lift_threshold},
+    ),
+    "success": RewardTermCfg(
+      func=r.success, weight=task.w_success / n, params={"termination_name": "success"}
+    ),
   }
   if task.w_xy != 0.0:
     terms["xy_displacement"] = RewardTermCfg(
       func=r.xy_displacement_penalty,
       weight=-task.w_xy / n,
-      params={**p, "tolerance": task.xy_tolerance},
+      params={**goal(), "tolerance": task.xy_tolerance},
     )
   if task.w_ori != 0.0:
     terms["orientation"] = RewardTermCfg(
       func=r.orientation_penalty,
       weight=-task.w_ori / n,
-      params={**p, "tolerance": task.orientation_tolerance},
+      params={**goal(), "tolerance": task.orientation_tolerance},
     )
   return terms
+
+
+def _terminations(task: TaskConfig, ent: _Entities) -> dict[str, TerminationTermCfg]:
+  return {
+    "time_out": TerminationTermCfg(func=time_out, time_out=True),
+    # Name is referenced by the success reward and metric.
+    "success": TerminationTermCfg(
+      func=mdp.StableHoldSuccess,
+      params={
+        "command_name": COMMAND_NAME,
+        "hold_steps": hold_steps(task),
+        "object_cfg": ent.object(),
+        "lift_threshold": task.lift_threshold,
+        **ent.grasp_params(task),
+        **ent.static_params(task),
+      },
+    ),
+  }
+
+
+def _metrics(task: TaskConfig, ent: _Entities) -> dict[str, MetricsTermCfg]:
+  m = mdp.metrics
+  return {
+    "success": MetricsTermCfg(
+      func=m.success, params={"termination_name": "success"}, reduce="max"
+    ),
+    "grasped_frac": MetricsTermCfg(
+      func=m.grasped_fraction, params=ent.grasp_params(task), reduce="sum"
+    ),
+    "max_lift": MetricsTermCfg(
+      func=m.lift_height,
+      params={"command_name": COMMAND_NAME, "object_cfg": ent.object()},
+      reduce="max",
+    ),
+  }
 
 
 def _finger_sensors(emb: EmbodimentCfg, object_name: str) -> tuple[ContactSensorCfg, ...]:
@@ -185,26 +295,9 @@ def make_grasp_env_cfg_from_configs(
         params={"entity_name": o.name, "poses": o.initial_poses},
       )
 
-  tracker = mdp.GraspTrackerCfg(
-    object_name=obj.name,
-    tcp_site=emb.tcp_site,
-    arm_joint_names=emb.arm_joint_names,
-    gripper_joint_names=emb.gripper_joint_names,
-    finger_sensor_names=FINGER_SENSORS,
-    finger_bodies=emb.finger_bodies,
-    finger_outward_axes=emb.finger_outward_axes,
-    gripper_open=emb.gripper_open,
-    gripper_closed=emb.gripper_closed,
-    hold_steps=math.ceil(task.stable_hold_duration_sec * timing.control_hz - 1e-9),
-    lift_threshold=task.lift_threshold,
-    target_lift_height=task.target_lift_height,
-    stable_linear_vel_tol=task.stable_linear_vel_tol,
-    stable_angular_vel_tol=task.stable_angular_vel_tol,
-    arm_joint_vel_tol=task.arm_joint_vel_tol,
-    gripper_joint_vel_tol=task.gripper_joint_vel_tol,
-    grasp_min_force=task.grasp_min_force,
-    grasp_max_angle_deg=task.grasp_max_angle_deg,
-    debug_vis=True,
+  ent = _Entities(emb, obj.name)
+  goal = mdp.GraspGoalCommandCfg(
+    object_name=obj.name, target_lift_height=task.target_lift_height, debug_vis=True
   )
 
   return ManagerBasedRlEnvCfg(
@@ -213,17 +306,13 @@ def make_grasp_env_cfg_from_configs(
       entities=scene_entity_cfgs(scene, build_entity_cfg(emb)),
       sensors=_finger_sensors(emb, obj.name),
     ),
-    observations=_observations(task),
+    observations=_observations(task, ent),
     actions=_actions(emb, action_space, task),
-    commands={COMMAND_NAME: tracker},
+    commands={COMMAND_NAME: goal},
     events=events,
-    rewards=_rewards(task),
-    terminations={
-      "time_out": TerminationTermCfg(func=time_out, time_out=True),
-      "success": TerminationTermCfg(
-        func=mdp.terminations.task_success, params={"command_name": COMMAND_NAME}
-      ),
-    },
+    rewards=_rewards(task, ent),
+    terminations=_terminations(task, ent),
+    metrics=_metrics(task, ent),
     viewer=_viewer(scene.camera),
     sim=SimulationCfg(
       nconmax=NCONMAX_PER_OBJECT * len(scene.objects) + 32,

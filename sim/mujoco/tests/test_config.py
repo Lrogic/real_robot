@@ -89,7 +89,7 @@ def test_incompatible_control_rate_rejected(tmp_path, task_dict):
 
 def test_task_overrides(tmp_path, task_dict):
   task_dict["w_xy"] = 2.0
-  task_dict["use_minimal_obs"] = True
+  task_dict["include_is_grasped_obs"] = False
   task = load_task_config(_write(tmp_path, task_dict))
   assert task.w_xy == 2.0
-  assert task.use_minimal_obs is True
+  assert task.include_is_grasped_obs is False

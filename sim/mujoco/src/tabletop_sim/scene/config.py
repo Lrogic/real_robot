@@ -287,7 +287,7 @@ class TaskConfig:
   orientation_tolerance: float = 0.3
   reward_normalization: float = 10.0
   include_is_grasped_obs: bool = True
-  use_minimal_obs: bool = False
+  """Adds ``is_grasped`` to the critic observations (never the actor)."""
   grasp_min_force: float = 0.2
   grasp_max_angle_deg: float = 110.0
   timing: TimingConfig = field(default_factory=TimingConfig)

@@ -7,63 +7,72 @@ from typing import TYPE_CHECKING
 
 import torch
 
-from tabletop_sim.tasks.grasp.mdp.commands import GraspTracker
+from mjlab.managers.scene_entity_config import SceneEntityCfg
+from tabletop_sim.tasks.grasp.mdp import task_state
 
 if TYPE_CHECKING:
   from mjlab.envs import ManagerBasedRlEnv
 
 
-def _tracker(env: ManagerBasedRlEnv, command_name: str) -> GraspTracker:
-  term = env.command_manager.get_term(command_name)
-  assert isinstance(term, GraspTracker)
-  return term
-
-
-def joint_pos(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
+def joint_pos(
+  env: ManagerBasedRlEnv, arm_cfg: SceneEntityCfg, gripper_cfg: SceneEntityCfg
+) -> torch.Tensor:
   """Arm joints then (left, right) gripper joints."""
-  t = _tracker(env, command_name)
-  return torch.cat((t.arm_joint_pos(), t.gripper_joint_pos()), dim=-1)
+  q = env.scene[arm_cfg.name].data.joint_pos
+  return torch.cat((q[:, arm_cfg.joint_ids], q[:, gripper_cfg.joint_ids]), dim=-1)
 
 
-def joint_vel(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
-  t = _tracker(env, command_name)
-  qvel = t.robot.data.joint_vel
-  return torch.cat((qvel[:, t._arm_ids], qvel[:, t._gripper_ids]), dim=-1)
+def joint_vel(
+  env: ManagerBasedRlEnv, arm_cfg: SceneEntityCfg, gripper_cfg: SceneEntityCfg
+) -> torch.Tensor:
+  qd = env.scene[arm_cfg.name].data.joint_vel
+  return torch.cat((qd[:, arm_cfg.joint_ids], qd[:, gripper_cfg.joint_ids]), dim=-1)
 
 
-def ee_pose(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
-  t = _tracker(env, command_name)
-  return t.to_root_frame(t.tcp_pos_w, t.tcp_quat_w)
+def ee_pose(env: ManagerBasedRlEnv, tcp_cfg: SceneEntityCfg) -> torch.Tensor:
+  pos, quat = task_state.tcp_pose_w(env, tcp_cfg)
+  return task_state.root_relative_pose(env, tcp_cfg.name, pos, quat)
 
 
-def gripper_width(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
+def gripper_width(
+  env: ManagerBasedRlEnv, gripper_cfg: SceneEntityCfg, open_pos: float, closed_pos: float
+) -> torch.Tensor:
   """Normalised closure (closed = 1, open = 0); name kept from the old task."""
-  return _tracker(env, command_name).closure().unsqueeze(-1)
+  q = env.scene[gripper_cfg.name].data.joint_pos[:, gripper_cfg.joint_ids]
+  return task_state.gripper_closure(q[:, 0], q[:, 1], open_pos, closed_pos).unsqueeze(-1)
 
 
-def object_pose(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
-  t = _tracker(env, command_name)
-  return t.to_root_frame(t.object_pos_w, t.object_quat_w)
+def object_pose(
+  env: ManagerBasedRlEnv, object_cfg: SceneEntityCfg, robot_name: str = "robot"
+) -> torch.Tensor:
+  pos, quat = task_state.object_pose_w(env, object_cfg)
+  return task_state.root_relative_pose(env, robot_name, pos, quat)
 
 
-def tcp_to_obj_pos(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
-  t = _tracker(env, command_name)
-  return t.object_pos_w - t.tcp_pos_w
+def tcp_to_obj_pos(
+  env: ManagerBasedRlEnv, tcp_cfg: SceneEntityCfg, object_cfg: SceneEntityCfg
+) -> torch.Tensor:
+  tcp_pos, _ = task_state.tcp_pose_w(env, tcp_cfg)
+  obj_pos, _ = task_state.object_pose_w(env, object_cfg)
+  return obj_pos - tcp_pos
 
 
-def obj_to_goal_pos(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
-  t = _tracker(env, command_name)
-  return t.target_pos - t.object_pos_w
+def obj_to_goal_pos(
+  env: ManagerBasedRlEnv, command_name: str, object_cfg: SceneEntityCfg
+) -> torch.Tensor:
+  obj_pos, _ = task_state.object_pose_w(env, object_cfg)
+  return task_state.goal(env, command_name).target_pos - obj_pos
 
 
-def tcp_to_goal_pos(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
-  t = _tracker(env, command_name)
-  return t.target_pos - t.tcp_pos_w
-
-
-def obj_initial_pose(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
-  return _tracker(env, command_name).obj_initial_pose_b
-
-
-def is_grasped(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:
-  return _tracker(env, command_name).is_grasped.float().unsqueeze(-1)
+def is_grasped(
+  env: ManagerBasedRlEnv,
+  sensor_names: tuple[str, str],
+  finger_cfg: SceneEntityCfg,
+  finger_outward_axes: tuple[tuple[float, float, float], tuple[float, float, float]],
+  min_force: float,
+  max_angle_deg: float,
+) -> torch.Tensor:
+  grasped = task_state.is_grasped(
+    env, sensor_names, finger_cfg, finger_outward_axes, min_force, max_angle_deg
+  )
+  return grasped.float().unsqueeze(-1)
