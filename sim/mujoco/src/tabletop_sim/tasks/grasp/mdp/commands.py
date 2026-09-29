@@ -26,7 +26,7 @@ class GraspGoalCommandCfg(CommandTermCfg):
 
 
 class GraspGoalCommand(CommandTerm):
-  """Per env: the object's initial world pose and the
+  """Per env: the object's initial world position and the
   lift target ``initial_pos + (0, 0, target_lift_height)``.
 
   Resets only flag an env: the object is placed by reset events before derived
@@ -43,8 +43,6 @@ class GraspGoalCommand(CommandTerm):
     self.object: Entity = env.scene[cfg.object_name]
     n, dev = self.num_envs, self.device
     self.initial_object_pos = torch.zeros(n, 3, device=dev)
-    self.initial_object_quat = torch.zeros(n, 4, device=dev)
-    self.initial_object_quat[:, 0] = 1.0
     self.target_pos = torch.zeros(n, 3, device=dev)
     self._needs_capture = torch.ones(n, dtype=torch.bool, device=dev)
 
@@ -65,9 +63,7 @@ class GraspGoalCommand(CommandTerm):
     if len(ids) == 0:
       return
     pos = self.object.data.root_link_pos_w[ids]
-    quat = self.object.data.root_link_quat_w[ids]
     self.initial_object_pos[ids] = pos
-    self.initial_object_quat[ids] = quat
     self.target_pos[ids] = pos
     self.target_pos[ids, 2] += self.cfg.target_lift_height
     self._needs_capture[ids] = False

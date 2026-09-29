@@ -85,17 +85,3 @@ def stable_hold(
 def success(env: ManagerBasedRlEnv, termination_name: str) -> torch.Tensor:
   """This step's result of the success termination (computed before rewards)."""
   return env.termination_manager.get_term(termination_name).float()
-
-
-def xy_displacement_penalty(
-  env: ManagerBasedRlEnv, command_name: str, object_cfg: SceneEntityCfg, tolerance: float
-) -> torch.Tensor:
-  disp = task_state.object_xy_displacement(env, command_name, object_cfg)
-  return (disp - tolerance).clamp(min=0.0)
-
-
-def orientation_penalty(
-  env: ManagerBasedRlEnv, command_name: str, object_cfg: SceneEntityCfg, tolerance: float
-) -> torch.Tensor:
-  angle = task_state.object_rotation_from_initial(env, command_name, object_cfg)
-  return (angle - tolerance).clamp(min=0.0)

@@ -281,10 +281,6 @@ class TaskConfig:
   w_lift_target: float = 1.0
   w_hold: float = 1.0
   w_success: float = 5.0
-  w_xy: float = 0.0
-  w_ori: float = 0.0
-  xy_tolerance: float = 0.05
-  orientation_tolerance: float = 0.3
   reward_normalization: float = 10.0
   include_is_grasped_obs: bool = True
   """Adds ``is_grasped`` to the critic observations (never the actor)."""

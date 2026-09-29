@@ -170,7 +170,7 @@ def _rewards(task: TaskConfig, ent: _Entities) -> dict[str, RewardTermCfg]:
   r = mdp.rewards
   n = task.reward_normalization
   goal = lambda: {"command_name": COMMAND_NAME, "object_cfg": ent.object()}  # noqa: E731
-  terms = {
+  return {
     "reach": RewardTermCfg(
       func=r.reach,
       weight=task.w_reach / n,
@@ -196,19 +196,6 @@ def _rewards(task: TaskConfig, ent: _Entities) -> dict[str, RewardTermCfg]:
       func=r.success, weight=task.w_success / n, params={"termination_name": "success"}
     ),
   }
-  if task.w_xy != 0.0:
-    terms["xy_displacement"] = RewardTermCfg(
-      func=r.xy_displacement_penalty,
-      weight=-task.w_xy / n,
-      params={**goal(), "tolerance": task.xy_tolerance},
-    )
-  if task.w_ori != 0.0:
-    terms["orientation"] = RewardTermCfg(
-      func=r.orientation_penalty,
-      weight=-task.w_ori / n,
-      params={**goal(), "tolerance": task.orientation_tolerance},
-    )
-  return terms
 
 
 def _terminations(task: TaskConfig, ent: _Entities) -> dict[str, TerminationTermCfg]:

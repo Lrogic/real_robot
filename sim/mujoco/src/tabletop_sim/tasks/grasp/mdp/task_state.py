@@ -28,14 +28,6 @@ if TYPE_CHECKING:
 # Pure math.
 
 
-def quaternion_angle(q1: torch.Tensor, q2: torch.Tensor) -> torch.Tensor:
-  """Absolute rotation angle between two (w, x, y, z) quaternions."""
-  q1 = q1 / torch.linalg.norm(q1, dim=-1, keepdim=True).clamp_min(1e-9)
-  q2 = q2 / torch.linalg.norm(q2, dim=-1, keepdim=True).clamp_min(1e-9)
-  dot = torch.abs(torch.sum(q1 * q2, dim=-1)).clamp(max=1.0)
-  return 2.0 * torch.acos(dot)
-
-
 def gripper_closure(
   left: torch.Tensor, right: torch.Tensor, open_pos: float, closed_pos: float
 ) -> torch.Tensor:
@@ -141,21 +133,6 @@ def is_lifted(
   env: ManagerBasedRlEnv, command_name: str, object_cfg: SceneEntityCfg, lift_threshold: float
 ) -> torch.Tensor:
   return object_to_target_dist(env, command_name, object_cfg) <= lift_threshold
-
-
-def object_xy_displacement(
-  env: ManagerBasedRlEnv, command_name: str, object_cfg: SceneEntityCfg
-) -> torch.Tensor:
-  obj_pos, _ = object_pose_w(env, object_cfg)
-  initial = goal(env, command_name).initial_object_pos
-  return torch.linalg.norm(obj_pos[:, :2] - initial[:, :2], dim=-1)
-
-
-def object_rotation_from_initial(
-  env: ManagerBasedRlEnv, command_name: str, object_cfg: SceneEntityCfg
-) -> torch.Tensor:
-  _, obj_quat = object_pose_w(env, object_cfg)
-  return quaternion_angle(goal(env, command_name).initial_object_quat, obj_quat)
 
 
 # Velocities and stability.
