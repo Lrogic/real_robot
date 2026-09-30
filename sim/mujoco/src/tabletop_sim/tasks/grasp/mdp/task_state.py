@@ -16,7 +16,11 @@ from typing import TYPE_CHECKING
 import torch
 
 from mjlab.managers.scene_entity_config import SceneEntityCfg
-from mjlab.utils.lab_api.math import quat_apply, subtract_frame_transforms
+from mjlab.utils.lab_api.math import (
+  quat_apply,
+  quat_apply_inverse,
+  subtract_frame_transforms,
+)
 from tabletop_sim.tasks.grasp.mdp.commands import GraspGoalCommand
 
 if TYPE_CHECKING:
@@ -72,6 +76,11 @@ def root_relative_pose(
   root = env.scene[robot_name].data.root_link_pose_w
   pos_b, quat_b = subtract_frame_transforms(root[:, :3], root[:, 3:7], pos_w, quat_w)
   return torch.cat((pos_b, quat_b), dim=-1)
+
+
+def root_relative_vec(env: ManagerBasedRlEnv, robot_name: str, vec_w: torch.Tensor) -> torch.Tensor:
+  """World-axis free vector (e.g. a displacement) -> robot root axes."""
+  return quat_apply_inverse(env.scene[robot_name].data.root_link_quat_w, vec_w)
 
 
 # Grasp detection.

@@ -1,5 +1,5 @@
-"""Observation terms. Poses are relative to the robot root; displacement vectors
-are expressed in world axes (same conventions as the original ManiSkill task)."""
+"""Observation terms. Poses and displacement vectors are expressed in the robot
+root (base) frame."""
 
 from __future__ import annotations
 
@@ -54,14 +54,18 @@ def tcp_to_obj_pos(
 ) -> torch.Tensor:
   tcp_pos, _ = task_state.tcp_pose_w(env, tcp_cfg)
   obj_pos, _ = task_state.object_pose_w(env, object_cfg)
-  return obj_pos - tcp_pos
+  return task_state.root_relative_vec(env, tcp_cfg.name, obj_pos - tcp_pos)
 
 
 def obj_to_goal_pos(
-  env: ManagerBasedRlEnv, command_name: str, object_cfg: SceneEntityCfg
+  env: ManagerBasedRlEnv,
+  command_name: str,
+  object_cfg: SceneEntityCfg,
+  robot_name: str = "robot",
 ) -> torch.Tensor:
   obj_pos, _ = task_state.object_pose_w(env, object_cfg)
-  return task_state.goal(env, command_name).target_pos - obj_pos
+  delta = task_state.goal(env, command_name).target_pos - obj_pos
+  return task_state.root_relative_vec(env, robot_name, delta)
 
 
 def is_grasped(
