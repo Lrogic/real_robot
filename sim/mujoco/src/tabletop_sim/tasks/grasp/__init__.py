@@ -8,6 +8,8 @@ from tabletop_sim.tasks.grasp.rl_cfg import grasp_ppo_runner_cfg
 TASK_IDS = {
   "ee_delta_pose_binary_gripper": "WXAI-Grasp-Lift-EE",
   "delta_joint_abs_gripper": "WXAI-Grasp-Lift-Joint",
+  "ee_delta_pose_delta_gripper": "WXAI-Grasp-Lift-EE-DeltaGripper",
+  "delta_joint_delta_gripper": "WXAI-Grasp-Lift-Joint-DeltaGripper",
 }
 PLAY_TASK_ID = "WXAI-Grasp-Play"
 

@@ -26,7 +26,8 @@
   "action": {
     "ee_pos_scale": 0.01,
     "ee_rot_scale": 0.05,
-    "joint_delta_scale": 0.1
+    "joint_delta_scale": 0.1,
+    "gripper_delta_scale": 0.01
   },
   "domain_randomization": {},
   "curriculum": {}

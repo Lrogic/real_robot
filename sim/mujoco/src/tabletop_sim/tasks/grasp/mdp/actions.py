@@ -88,15 +88,18 @@ class GripperActionCfg(ActionTermCfg):
 
   ``binary``: a >= 0 opens, a < 0 closes.
   ``absolute``: clip(a, -1, 1) maps linearly from closed (-1) to open (+1).
+  ``delta``: target = q + clip(a, -1, 1) * delta_scale (a > 0 opens), clamped
+  to [closed_pos, open_pos] and computed once per control step.
   """
 
   joint_name: str
   open_pos: float
   closed_pos: float
   mode: str = "binary"
+  delta_scale: float = 0.01
 
   def build(self, env: ManagerBasedRlEnv) -> GripperAction:
-    if self.mode not in ("binary", "absolute"):
+    if self.mode not in ("binary", "absolute", "delta"):
       raise ValueError(f"Unknown gripper mode {self.mode!r}")
     return GripperAction(self, env)
 
@@ -129,9 +132,14 @@ class GripperAction(ActionTerm):
         torch.full_like(actions, self.cfg.open_pos),
         torch.full_like(actions, self.cfg.closed_pos),
       )
-    else:
+    elif self.cfg.mode == "absolute":
       frac = (actions.clamp(-1.0, 1.0) + 1.0) * 0.5
       self._target[:] = self.cfg.closed_pos + frac * (self.cfg.open_pos - self.cfg.closed_pos)
+    else:
+      q = self._entity.data.joint_pos[:, self._joint_ids]
+      target = q + actions.clamp(-1.0, 1.0) * self.cfg.delta_scale
+      lo, hi = sorted((self.cfg.closed_pos, self.cfg.open_pos))
+      self._target[:] = target.clamp(lo, hi)
 
   def apply_actions(self) -> None:
     bias = self._entity.data.encoder_bias[:, self._joint_ids]

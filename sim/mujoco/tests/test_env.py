@@ -269,6 +269,34 @@ def test_delta_joint_action(tmp_path_factory):
     env.close()
 
 
+@pytest.mark.parametrize("action_space", ["delta_joint_delta_gripper", "ee_delta_pose_delta_gripper"])
+def test_delta_gripper_action(tmp_path_factory, action_space):
+  env = _make_env(_scene_file(tmp_path_factory), action_space=action_space)
+  try:
+    env.reset()
+    gripper = env.action_manager.get_term("gripper")
+    assert env.action_manager.total_action_dim == 7
+
+    def carriage():
+      return gripper._entity.data.joint_pos[:, gripper._joint_ids].clone()
+
+    action = torch.zeros(NUM_ENVS, 7, device=DEVICE)
+    action[:, 6] = -0.5
+    q0 = carriage()
+    env.step(action)
+    torch.testing.assert_close(gripper._target, q0 - 0.005, atol=1e-6, rtol=0)
+    # Target follows the measured position, and is clamped to the open limit.
+    action[:, 6] = 5.0
+    for _ in range(8):
+      q = carriage()
+      env.step(action)
+      torch.testing.assert_close(gripper._target, (q + 0.01).clamp(max=0.044), atol=1e-6, rtol=0)
+    assert (gripper._target == 0.044).all()
+    assert (carriage() > 0.035).all()
+  finally:
+    env.close()
+
+
 def test_trossen_embodiment(tmp_path_factory):
   scene = _scene_file(tmp_path_factory, embodiment="trossen_wxai_base")
   env = _make_env(scene, num_envs=2)

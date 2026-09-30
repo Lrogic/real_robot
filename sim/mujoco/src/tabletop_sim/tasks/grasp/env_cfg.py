@@ -43,16 +43,29 @@ NCONMAX_PER_OBJECT = 32
 NJMAX_PER_OBJECT = 192
 
 
+# action_space -> (arm control, gripper mode).
+_ACTION_SPACE_PARTS = {
+  "ee_delta_pose_binary_gripper": ("ee_delta_pose", "binary"),
+  "delta_joint_abs_gripper": ("delta_joint", "absolute"),
+  "ee_delta_pose_delta_gripper": ("ee_delta_pose", "delta"),
+  "delta_joint_delta_gripper": ("delta_joint", "delta"),
+}
+assert set(_ACTION_SPACE_PARTS) == set(ACTION_SPACES)
+
+
 def _actions(emb: EmbodimentCfg, action_space: str, task: TaskConfig) -> dict[str, ActionTermCfg]:
-  gripper_mode = "binary" if action_space == "ee_delta_pose_binary_gripper" else "absolute"
+  if action_space not in _ACTION_SPACE_PARTS:
+    raise ValueError(f"action_space must be one of {ACTION_SPACES}, got {action_space!r}")
+  arm_kind, gripper_mode = _ACTION_SPACE_PARTS[action_space]
   gripper = mdp.GripperActionCfg(
     entity_name="robot",
     joint_name=emb.gripper_actuator_joint,
     open_pos=emb.gripper_open,
     closed_pos=emb.gripper_closed,
     mode=gripper_mode,
+    delta_scale=task.action.gripper_delta_scale,
   )
-  if action_space == "ee_delta_pose_binary_gripper":
+  if arm_kind == "ee_delta_pose":
     arm: ActionTermCfg = mdp.ClippedDifferentialIKActionCfg(
       entity_name="robot",
       actuator_names=emb.arm_joint_names,
@@ -68,14 +81,12 @@ def _actions(emb: EmbodimentCfg, action_space: str, task: TaskConfig) -> dict[st
       joint_limit_weight=emb.ik.joint_limit_weight,
       posture_weight=emb.ik.posture_weight,
     )
-  elif action_space == "delta_joint_abs_gripper":
+  else:
     arm = mdp.DeltaJointPositionActionCfg(
       entity_name="robot",
       joint_names=emb.arm_joint_names,
       scale=task.action.joint_delta_scale,
     )
-  else:
-    raise ValueError(f"action_space must be one of {ACTION_SPACES}, got {action_space!r}")
   return {"arm": arm, "gripper": gripper}
 
 

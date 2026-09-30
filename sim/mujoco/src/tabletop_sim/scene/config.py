@@ -28,7 +28,12 @@ Pose = tuple[float, float, float, float, float, float, float]
 Primitive = Literal["box", "sphere", "cylinder", "capsule", "mesh"]
 PRIMITIVES = ("box", "sphere", "cylinder", "capsule", "mesh")
 
-ACTION_SPACES = ("ee_delta_pose_binary_gripper", "delta_joint_abs_gripper")
+ACTION_SPACES = (
+  "ee_delta_pose_binary_gripper",
+  "delta_joint_abs_gripper",
+  "ee_delta_pose_delta_gripper",
+  "delta_joint_delta_gripper",
+)
 RESERVED_ENTITY_NAMES = ("robot", "ground", "terrain")
 
 
@@ -260,6 +265,9 @@ class ActionConfig:
   """Radians of TCP rotation per step at |action| = 1."""
   joint_delta_scale: float = 0.1
   """Radians of arm joint target change per step at |action| = 1."""
+  gripper_delta_scale: float = 0.01
+  """Metres of carriage target change per step at |action| = 1 (delta gripper
+  only). Each finger moves this much, so the gap changes by twice as much."""
 
 
 @dataclass(frozen=True)
