@@ -5,6 +5,7 @@
 #   ./run.sh --setup-track --save-path foundationpose_runs/run1 [--num-seconds 30] [--save-video]
 #   ./run.sh --track       --save-path foundationpose_runs/run1   # reuse an existing run
 #   ./run.sh --track       --save-path foundationpose_runs/run1 --fp-mode batched
+#   ./run.sh --track       --save-path foundationpose_runs/run1 --manipulation [--manipulation-dry-run]
 #
 # --fp-mode sequential (default) runs FoundationPose's track_one per object;
 # --fp-mode batched refines every object in one network pass per iteration;
@@ -19,7 +20,7 @@ SETUP_ENV="sam3"
 TRACK_ENV="fp_robot"
 
 usage() {
-    sed -n '2,14p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 2
 }
 
@@ -47,7 +48,8 @@ run_stage() {
     conda activate "${env}"
     set -u
     echo "[${env}] $(command -v python) ${script}"
-    python "${SCRIPT_DIR}/${script}" "${forward[@]}"
+    # real_robot/ for the manipulation package (track_objects.py --manipulation).
+    PYTHONPATH="${SCRIPT_DIR}/..${PYTHONPATH:+:${PYTHONPATH}}" python "${SCRIPT_DIR}/${script}" "${forward[@]}"
     set +u
     conda deactivate
     set -u

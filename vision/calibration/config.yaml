@@ -1,0 +1,65 @@
+# Eye-to-hand calibration of the parked D405 against the manipulator base.
+# All lengths in metres, angles in degrees unless the key says otherwise.
+
+board:
+  # The existing print is OpenCV's 5x7 (portrait) board held in landscape: same 100 x 140 mm
+  # pattern, but marker IDs run along the long side, so 7x5 detects markers and no corners.
+  squares_x: 5              # square columns in the board frame (x, 100 mm)
+  squares_y: 7              # square rows in the board frame (y, 140 mm)
+  square_m: 0.020
+  marker_m: 0.015
+  dictionary: DICT_4X4_50   # must match the print exactly
+  legacy_pattern: false     # OpenCV < 4.6 layout; only matters for even squares_y
+  first_marker_id: 0        # markers use IDs first_marker_id .. first_marker_id + 16
+
+camera:
+  serial: null              # null = first RealSense found
+  width: 1280
+  height: 720
+  fps: 30
+  fallback: {width: 848, height: 480, fps: 30}
+  warmup_frames: 30
+
+robot:
+  ip: 192.168.1.2
+  model: wxai_v0
+  end_effector: wxai_v0_base   # fixed for the whole session; defines the EE frame of T_base_ee
+  gripper_close_effort: -20.0  # N, negative closes
+
+camera_arm:
+  # Measured joint positions of the parked camera arm (rad). Metadata only;
+  # the calibration is valid only while the camera arm stays at this pose.
+  joint_positions: null
+
+capture:
+  settle_s: 0.3               # minimum delay between keypress and the image
+  still_window_s: 0.5         # robot must be still for this long before the image
+  # Judged from measured positions; the driver's raw joint velocities are too noisy (~0.1 rad/s peaks at rest).
+  still_joint_vel_rad_s: 0.01   # max least-squares drift rate of any joint over the window
+  still_joint_range_rad: 0.003  # max joint excursion within the window (~1 mm at the board)
+  max_joint_delta_rad: 0.002    # max joint change between before/after-image robot states
+  fresh_frames: 3             # fresh frames grabbed after the request; the last one is kept
+  fresh_timeout_s: 2.0
+
+quality:
+  min_corners: 8
+  min_corner_rows: 2
+  min_corner_cols: 3
+  min_spread_ratio: 0.15      # sqrt(min/max eigenvalue) of corner layout on the board; 0 = collinear
+  min_hull_fraction: 0.01     # convex hull of corners / image area (full board at ~0.45 m is ~1.5%)
+  max_reproj_rms_px: 0.8
+  min_sharpness: 20.0         # variance of Laplacian inside the corner hull
+  max_ambiguity_ratio: 0.7    # IPPE best/second-best reprojection error; near 1 = ambiguous pose
+
+diversity:
+  target_samples: [20, 30]
+  min_pair_rotation_deg: 5.0      # pairs below this carry little rotation information
+  min_axis_spread: 0.15           # 2nd/1st eigenvalue of relative-rotation axis scatter
+  similar_rotation_deg: 3.0       # a new sample this close to an old one is flagged as a duplicate
+  similar_translation_m: 0.01
+  max_angle_mismatch_deg: 1.0     # |angle(A_ij) - angle(B_ij)|; large = slipping board or bad sample
+  tilt_target_deg: [15, 45]
+
+calibration:
+  method: auto                # auto = lowest corner residual; or TSAI, PARK, HORAUD, ANDREFF, DANIILIDIS, SHAH, LI
+  outlier_corner_rms_mm: 3.0

@@ -50,6 +50,16 @@ def pipeline_parser(description: str) -> argparse.ArgumentParser:
                        help="Seconds between live timing reports (default: 5)")
     track.add_argument("--foundationpose-dir", type=Path, default=DEFAULT_FOUNDATIONPOSE_DIR,
                        help=f"FoundationPose checkout (default: {DEFAULT_FOUNDATIONPOSE_DIR})")
+
+    manip = parser.add_argument_group("manipulation (track_objects.py --manipulation)")
+    manip.add_argument("--manipulation", action="store_true",
+                       help="Click a tracked object to make the manipulator move to and follow it")
+    manip.add_argument("--manipulation-dry-run", action="store_true",
+                       help="With --manipulation: draw and log arm goals without connecting to the arm")
+    manip.add_argument("--calibration", type=Path, default=None,
+                       help="T_base_camera.json (default: newest calibration session that has one)")
+    manip.add_argument("--manipulation-config", type=Path, default=None,
+                       help="Manipulation config (default: real_robot/manipulation/config.yaml)")
     return parser
 
 
@@ -61,6 +71,8 @@ def parse_pipeline_args(parser: argparse.ArgumentParser) -> argparse.Namespace:
         parser.error("num-seconds must be > 0")
     if args.stats_every <= 0:
         parser.error("stats-every must be > 0")
+    if args.manipulation_dry_run and not args.manipulation:
+        parser.error("--manipulation-dry-run requires --manipulation")
     return args
 
 

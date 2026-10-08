@@ -7,6 +7,10 @@ live frame. Objects without a mesh are skipped. Run in the fp_robot env.
     python track_objects.py --save-path foundationpose_runs/run1
     python track_objects.py --save-path foundationpose_runs/run1 --num-seconds 30 --save-video
     python track_objects.py --save-path foundationpose_runs/run1 --fp-mode batched
+    python track_objects.py --save-path foundationpose_runs/run1 --manipulation [--manipulation-dry-run]
+
+--manipulation adds the arm follow test (see real_robot/manipulation/session.py for keys);
+it needs real_robot/ on PYTHONPATH, which run.sh sets.
 
 Do not move the camera or objects between setup and the start of tracking.
 Press q or Esc in the window to stop.
@@ -95,8 +99,10 @@ def write_video(frames, output_path, elapsed_seconds):
     print(f"Saved {len(frames)} buffered frames to {output_path} at {playback_fps:.2f} fps")
 
 
-def track_live(args, tracker, stream):
+def track_live(args, tracker, stream, hooks=None):
     cv2.namedWindow(WINDOW, cv2.WINDOW_NORMAL)
+    if hooks is not None:
+        cv2.setMouseCallback(WINDOW, hooks.on_mouse)
     video_frames = [] if args.save_video else None
     all_samples, window_samples = [], []
     last_frame_number = None
@@ -109,7 +115,11 @@ def track_live(args, tracker, stream):
             loop_started = time.perf_counter()
             rgb, depth, timing = stream.read()
             fp_per_object = tracker.track(rgb, depth, stream.K, args.track_refine_iter)
-            display_frame = cv2.cvtColor(tracker.draw(rgb, stream.K), cv2.COLOR_RGB2BGR)
+            vis = tracker.draw(rgb, stream.K)
+            if hooks is not None:
+                hooks.update(tracker, stream.K, timing)
+                vis = hooks.draw(vis)
+            display_frame = cv2.cvtColor(vis, cv2.COLOR_RGB2BGR)
             cv2.imshow(WINDOW, display_frame)
             if video_frames is not None:
                 video_frames.append(display_frame)
@@ -130,9 +140,12 @@ def track_live(args, tracker, stream):
                 print_stats("recent", window_samples, now - last_report_at, args.fps)
                 window_samples.clear()
                 last_report_at = now
-            if key in (ord("q"), 27) or cv2.getWindowProperty(WINDOW, cv2.WND_PROP_VISIBLE) < 1:
+            quit_requested = hooks.on_key(key) if hooks is not None else key in (ord("q"), 27)
+            if quit_requested or cv2.getWindowProperty(WINDOW, cv2.WND_PROP_VISIBLE) < 1:
                 break
     finally:
+        if hooks is not None:
+            hooks.close()
         elapsed_seconds = time.monotonic() - started_at
         cv2.destroyAllWindows()
         print_stats("overall", all_samples, elapsed_seconds, args.fps)
@@ -164,7 +177,12 @@ def main():
                          args.est_refine_iter)
         with RealSenseStream(camera_settings(args)) as stream:
             check_live_camera(run.capture.K, run.capture.depth.shape, stream)
-            track_live(args, tracker, stream)
+            if args.manipulation:
+                from manipulation.session import manipulation_session
+                with manipulation_session(args) as session:
+                    track_live(args, tracker, stream, hooks=session)
+            else:
+                track_live(args, tracker, stream)
     return 0
 
 

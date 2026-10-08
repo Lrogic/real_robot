@@ -1,0 +1,43 @@
+# FoundationPose-guided manipulation test (track_objects.py --manipulation).
+# All lengths in metres, angles in radians, poses in the manipulator base frame.
+
+robot:
+  # null = take ip / model / end_effector from the calibration's session metadata,
+  # so the tool frame matches the one T_base_camera was calibrated with.
+  ip: null
+  model: null
+  end_effector: null
+
+motion:
+  control_hz: 20
+  max_lin_speed_m_s: 0.02     # host-side limit on the commanded tool pose
+  max_ang_speed_rad_s: 0.15
+  max_tracking_error_m: 0.05  # measured tool vs commanded beyond this = kill (collision / stuck)
+
+grasp:
+  # Gripper points forward (horizontal, radially away from the base), fingers open horizontally.
+  # The tool frame is at the fingertips (wxai_v0_base: x along the gripper).
+  hover_standoff_m: 0.08      # hover: fingertips this far in front of the block centre
+  grasp_depth_m: 0.015        # enclose: block centre this far behind the fingertips (between the pads)
+  gripper_open_margin_m: 0.002
+  gripper_open_time_s: 3.0
+
+safety:
+  # Hard floor for the tool (fingertip) height in the base frame. FP put a standing jenga block's
+  # centre (3.75 cm above the table) at z ~ 0.047, so the table is at z ~ 0.01. The finger bodies
+  # reach ~1 cm below the tool axis; this leaves ~1 cm of clearance.
+  min_tool_z_m: 0.03
+  max_tool_z_m: 0.45
+  # The arm starts in gravity compensation; guide it by hand to a ready pose before confirming.
+  # Confirm is refused if any joint is closer than this to a limit (the folded rest pose has
+  # joints 2 and 3 at their limits, where the IK cannot move the tool down).
+  min_start_joint_margin_deg: 10.0
+  min_joint_margin_deg: 3.0   # while moving: hold if any joint gets this close to a limit
+  min_radius_m: 0.15          # horizontal distance of the tool from the base z axis
+  max_radius_m: 0.60
+
+target:
+  ema: 0.3                    # weight of each new FP position in the smoothed target
+  deadband_m: 0.005           # the active target only moves once the smoothed target moves this far
+  max_jump_m: 0.05            # FP positions this far from the smoothed target are rejected
+  stale_s: 0.5                # hold if no accepted FP position for this long

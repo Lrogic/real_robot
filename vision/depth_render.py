@@ -49,8 +49,8 @@ for sensor in device.sensors:
 #     print("The demo requires Depth camera with Color sensor")
 #     exit(0)
 
-config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
+config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
 
 # config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
 # config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
@@ -104,7 +104,7 @@ try:
         #   depth align to color on left
         #   depth on right
         depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
-        images = np.hstack((bg_removed, depth_colormap))
+        images = np.hstack((color_image, depth_colormap))
 
         cv2.namedWindow('Align Example', cv2.WINDOW_NORMAL)
         cv2.imshow('Align Example', images)
