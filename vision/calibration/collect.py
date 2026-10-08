@@ -1,10 +1,12 @@
 """Guided ChArUco sample collection with the manipulator in gravity compensation.
 
-    python -m calibration.collect [--session data/sessions/NAME] [--resume]
-                                  [--camera-arm-joints j1,j2,j3,j4,j5,j6]
+    python -m calibration.collect --follower PATH|unrecorded
+                                  --grav-comp normal|board-adjusted
+                                  [--session data/sessions/NAME] [--resume]
 
-The camera arm stays parked. The operator guides the manipulator by hand, holds it
-still with the board settled, and presses:
+The follower (camera arm) stays parked. Pass a profile from record_follower, or
+unrecorded if that pose was not saved. The operator guides the manipulator by hand,
+holds it still with the board settled, and presses:
     c  capture a sample (robot must be still; a fresh image is taken after the keypress)
     d  delete (reject) the last sample
     g  toggle the guidance panel
@@ -27,6 +29,7 @@ from .board import DEFAULT_DATA_DIR, BoardConfig, board_metadata, load_config, m
     same_board
 from .detection import detect, draw_detection, quiet_opencv
 from .diversity import analyze, nearest_duplicate, summary_lines
+from .record_follower import load_follower_choice
 from .robot import joint_motion
 from .session import Session, load_sample, read_json, sample_E_C
 
@@ -46,8 +49,14 @@ GUIDANCE = [
 ]
 
 
-def parse_joints(text):
-    return None if text is None else [float(v) for v in text.split(",")]
+def same_follower(saved: dict, chosen: dict) -> bool:
+    if saved.get("status") != chosen["status"]:
+        return False
+    if chosen["status"] != "recorded":
+        return True
+    a = np.asarray(saved["joint_positions_rad"], dtype=np.float64)
+    b = np.asarray(chosen["joint_positions_rad"], dtype=np.float64)
+    return a.shape == b.shape and np.allclose(a, b)
 
 
 def check_verification(path: Path, board_meta: dict, skip: bool) -> dict:
@@ -226,8 +235,10 @@ def main():
     p.add_argument("--session", type=Path, default=None,
                    help="session directory (default data/sessions/<timestamp>)")
     p.add_argument("--resume", action="store_true", help="add samples to an existing session")
-    p.add_argument("--camera-arm-joints", default=None,
-                   help="comma-separated measured camera-arm joint positions (rad); overrides config")
+    p.add_argument("--follower", required=True,
+                   help='follower profile JSON from record_follower, or "unrecorded"')
+    p.add_argument("--grav-comp", required=True, choices=["normal", "board-adjusted"],
+                   help="normal: stock gripper model; board-adjusted: include robot.board_payload")
     p.add_argument("--verification", type=Path, default=DEFAULT_DATA_DIR / "board_verification.json")
     p.add_argument("--skip-verification", action="store_true")
     args = p.parse_args()
@@ -240,12 +251,20 @@ def main():
     board_cfg = BoardConfig.from_dict(config["board"])
     meta = board_metadata(board_cfg)
     verification = check_verification(args.verification, meta, args.skip_verification)
-    cam_arm = parse_joints(args.camera_arm_joints) or config["camera_arm"].get("joint_positions")
-    if cam_arm is None:
-        print("NOTE: camera-arm joint positions not given; the result is tied to the current parked pose")
+    follower = load_follower_choice(args.follower)
+    cam_arm = follower["joint_positions_rad"]
+    if follower["status"] == "unrecorded":
+        print("NOTE: follower pose unrecorded; the result is tied to wherever that arm was parked")
+    else:
+        print(f"Follower profile {follower['profile_path']}")
+        print(f"  joints rad: {cam_arm}")
     root = args.session or DEFAULT_DATA_DIR / "sessions" / time.strftime("%Y%m%d_%H%M%S")
 
-    with ColorStream(config["camera"]) as stream, GravityCompManipulator(config["robot"]) as robot:
+    board_adjusted = args.grav_comp == "board-adjusted"
+    with ColorStream(config["camera"]) as stream, \
+            GravityCompManipulator(config["robot"], board_adjusted=board_adjusted) as robot:
+        input("Press Enter to close the gripper...")
+        robot.close_gripper()
         session_meta = {
             "created": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
             "convention": "column vectors; T_destination_source; metres. X = T_base_camera, "
@@ -257,7 +276,9 @@ def main():
             "host": platform.node(),
             "camera": stream.info,
             "robot": robot.info,
+            "follower": follower,
             "camera_arm": {"joint_positions_rad": cam_arm, "connected": False,
+                           "status": follower["status"], "profile_path": follower["profile_path"],
                            "note": "parked for the whole session; result valid only at this pose"},
             "capture": config["capture"], "quality": config["quality"], "diversity": config["diversity"],
             "board_verification": verification,
@@ -272,8 +293,15 @@ def main():
                 raise SystemExit("Camera stream/intrinsics differ from the session; start a new session")
             if old["robot"]["end_effector"] != robot.info["end_effector"]:
                 raise SystemExit("End-effector configuration differs from the session")
+            previous_grav = old["robot"].get("grav_comp")
+            if previous_grav is not None and previous_grav != robot.info["grav_comp"]:
+                raise SystemExit(f"Session used --grav-comp {previous_grav}; pass the same mode")
+            previous = old.get("follower")
+            if previous is not None and not same_follower(previous, follower):
+                raise SystemExit("Follower profile differs from this session; pass the same "
+                                 "--follower value (or unrecorded, if that is what was used)")
             print(f"Resuming {root} with {len(session.sample_dirs())} samples. "
-                  "Only resume if the board mount and camera arm have NOT changed.")
+                  "Only resume if the board mount and follower have NOT changed.")
         else:
             session = Session.create(root, session_meta)
             print(f"New session {root}")

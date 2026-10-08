@@ -2,12 +2,12 @@
 # All lengths in metres, angles in degrees unless the key says otherwise.
 
 board:
-  # The existing print is OpenCV's 5x7 (portrait) board held in landscape: same 100 x 140 mm
-  # pattern, but marker IDs run along the long side, so 7x5 detects markers and no corners.
-  squares_x: 5              # square columns in the board frame (x, 100 mm)
-  squares_y: 7              # square rows in the board frame (y, 140 mm)
-  square_m: 0.020
-  marker_m: 0.015
+  # Printed 7x5 (landscape): marker IDs run along the long side. A 5x7 config finds
+  # those markers and no corners, because the IDs are not neighbors on that grid.
+  squares_x: 7              # square columns in the board frame (x, 175 mm)
+  squares_y: 5              # square rows in the board frame (y, 125 mm)
+  square_m: 0.025
+  marker_m: 0.018
   dictionary: DICT_4X4_50   # must match the print exactly
   legacy_pattern: false     # OpenCV < 4.6 layout; only matters for even squares_y
   first_marker_id: 0        # markers use IDs first_marker_id .. first_marker_id + 16
@@ -25,11 +25,18 @@ robot:
   model: wxai_v0
   end_effector: wxai_v0_base   # fixed for the whole session; defines the EE frame of T_base_ee
   gripper_close_effort: -20.0  # N, negative closes
+  # Used only by collect --grav-comp board-adjusted. Does not move the fingertip tool frame.
+  # com_x_m is the board center in the palm frame, +x through the fingers (fingertips at 0.156 m).
+  board_payload:
+    mass_kg: 0.100
+    com_x_m: 0.166
 
-camera_arm:
-  # Measured joint positions of the parked camera arm (rad). Metadata only;
-  # the calibration is valid only while the camera arm stays at this pose.
-  joint_positions: null
+follower:
+  # Parked arm the D405 is mounted on. record_follower reads it once;
+  # collect does not connect to it. Pose is in this arm's own base frame.
+  ip: 192.168.1.2
+  model: wxai_v0
+  end_effector: wxai_v0_base
 
 capture:
   settle_s: 0.3               # minimum delay between keypress and the image
