@@ -29,6 +29,7 @@ class ManipulationConfig:
     max_tracking_error_m: float
     hover_standoff_m: float
     grasp_depth_m: float
+    approach_pitch_rad: float
     gripper_open_margin_m: float
     gripper_open_time_s: float
     min_tool_z_m: float
@@ -52,6 +53,7 @@ class ManipulationConfig:
                   max_ang_speed_rad_s=float(m["max_ang_speed_rad_s"]),
                   max_tracking_error_m=float(m["max_tracking_error_m"]),
                   hover_standoff_m=float(g["hover_standoff_m"]), grasp_depth_m=float(g["grasp_depth_m"]),
+                  approach_pitch_rad=float(np.radians(g["approach_pitch_deg"])),
                   gripper_open_margin_m=float(g["gripper_open_margin_m"]),
                   gripper_open_time_s=float(g["gripper_open_time_s"]),
                   min_tool_z_m=float(s["min_tool_z_m"]), max_tool_z_m=float(s["max_tool_z_m"]),
@@ -67,19 +69,20 @@ class ManipulationConfig:
         return cfg
 
 
-def approach_rotation(p_base_object: np.ndarray) -> np.ndarray:
-    """Gripper horizontal, pointing radially away from the base towards the object, z up."""
+def approach_rotation(p_base_object: np.ndarray, pitch_down_rad: float = 0.0) -> np.ndarray:
+    """Gripper pointing radially away from the base towards the object, tipped down by pitch_down_rad."""
     a = np.array([p_base_object[0], p_base_object[1], 0.0])
     n = np.linalg.norm(a)
     if n < 1e-6:
         raise ValueError("object is on the base z axis; no forward approach direction")
     a /= n
-    return np.column_stack([a, np.cross(UP, a), UP])
+    c, s = np.cos(pitch_down_rad), np.sin(pitch_down_rad)
+    return np.column_stack([c * a - s * UP, np.cross(UP, a), s * a + c * UP])
 
 
 def tool_goal(p_base_object: np.ndarray, stage: str, cfg: ManipulationConfig) -> np.ndarray:
     """T_base_tool for the hover or enclose stage, with the tool height clamped to the floor."""
-    R = approach_rotation(p_base_object)
+    R = approach_rotation(p_base_object, cfg.approach_pitch_rad)
     offset = -cfg.hover_standoff_m if stage == HOVER else cfg.grasp_depth_m
     t = np.asarray(p_base_object, dtype=np.float64) + R[:, 0] * offset
     t[2] = max(t[2], cfg.min_tool_z_m)

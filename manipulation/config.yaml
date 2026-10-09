@@ -15,10 +15,12 @@ motion:
   max_tracking_error_m: 0.05  # measured tool vs commanded beyond this = kill (collision / stuck)
 
 grasp:
-  # Gripper points forward (horizontal, radially away from the base), fingers open horizontally.
-  # The tool frame is at the fingertips (wxai_v0_base: x along the gripper).
+  # Gripper points forward (radially away from the base, tipped down by approach_pitch_deg),
+  # fingers open horizontally. The tool frame is at the fingertips (wxai_v0_base: x along the gripper).
+  # Hover and enclose offsets are along the tipped gripper axis.
   hover_standoff_m: 0.08      # hover: fingertips this far in front of the block centre
   grasp_depth_m: 0.015        # enclose: block centre this far behind the fingertips (between the pads)
+  approach_pitch_deg: 15      # level, joint 4 (wrist) needs ~92 deg at hover for a block ~0.57 m out (limit 90)
   gripper_open_margin_m: 0.002
   gripper_open_time_s: 3.0
 
