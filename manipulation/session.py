@@ -11,6 +11,7 @@ In the tracking window:
     g            enclose: move in until the object sits between the open fingers (from hover)
     b            back off to hover
     h            hold (stop following; the arm holds its pose)
+    s            switch stepping from the last command (default) to the measured pose and back
     Space        KILL: gravity compensation, no further commands (also Enter in the terminal, Ctrl+C)
     q / Esc      kill and quit
 """
@@ -42,7 +43,7 @@ PENDING_COLOR, SELECTED_COLOR = (255, 220, 0), (0, 220, 255)
 GOAL_COLOR, COMMAND_COLOR, MEASURED_COLOR = (255, 0, 255), (255, 255, 255), (0, 255, 0)
 KILL_COLOR = (255, 40, 40)
 FONT = cv2.FONT_HERSHEY_SIMPLEX
-HELP = "click select | y confirm | n cancel | g enclose | b back | h hold | SPACE KILL | q quit"
+HELP = "click select | y confirm | n cancel | g enclose | b back | h hold | s step source | SPACE KILL | q quit"
 
 
 def find_calibration(path: Optional[Path]) -> Path:
@@ -177,7 +178,7 @@ class ManipulationSession:
         self.controller.set_target(T_base_object[:3, 3])
         snap = self.controller.snapshot()
         self._write_log({"frame_number": timing.frame_number, "object": obj.name, "mode": snap.mode,
-                         "status": snap.status, "T_camera_object": obj.center_pose.tolist(),
+                         "status": snap.status, "step_from_measured": self.controller.step_from_measured, "T_camera_object": obj.center_pose.tolist(),
                          "T_base_object": T_base_object.tolist(),
                          "target_filtered": None if snap.target is None else snap.target.tolist(),
                          "goal": None if snap.goal is None else snap.goal.tolist(),
@@ -214,6 +215,10 @@ class ManipulationSession:
             self.controller.request(HOVER)
         elif key == ord("h"):
             self.controller.request(HOLD)
+        elif key == ord("s"):
+            source = "measured" if self.controller.toggle_step_source() else "command"
+            print(f"Stepping from the {source} pose")
+            self._write_log({"event": "step_source", "source": source})
         return False
 
     def draw(self, rgb: np.ndarray) -> np.ndarray:
@@ -231,7 +236,8 @@ class ManipulationSession:
                 self._draw_tool(vis, T, color, K)
 
         name = "-" if self.selected is None else self._objects[self.selected].name
-        lines = [(f"MANIPULATION {snap.mode.upper()}  object {name}", (255, 255, 255)),
+        source = "MEASURED" if self.controller.step_from_measured else "COMMAND"
+        lines = [(f"MANIPULATION {snap.mode.upper()}  object {name}  step from {source}", (255, 255, 255)),
                  (snap.status, KILL_COLOR if snap.mode == KILLED else (235, 235, 235)),
                  (f"target base {_fmt(snap.target)} m", (235, 235, 235))]
         if snap.goal is not None and snap.measured is not None:

@@ -73,6 +73,7 @@ class FollowController:
         self._status = "guide the arm by hand to a ready pose, then click an object"
         self._active: Optional[np.ndarray] = None
         self._goal = self._commanded = self._measured = self._joints = None
+        self.step_from_measured = False
         self._thread = threading.Thread(target=self._run, name="follow-controller", daemon=True)
 
     def start(self) -> None:
@@ -93,6 +94,12 @@ class FollowController:
         with self._lock:
             self._filter.reset()
             self._active = self._goal = None
+
+    def toggle_step_source(self) -> bool:
+        """Switch between stepping from the last command and from the measured pose; True = measured."""
+        with self._lock:
+            self.step_from_measured = not self.step_from_measured
+            return self.step_from_measured
 
     def request(self, mode: str) -> Optional[str]:
         """Switch mode; returns a refusal message if the arm cannot start moving."""
@@ -172,7 +179,8 @@ class FollowController:
                 error = float(np.linalg.norm(measured[:3, 3] - self._commanded[:3, 3]))
                 if error > self.cfg.max_tracking_error_m:
                     raise RuntimeError(f"tool is {error * 100:.1f} cm from its command (collision or stuck?)")
-            command, reached = step_toward(self._commanded, goal, self.dt, self.cfg)
+            start = measured if self.step_from_measured and measured is not None else self._commanded
+            command, reached = step_toward(start, goal, self.dt, self.cfg)
             changed = not np.allclose(command, self._commanded, atol=1e-6)
             mode = self._mode
         if changed:
