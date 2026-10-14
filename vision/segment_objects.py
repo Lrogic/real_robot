@@ -6,13 +6,17 @@ copy of a mesh folder from --meshes-dir. See fp_capture/run_folder.py for the la
     python segment_objects.py --save-path foundationpose_runs/run1
 """
 
+import os
 from pathlib import Path
 
 from fp_capture.camera import capture_frame
 from fp_capture.cli import camera_settings, parse_pipeline_args, pipeline_parser
+from fp_capture.follower_reset import ensure_vision_on_path, run_follower_reset_if_requested
 from fp_capture.run_folder import RunWriter, ensure_empty_dir
 from fp_capture.segmenter import Sam3Segmenter
 from fp_capture.ui import SegmentationApp
+
+ensure_vision_on_path()
 
 
 def mesh_folders(meshes_dir: Path):
@@ -28,6 +32,9 @@ def main():
         ensure_empty_dir(args.save_path)
     except FileExistsError as error:
         parser.error(str(error))
+
+    if not os.environ.get("REAL_ROBOT_FOLLOWER_RESET_DONE"):
+        run_follower_reset_if_requested(args)
 
     segmenter = Sam3Segmenter(args.checkpoint)
     capture = capture_frame(camera_settings(args))

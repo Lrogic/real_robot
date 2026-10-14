@@ -51,13 +51,22 @@ def pipeline_parser(description: str) -> argparse.ArgumentParser:
     track.add_argument("--foundationpose-dir", type=Path, default=DEFAULT_FOUNDATIONPOSE_DIR,
                        help=f"FoundationPose checkout (default: {DEFAULT_FOUNDATIONPOSE_DIR})")
 
+    camera_arm = parser.add_argument_group("camera arm (segment_objects.py --reset before capture)")
+    camera_arm.add_argument("--reset", action="store_true",
+                            help="Move the follower arm to the calibration session's recorded joints "
+                                 "before the setup RGB-D frame (run.sh uses fp_robot; fails if unreachable)")
+    camera_arm.add_argument("--calibration", type=Path, default=None,
+                            help="T_base_camera.json (default: newest calibration session that has one)")
+    camera_arm.add_argument("--calibration-config", type=Path, default=None,
+                            help="Calibration config for follower ip/model (--reset)")
+    camera_arm.add_argument("--follower-reset-move-time", type=float, default=2.0, metavar="SEC",
+                            help="Follower position move duration when using --reset (default: 2)")
+
     manip = parser.add_argument_group("manipulation (track_objects.py --manipulation)")
     manip.add_argument("--manipulation", action="store_true",
                        help="Click a tracked object to make the manipulator move to and follow it")
     manip.add_argument("--manipulation-dry-run", action="store_true",
                        help="With --manipulation: draw and log arm goals without connecting to the arm")
-    manip.add_argument("--calibration", type=Path, default=None,
-                       help="T_base_camera.json (default: newest calibration session that has one)")
     manip.add_argument("--manipulation-config", type=Path, default=None,
                        help="Manipulation config (default: real_robot/manipulation/config.yaml)")
     return parser
@@ -73,6 +82,8 @@ def parse_pipeline_args(parser: argparse.ArgumentParser) -> argparse.Namespace:
         parser.error("stats-every must be > 0")
     if args.manipulation_dry_run and not args.manipulation:
         parser.error("--manipulation-dry-run requires --manipulation")
+    if args.follower_reset_move_time <= 0:
+        parser.error("--follower-reset-move-time must be > 0")
     return args
 
 

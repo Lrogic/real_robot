@@ -8,10 +8,12 @@ live frame. Objects without a mesh are skipped. Run in the fp_robot env.
     python track_objects.py --save-path foundationpose_runs/run1 --num-seconds 30 --save-video
     python track_objects.py --save-path foundationpose_runs/run1 --fp-mode batched
     python track_objects.py --save-path foundationpose_runs/run1 --manipulation [--manipulation-dry-run]
+    python track_objects.py --save-path foundationpose_runs/run1 --manipulation --reset
 
 --manipulation adds the arm follow test (see real_robot/manipulation/session.py for keys);
 it needs real_robot/ on PYTHONPATH, which run.sh sets.
 
+Use --reset on setup (or --setup-track) so the follower arm is parked before the mask frame.
 Do not move the camera or objects between setup and the start of tracking.
 Press q or Esc in the window to stop.
 """
@@ -161,6 +163,10 @@ def main():
         run = load_run(args.save_path)
     except (FileNotFoundError, ValueError) as error:
         parser.error(str(error))
+    if getattr(args, "reset", False):
+        print("Note: --reset runs before setup capture (segment_objects / run.sh --setup-track), "
+              "not during tracking; re-run setup if masks were captured with the camera arm misaligned.")
+
     objects = trackable_objects(run)
     if not objects:
         print(f"Nothing to track in {args.save_path}: no saved object has a usable mesh")

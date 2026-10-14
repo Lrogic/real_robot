@@ -5,6 +5,7 @@
 #   ./run.sh --setup-track --save-path foundationpose_runs/run1 [--num-seconds 30] [--save-video]
 #   ./run.sh --track       --save-path foundationpose_runs/run1   # reuse an existing run
 #   ./run.sh --track       --save-path foundationpose_runs/run1 --fp-mode batched
+#   ./run.sh --setup-track --save-path foundationpose_runs/run1 --reset   # park camera arm, then mask + track
 #   ./run.sh --track       --save-path foundationpose_runs/run1 --manipulation [--manipulation-dry-run]
 #
 # --fp-mode sequential (default) runs FoundationPose's track_one per object;
@@ -41,6 +42,13 @@ CONDA_BASE="$(conda info --base 2>/dev/null || echo /opt/anaconda3)"
 # shellcheck source=/dev/null
 source "${CONDA_BASE}/etc/profile.d/conda.sh"
 
+forward_has_reset() {
+    for arg in "$@"; do
+        [[ "${arg}" == "--reset" ]] && return 0
+    done
+    return 1
+}
+
 run_stage() {
     local env="$1" script="$2"
     # Conda activation hooks (e.g. fp_robot's cuda-nvcc) read unset variables.
@@ -56,7 +64,13 @@ run_stage() {
 }
 
 if [[ "${mode}" == "setup" || "${mode}" == "setup-track" ]]; then
+    # Follower reset needs trossen_arm (fp_robot); SAM3 setup runs in sam3.
+    if forward_has_reset "${forward[@]}"; then
+        run_stage "${TRACK_ENV}" pipeline_follower_reset.py
+        export REAL_ROBOT_FOLLOWER_RESET_DONE=1
+    fi
     run_stage "${SETUP_ENV}" segment_objects.py
+    unset REAL_ROBOT_FOLLOWER_RESET_DONE 2>/dev/null || true
 fi
 if [[ "${mode}" == "track" || "${mode}" == "setup-track" ]]; then
     run_stage "${TRACK_ENV}" track_objects.py

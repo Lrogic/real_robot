@@ -20,18 +20,24 @@ def session_follower_joints(session: dict) -> list[float]:
     """Joint targets (rad) from a session.json dict."""
     follower = session.get("follower")
     if follower is None:
-        raise SystemExit("session.json has no follower block")
+        raise ValueError("session.json has no follower block")
 
     joints = follower.get("joint_positions_rad")
     if joints is None:
         cam = session.get("camera_arm") or {}
         joints = cam.get("joint_positions_rad")
     if joints is None or follower.get("status") == "unrecorded":
-        raise SystemExit("session has no recorded follower joint positions (was --follower unrecorded?)")
+        raise ValueError("session has no recorded follower joint positions (was --follower unrecorded?)")
     return [float(q) for q in joints]
 
 
-def reset_follower(follower_cfg: dict, joint_positions_rad: list[float], move_time_s: float) -> None:
+def move_follower_to_parked_pose(
+    follower_cfg: dict,
+    joint_positions_rad: list[float],
+    move_time_s: float,
+    *,
+    prompt_before_idle: bool = True,
+) -> None:
     import trossen_arm
 
     driver = trossen_arm.TrossenArmDriver()
@@ -44,7 +50,7 @@ def reset_follower(follower_cfg: dict, joint_positions_rad: list[float], move_ti
         configured = True
         n_arm = driver.get_num_joints() - 1
         if len(joint_positions_rad) != n_arm:
-            raise SystemExit(f"session has {len(joint_positions_rad)} arm joints, driver expects {n_arm}")
+            raise ValueError(f"session has {len(joint_positions_rad)} arm joints, driver expects {n_arm}")
 
         print(f"Follower {c['ip']}: moving to session joints (rad) {joint_positions_rad}")
         driver.set_arm_modes(trossen_arm.Mode.position)
@@ -57,11 +63,32 @@ def reset_follower(follower_cfg: dict, joint_positions_rad: list[float], move_ti
         print(f"Max joint error vs session: {err:.4f} rad ({np.degrees(err):.2f} deg)")
     finally:
         if configured:
-            try:
-                input("\nDisconnecting sets the follower to idle. SUPPORT THE ARM, then press Enter... ")
-            except (EOFError, KeyboardInterrupt):
-                pass
+            if prompt_before_idle:
+                try:
+                    input("\nDisconnecting sets the follower to idle. SUPPORT THE ARM, then press Enter... ")
+                except (EOFError, KeyboardInterrupt):
+                    pass
             driver.cleanup()
+
+
+def reset_follower_from_session_dir(
+    session_dir: Path,
+    calibration_config: Path | None = None,
+    move_time_s: float = 2.0,
+    *,
+    prompt_before_idle: bool = True,
+) -> None:
+    """Move the config follower to the joint pose in session_dir/session.json."""
+    session_path = Path(session_dir) / "session.json"
+    if not session_path.is_file():
+        raise FileNotFoundError(f"not a calibration session: {session_dir} (no session.json)")
+    joints = session_follower_joints(read_json(session_path))
+    move_follower_to_parked_pose(
+        load_config(calibration_config)["follower"],
+        joints,
+        move_time_s,
+        prompt_before_idle=prompt_before_idle,
+    )
 
 
 def main():
@@ -73,13 +100,15 @@ def main():
                    help="position move duration (default 2)")
     args = p.parse_args()
 
-    session_dir = args.session.resolve()
-    session_path = session_dir / "session.json"
-    if not session_path.is_file():
-        raise SystemExit(f"not a calibration session: {session_dir} (no session.json)")
-
-    joints = session_follower_joints(read_json(session_path))
-    reset_follower(load_config(args.config)["follower"], joints, args.move_time)
+    try:
+        reset_follower_from_session_dir(
+            args.session.resolve(),
+            args.config,
+            args.move_time,
+            prompt_before_idle=True,
+        )
+    except (FileNotFoundError, ValueError) as e:
+        raise SystemExit(str(e)) from e
 
 
 if __name__ == "__main__":

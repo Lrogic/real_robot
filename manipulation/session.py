@@ -32,6 +32,7 @@ import cv2
 import numpy as np
 
 import calibration
+from calibration.reset_follower import reset_follower_from_session_dir
 from calibration.transforms import inv_T, load_T_base_camera, transform_points
 from fp_capture.tracking import _project
 
@@ -46,6 +47,19 @@ GOAL_COLOR, COMMAND_COLOR, MEASURED_COLOR = (255, 0, 255), (255, 255, 255), (0, 
 KILL_COLOR = (255, 40, 40)
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 HELP = "click select | y confirm | n cancel | g enclose | o open | c close | b back | h hold | s step | SPACE KILL | q quit"
+
+
+def reset_follower_for_calibration(cal_path: Path, calibration_config: Optional[Path], move_time_s: float) -> None:
+    """Park the camera arm at the joints recorded in the calibration session (same folder as T_base_camera.json)."""
+    try:
+        reset_follower_from_session_dir(
+            cal_path.parent,
+            calibration_config,
+            move_time_s,
+            prompt_before_idle=False,
+        )
+    except Exception as e:
+        raise RuntimeError(f"could not reset follower arm (--reset): {e}") from e
 
 
 def find_calibration(path: Optional[Path]) -> Path:
