@@ -130,7 +130,8 @@ def main():
     results = {"created": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "args": {k: str(v) for k, v in vars(args).items()},
                "config": cfg.__dict__, "tests": [], "samples": {}}
 
-    with ManipulatorArm(robot_config(cal, cfg), cfg.gripper_open_margin_m, cfg.gripper_open_time_s) as arm:
+    with ManipulatorArm(robot_config(cal, cfg), cfg.gripper_open_margin_m, cfg.gripper_open_time_s,
+                        cfg.gripper_close_effort) as arm:
         results["arm"] = arm.info
         print("Ctrl+C at any time = KILL (gravity compensation).")
         try:

@@ -32,6 +32,7 @@ class ManipulationConfig:
     approach_pitch_rad: float
     gripper_open_margin_m: float
     gripper_open_time_s: float
+    gripper_close_effort: float
     min_tool_z_m: float
     max_tool_z_m: float
     min_radius_m: float
@@ -56,6 +57,7 @@ class ManipulationConfig:
                   approach_pitch_rad=float(np.radians(g["approach_pitch_deg"])),
                   gripper_open_margin_m=float(g["gripper_open_margin_m"]),
                   gripper_open_time_s=float(g["gripper_open_time_s"]),
+                  gripper_close_effort=float(g["gripper_close_effort"]),
                   min_tool_z_m=float(s["min_tool_z_m"]), max_tool_z_m=float(s["max_tool_z_m"]),
                   min_radius_m=float(s["min_radius_m"]), max_radius_m=float(s["max_radius_m"]),
                   min_start_joint_margin_deg=float(s["min_start_joint_margin_deg"]),

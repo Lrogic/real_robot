@@ -9,6 +9,8 @@ In the tracking window:
     y / Enter    confirm: the arm moves slowly to the hover pose and follows the object
     n            cancel the pending selection
     g            enclose: move in until the object sits between the open fingers (from hover)
+    o            open the gripper
+    c            close the gripper (only after enclose has finished)
     b            back off to hover
     h            hold (stop following; the arm holds its pose)
     s            switch stepping from the last command (default) to the measured pose and back
@@ -43,7 +45,7 @@ PENDING_COLOR, SELECTED_COLOR = (255, 220, 0), (0, 220, 255)
 GOAL_COLOR, COMMAND_COLOR, MEASURED_COLOR = (255, 0, 255), (255, 255, 255), (0, 255, 0)
 KILL_COLOR = (255, 40, 40)
 FONT = cv2.FONT_HERSHEY_SIMPLEX
-HELP = "click select | y confirm | n cancel | g enclose | b back | h hold | s step source | SPACE KILL | q quit"
+HELP = "click select | y confirm | n cancel | g enclose | o open | c close | b back | h hold | s step | SPACE KILL | q quit"
 
 
 def find_calibration(path: Optional[Path]) -> Path:
@@ -211,6 +213,24 @@ class ManipulationSession:
             self.pending = None
         elif key == ord("g") and self.selected is not None:
             self.controller.request(ENCLOSE)
+        elif key == ord("o"):
+            if mode == KILLED:
+                self.message = "killed: restart to move the arm again"
+            else:
+                self.arm.open_gripper()
+                self.message = "opening gripper"
+                self._write_log({"event": "gripper_open"})
+        elif key == ord("c"):
+            if mode == KILLED:
+                self.message = "killed: restart to move the arm again"
+            elif mode != ENCLOSE:
+                self.message = "close only in enclose mode (press g first)"
+            elif not self.controller.snapshot().at_goal:
+                self.message = "wait until enclose completes (status: at enclose goal)"
+            else:
+                self.arm.close_gripper()
+                self.message = "closing gripper"
+                self._write_log({"event": "gripper_close"})
         elif key == ord("b") and mode == ENCLOSE:
             self.controller.request(HOVER)
         elif key == ord("h"):
@@ -295,7 +315,8 @@ def manipulation_session(args):
     if args.manipulation_dry_run:
         arm = DryRunArm()
     else:
-        arm = ManipulatorArm(robot_config(cal, cfg), cfg.gripper_open_margin_m, cfg.gripper_open_time_s)
+        arm = ManipulatorArm(robot_config(cal, cfg), cfg.gripper_open_margin_m, cfg.gripper_open_time_s,
+                              cfg.gripper_close_effort)
     with arm:
         session = ManipulationSession(arm, X, cfg, args.save_path / LOG_FILE)
         session.start()

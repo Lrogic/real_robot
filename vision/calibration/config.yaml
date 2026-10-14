@@ -34,7 +34,7 @@ robot:
 follower:
   # Parked arm the D405 is mounted on. record_follower reads it once;
   # collect does not connect to it. Pose is in this arm's own base frame.
-  ip: 192.168.1.2
+  ip: 192.168.1.3
   model: wxai_v0
   end_effector: wxai_v0_base
 

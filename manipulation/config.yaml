@@ -23,6 +23,7 @@ grasp:
   approach_pitch_deg: 15      # level, joint 4 (wrist) needs ~92 deg at hover for a block ~0.57 m out (limit 90)
   gripper_open_margin_m: 0.002
   gripper_open_time_s: 3.0
+  gripper_close_effort: -20.0  # N, negative closes (same sign as calibration)
 
 safety:
   # Hard floor for the tool (fingertip) height in the base frame. FP put a standing jenga block's

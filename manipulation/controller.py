@@ -54,6 +54,7 @@ class TargetFilter:
 class Snapshot:
     mode: str
     status: str
+    at_goal: bool
     target: Optional[np.ndarray]
     goal: Optional[np.ndarray]
     commanded: Optional[np.ndarray]
@@ -73,6 +74,7 @@ class FollowController:
         self._status = "guide the arm by hand to a ready pose, then click an object"
         self._active: Optional[np.ndarray] = None
         self._goal = self._commanded = self._measured = self._joints = None
+        self._at_goal = False
         self.step_from_measured = False
         self._thread = threading.Thread(target=self._run, name="follow-controller", daemon=True)
 
@@ -116,6 +118,7 @@ class FollowController:
                     return refusal
                 self._commanded = None  # restart from the measured pose
             self._mode = mode
+            self._at_goal = False
             self._status = {HOLD: "holding", HOVER: "moving to hover", ENCLOSE: "enclosing"}[mode]
             return None
 
@@ -130,7 +133,8 @@ class FollowController:
 
     def snapshot(self) -> Snapshot:
         with self._lock:
-            return Snapshot(self._mode, self._status, None if self._filter.p is None else self._filter.p.copy(),
+            return Snapshot(self._mode, self._status, self._at_goal,
+                            None if self._filter.p is None else self._filter.p.copy(),
                             self._goal, self._commanded, self._measured, self._joints)
 
     # ----- control thread ----------------------------------------------------
@@ -156,13 +160,16 @@ class FollowController:
             self._measured = measured
             self._joints = None if state is None else state.arm_positions
             if self._mode in (HOLD, KILLED):
+                self._at_goal = False
                 return
             near_limit = joint_margin_problem(self._joints, self.arm.joint_limits, self.cfg.min_joint_margin_deg)
             if near_limit is not None:
+                self._at_goal = False
                 self._status = f"holding: {near_limit}"
                 return
             p, hold_reason = self._filter.current(time.monotonic())
             if hold_reason is not None:
+                self._at_goal = False
                 self._status = f"holding: {hold_reason}"
                 return
             if self._active is None or np.linalg.norm(p - self._active) > self.cfg.deadband_m:
@@ -171,6 +178,7 @@ class FollowController:
             self._goal = goal
             bad = check_workspace(goal, self.cfg)
             if bad is not None:
+                self._at_goal = False
                 self._status = f"holding: goal outside workspace ({bad})"
                 return
             if self._commanded is None:
@@ -189,6 +197,7 @@ class FollowController:
             if self._mode != mode:
                 return
             self._commanded = command
+            self._at_goal = reached
             remaining = float(np.linalg.norm(goal[:3, 3] - command[:3, 3]))
             label = "hover" if mode == HOVER else "enclose"
             self._status = f"at {label} goal, following" if reached else f"to {label}: {remaining * 100:.1f} cm left"

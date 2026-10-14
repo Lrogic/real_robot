@@ -24,10 +24,12 @@ class ManipulatorArm(GravityCompManipulator):
     kill() switches back to gravity compensation for good.
     """
 
-    def __init__(self, robot_cfg: dict, gripper_open_margin_m: float, gripper_open_time_s: float):
-        super().__init__({**robot_cfg, "gripper_close_effort": 0.0})
+    def __init__(self, robot_cfg: dict, gripper_open_margin_m: float, gripper_open_time_s: float,
+                 gripper_close_effort: float):
+        super().__init__({**robot_cfg, "gripper_close_effort": gripper_close_effort})
         self.gripper_open_margin_m = gripper_open_margin_m
         self.gripper_open_time_s = gripper_open_time_s
+        self.gripper_open_m: Optional[float] = None
         self.lock = threading.RLock()
         self.killed = False
         self.kill_reason = ""
@@ -41,6 +43,7 @@ class ManipulatorArm(GravityCompManipulator):
             self.driver.set_arm_external_efforts([0.0] * (self.driver.get_num_joints() - 1), 0.0, False)
             limits = self.driver.get_joint_limits()
             gripper_open = limits[-1].position_max - self.gripper_open_margin_m
+            self.gripper_open_m = gripper_open
             self.driver.set_gripper_mode(trossen_arm.Mode.position)
             self.driver.set_gripper_position(gripper_open, self.gripper_open_time_s, False)
         except BaseException:
@@ -85,6 +88,21 @@ class ManipulatorArm(GravityCompManipulator):
             if self.driver is None:
                 return None
             return self.read_state()
+
+    def open_gripper(self) -> None:
+        with self.lock:
+            if self.killed or self.driver is None or self.gripper_open_m is None:
+                return
+            self.driver.set_gripper_mode(trossen_arm.Mode.position)
+            self.driver.set_gripper_position(self.gripper_open_m, self.gripper_open_time_s, False)
+
+    def close_gripper(self) -> None:
+        with self.lock:
+            if self.killed or self.driver is None:
+                return
+            effort = float(self.cfg["gripper_close_effort"])
+            self.driver.set_gripper_mode(trossen_arm.Mode.external_effort)
+            self.driver.set_gripper_external_effort(effort, 0.0, False)
 
     def send_tool_pose(self, T_base_tool: np.ndarray, goal_time: float) -> None:
         """Non-blocking Cartesian goal (driver IK); a no-op once killed."""
@@ -154,6 +172,12 @@ class DryRunArm:
     def send_tool_pose(self, T_base_tool: np.ndarray, goal_time: float) -> None:
         if not self.killed:
             self.last_T = T_base_tool.copy()
+
+    def open_gripper(self) -> None:
+        print("[dry run] gripper open")
+
+    def close_gripper(self) -> None:
+        print("[dry run] gripper close")
 
     def kill(self, reason: str) -> None:
         if not self.killed:
