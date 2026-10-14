@@ -1,4 +1,10 @@
 __pycache__/
 *.pyc
-vision/calibration/data/
+# Calibration captures (large); keep one canonical session metadata file.
+vision/calibration/data/**
+!vision/calibration/data/sessions/
+vision/calibration/data/sessions/**
+!vision/calibration/data/sessions/20261009_combined/
+vision/calibration/data/sessions/20261009_combined/**
+!vision/calibration/data/sessions/20261009_combined/session.json
 vision/foundationpose_runs/
