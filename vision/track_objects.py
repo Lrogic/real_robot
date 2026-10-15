@@ -9,6 +9,7 @@ live frame. Objects without a mesh are skipped. Run in the fp_robot env.
     python track_objects.py --save-path foundationpose_runs/run1 --fp-mode batched
     python track_objects.py --save-path foundationpose_runs/run1 --manipulation [--manipulation-dry-run]
     python track_objects.py --save-path foundationpose_runs/run1 --manipulation --reset
+    python track_objects.py --save-path foundationpose_runs/run1 --log-variation
 
 --manipulation adds the arm follow test (see real_robot/manipulation/session.py for keys);
 it needs real_robot/ on PYTHONPATH, which run.sh sets.
@@ -27,7 +28,8 @@ import numpy as np
 
 from fp_capture.camera import RealSenseStream
 from fp_capture.cli import camera_settings, parse_pipeline_args, pipeline_parser
-from fp_capture.run_folder import VIDEO_FILE, load_run
+from fp_capture.pose_variation import PoseVariationLog
+from fp_capture.run_folder import POSE_VARIATION_FILE, VIDEO_FILE, load_run
 
 WINDOW = "FoundationPose multi-object (q or Esc to quit)"
 
@@ -106,6 +108,7 @@ def track_live(args, tracker, stream, hooks=None):
     if hooks is not None:
         cv2.setMouseCallback(WINDOW, hooks.on_mouse)
     video_frames = [] if args.save_video else None
+    pose_log = PoseVariationLog() if args.log_variation else None
     all_samples, window_samples = [], []
     last_frame_number = None
     # Duration starts with the first live tracking frame, after model setup.
@@ -117,6 +120,8 @@ def track_live(args, tracker, stream, hooks=None):
             loop_started = time.perf_counter()
             rgb, depth, timing = stream.read()
             fp_per_object = tracker.track(rgb, depth, stream.K, args.track_refine_iter)
+            if pose_log is not None:
+                pose_log.record(time.monotonic() - started_at, tracker)
             vis = tracker.draw(rgb, stream.K)
             if hooks is not None:
                 hooks.update(tracker, stream.K, timing)
@@ -153,6 +158,8 @@ def track_live(args, tracker, stream, hooks=None):
         print_stats("overall", all_samples, elapsed_seconds, args.fps)
         if video_frames is not None:
             write_video(video_frames, args.save_path / VIDEO_FILE, elapsed_seconds)
+        if pose_log is not None:
+            pose_log.write(args.save_path / POSE_VARIATION_FILE)
     print(f"Processed {len(all_samples)} live frames")
 
 

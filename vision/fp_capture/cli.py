@@ -48,6 +48,9 @@ def pipeline_parser(description: str) -> argparse.ArgumentParser:
                        help="Buffer displayed frames in RAM and write save-path/tracking.mp4 at the end")
     track.add_argument("--stats-every", type=float, default=5.0,
                        help="Seconds between live timing reports (default: 5)")
+    track.add_argument("--log-variation", action="store_true",
+                       help="Record every tracked pose and write save-path/pose_variation.txt "
+                            "when tracking stops (mean, std, percentiles, and a 1s pose log)")
     track.add_argument("--foundationpose-dir", type=Path, default=DEFAULT_FOUNDATIONPOSE_DIR,
                        help=f"FoundationPose checkout (default: {DEFAULT_FOUNDATIONPOSE_DIR})")
 

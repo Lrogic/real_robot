@@ -7,6 +7,7 @@
     <run>/obj1/mask.png            one-channel uint8 0/255, as format_foundationpose_mask.py
     <run>/obj1/<mesh_folder>/...   only if a mesh was selected
     <run>/tracking.mp4             written by track_objects.py --save-video
+    <run>/pose_variation.txt       written by track_objects.py --log-variation
 """
 
 import json
@@ -28,6 +29,7 @@ RGB_FILE = "rgb.png"
 MASK_FILE = "mask.png"
 OVERLAY_FILE = "mask_overlay.png"
 VIDEO_FILE = "tracking.mp4"
+POSE_VARIATION_FILE = "pose_variation.txt"
 MESH_SUFFIXES = (".obj", ".stl", ".ply")
 _OBJ_DIR = re.compile(r"obj(\d+)")
 

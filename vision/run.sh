@@ -7,10 +7,14 @@
 #   ./run.sh --track       --save-path foundationpose_runs/run1 --fp-mode batched
 #   ./run.sh --setup-track --save-path foundationpose_runs/run1 --reset   # park camera arm, then mask + track
 #   ./run.sh --track       --save-path foundationpose_runs/run1 --manipulation [--manipulation-dry-run]
+#   ./run.sh --track       --save-path foundationpose_runs/run1 --log-variation
 #
 # --fp-mode sequential (default) runs FoundationPose's track_one per object;
 # --fp-mode batched refines every object in one network pass per iteration;
 # --fp-mode batched-render also renders every object's crop in one call.
+# --log-variation keeps every tracked pose and, when the window closes or
+# --num-seconds expires, writes save-path/pose_variation.txt (mean, std,
+# percentiles, and a pose about once per second).
 #
 # Exactly one mode flag is required; every other argument is forwarded to both
 # stages (see: python segment_objects.py --help).
@@ -21,7 +25,7 @@ SETUP_ENV="sam3"
 TRACK_ENV="fp_robot"
 
 usage() {
-    sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 2
 }
 
