@@ -132,6 +132,17 @@ def test_texture_path_overrides_color(tmp_path):
   assert model.mat_rgba[model.geom_matid[visual]].tolist() == pytest.approx([1.0, 1.0, 1.0, 1.0])
 
 
+def test_collision_size_uses_box(tmp_path):
+  scene = load_scene_config(
+    _write(tmp_path, _mesh_scene(tmp_path, collision_size=[0.075, 0.015, 0.025]))
+  )
+  assert scene.manipulated.collision_size == (0.075, 0.015, 0.025)
+  model = object_spec(scene.manipulated).compile()
+  gid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "block_collision")
+  assert model.geom_type[gid] == mujoco.mjtGeom.mjGEOM_BOX
+  assert model.geom_size[gid].tolist() == pytest.approx([0.0375, 0.0075, 0.0125])
+
+
 def test_missing_texture_rejected(tmp_path):
   with pytest.raises(ConfigError, match="texture file not found"):
     load_scene_config(_write(tmp_path, _mesh_scene(tmp_path, texture_path="missing.png")))
@@ -150,12 +161,29 @@ def test_multiple_initial_poses(tmp_path, scene_dict):
   assert len(scene.manipulated.initial_poses) == 3
 
 
-def test_reserved_dr_and_curriculum_rejected(tmp_path, task_dict):
-  for key in ("domain_randomization", "curriculum"):
-    data = copy.deepcopy(task_dict)
-    data[key] = {"friction": [0.5, 1.5]}
-    with pytest.raises(ConfigError, match="not implemented"):
-      load_task_config(_write(tmp_path, data))
+def test_reserved_curriculum_rejected(tmp_path, task_dict):
+  data = copy.deepcopy(task_dict)
+  data["curriculum"] = {"friction": [0.5, 1.5]}
+  with pytest.raises(ConfigError, match="not implemented"):
+    load_task_config(_write(tmp_path, data))
+
+
+def test_domain_randomization_object_reset_radius(tmp_path, task_dict):
+  task_dict["domain_randomization"] = {"object_reset_radius": 0.08}
+  task = load_task_config(_write(tmp_path, task_dict))
+  assert task.domain_randomization.object_reset_radius == 0.08
+
+
+def test_domain_randomization_unknown_key_rejected(tmp_path, task_dict):
+  task_dict["domain_randomization"] = {"friction": [0.5, 1.5]}
+  with pytest.raises(ConfigError, match="unknown keys"):
+    load_task_config(_write(tmp_path, task_dict))
+
+
+def test_domain_randomization_negative_radius_rejected(tmp_path, task_dict):
+  task_dict["domain_randomization"] = {"object_reset_radius": -0.01}
+  with pytest.raises(ConfigError, match="object_reset_radius"):
+    load_task_config(_write(tmp_path, task_dict))
 
 
 def test_incompatible_control_rate_rejected(tmp_path, task_dict):
@@ -212,7 +240,12 @@ def test_no_success_reward_counter_or_termination():
   assert "success" not in cfg.rewards
   assert list(cfg.terminations) == ["time_out"]
   assert cfg.terminations["time_out"].time_out
-  assert set(cfg.metrics) == {"mean_hold_score", "grasped_frac", "max_lift"}
+  assert set(cfg.metrics) == {
+    "mean_hold_score",
+    "grasped_frac",
+    "max_lift",
+    "grasped_lifted_frac",
+  }
   assert not hasattr(mdp, "StableHoldSuccess")
   assert not hasattr(mdp, "terminations")
   assert not hasattr(mdp.rewards, "success") and not hasattr(mdp.metrics, "success")

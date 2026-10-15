@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING
 
 import torch
@@ -34,3 +35,24 @@ def reset_object_from_pose_list(
     state = torch.zeros(len(env_ids), 13, device=env.device)
     state[:, :7] = pose
     entity.write_root_state_to_sim(state, env_ids=env_ids)
+
+
+def reset_object_xy_in_disk(
+  env: ManagerBasedRlEnv,
+  env_ids: torch.Tensor | None,
+  entity_name: str,
+  radius: float,
+) -> None:
+  """Place an object uniformly in a disk of ``radius`` (m) around its default
+  xy. z, orientation, and velocity stay at that default pose."""
+  env_ids = resolve_env_ids(env, env_ids)
+  entity: Entity = env.scene[entity_name]
+  state = entity.data.default_root_state[env_ids].clone()
+  state[:, 0:3] += env.scene.env_origins[env_ids]
+  n = len(env_ids)
+  angle = torch.rand(n, device=env.device) * (2.0 * math.pi)
+  # Square-root keeps the sample uniform over the disk area.
+  radial = radius * torch.sqrt(torch.rand(n, device=env.device))
+  state[:, 0] += radial * torch.cos(angle)
+  state[:, 1] += radial * torch.sin(angle)
+  entity.write_root_state_to_sim(state, env_ids=env_ids)

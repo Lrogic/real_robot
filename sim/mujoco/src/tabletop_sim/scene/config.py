@@ -109,8 +109,9 @@ class ObjectConfig:
   sphere = [radius]; cylinder / capsule = [radius, full height]. Meshes use
   ``asset_path`` (visual) and optional ``collision_asset_path`` (collision is the
   convex hull MuJoCo computes for mesh geoms) with ``scale``. Optional
-  ``texture_path`` is a diffuse image for the visual mesh. When it is set it
-  replaces ``color``; otherwise the geom uses ``color``.
+  ``collision_size`` replaces that hull with a box of those full extents, in the
+  mesh frame. Optional ``texture_path`` is a diffuse image for the visual mesh.
+  When it is set it replaces ``color``; otherwise the geom uses ``color``.
   """
 
   name: str
@@ -121,6 +122,8 @@ class ObjectConfig:
   asset_path: Path | None = None
   collision_asset_path: Path | None = None
   texture_path: Path | None = None
+  collision_size: tuple[float, ...] = ()
+  """Full box extents [x, y, z] used instead of the mesh convex hull."""
   scale: tuple[float, float, float] = (1.0, 1.0, 1.0)
   density: float = 1000.0
   mass: float | None = None
@@ -155,9 +158,13 @@ class ObjectConfig:
     size_dims = {"box": 3, "sphere": 1, "cylinder": 2, "capsule": 2}
     size: tuple[float, ...] = ()
     asset_path = collision_asset_path = texture_path = None
+    collision_size: tuple[float, ...] = ()
     raw_texture = data.get("texture_path")
+    raw_collision_size = data.get("collision_size")
     if raw_texture is not None and primitive != "mesh":
       raise ConfigError(f"{where}: 'texture_path' is only valid for mesh objects")
+    if raw_collision_size is not None and primitive != "mesh":
+      raise ConfigError(f"{where}: 'collision_size' is only valid for mesh objects")
     if primitive == "mesh":
       if "asset_path" not in data:
         raise ConfigError(f"{where}: mesh objects need 'asset_path'")
@@ -176,6 +183,10 @@ class ObjectConfig:
         texture_path = (base_dir / raw_texture).resolve()
         if not texture_path.is_file():
           raise ConfigError(f"{where}: texture file not found: {texture_path}")
+      if raw_collision_size is not None:
+        collision_size = _vec(f"{where}.collision_size", raw_collision_size, 3)
+        if any(s <= 0 for s in collision_size):
+          raise ConfigError(f"{where}: collision_size entries must be positive")
     else:
       size = _vec(f"{where}.size", data.get("size"), size_dims[primitive])
       if any(s <= 0 for s in size):
@@ -203,6 +214,7 @@ class ObjectConfig:
       asset_path=asset_path,
       collision_asset_path=collision_asset_path,
       texture_path=texture_path,
+      collision_size=collision_size,
       scale=scale,  # type: ignore[arg-type]
       density=float(data.get("density", cls.density)),
       mass=None if mass is None else float(mass),
@@ -284,6 +296,20 @@ class ActionConfig:
 
 
 @dataclass(frozen=True)
+class DomainRandomizationConfig:
+  object_reset_radius: float = 0.05
+  """Radius (m) of the disk around each object's default position in which the
+  manipulated object is placed uniformly at every reset."""
+
+  def __post_init__(self) -> None:
+    if not (math.isfinite(self.object_reset_radius) and self.object_reset_radius >= 0):
+      raise ConfigError(
+        "domain_randomization.object_reset_radius must be finite and nonnegative, "
+        f"got {self.object_reset_radius}"
+      )
+
+
+@dataclass(frozen=True)
 class TaskConfig:
   """Reward, metric and observation parameters of the grasp-lift-hold task."""
 
@@ -317,8 +343,7 @@ class TaskConfig:
   grasp_max_angle_deg: float = 110.0
   timing: TimingConfig = field(default_factory=TimingConfig)
   action: ActionConfig = field(default_factory=ActionConfig)
-  domain_randomization: dict[str, Any] = field(default_factory=dict)
-  """Reserved: domain randomization terms (not implemented yet)."""
+  domain_randomization: DomainRandomizationConfig = field(default_factory=DomainRandomizationConfig)
   curriculum: dict[str, Any] = field(default_factory=dict)
   """Reserved: curriculum terms (not implemented yet)."""
 
@@ -350,7 +375,12 @@ class TaskConfig:
       elif f.name == "action":
         _check_keys("task.action", value, ActionConfig)
         kwargs[f.name] = ActionConfig(**{k: float(v) for k, v in value.items()})
-      elif f.name in ("domain_randomization", "curriculum"):
+      elif f.name == "domain_randomization":
+        _check_keys("task.domain_randomization", value, DomainRandomizationConfig)
+        kwargs[f.name] = DomainRandomizationConfig(
+          **{k: float(v) for k, v in value.items()}
+        )
+      elif f.name == "curriculum":
         if not isinstance(value, dict):
           raise ConfigError(f"task.{f.name} must be an object")
         kwargs[f.name] = dict(value)
@@ -359,10 +389,8 @@ class TaskConfig:
       else:
         kwargs[f.name] = float(value)
     cfg = cls(**kwargs)
-    if cfg.domain_randomization or cfg.curriculum:
-      raise ConfigError(
-        "task: domain_randomization / curriculum are reserved but not implemented yet"
-      )
+    if cfg.curriculum:
+      raise ConfigError("task: curriculum is reserved but not implemented yet")
     if cfg.reward_normalization <= 0:
       raise ConfigError("task.reward_normalization must be positive")
     _ = cfg.timing.decimation  # validates timing

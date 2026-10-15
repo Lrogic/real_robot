@@ -67,13 +67,28 @@ def object_spec(obj: ObjectConfig) -> mujoco.MjSpec:
       density=0.0,
       **_mesh_visual_kwargs(spec, obj),
     )
-    spec.add_mesh(
-      name=f"{obj.name}_collision", file=str(obj.collision_asset_path), scale=list(obj.scale)
-    )
+    if obj.collision_size:
+      sx, sy, sz = obj.scale
+      collision = dict(
+        name=f"{obj.name}_collision",
+        type=mujoco.mjtGeom.mjGEOM_BOX,
+        size=[
+          obj.collision_size[0] * sx / 2,
+          obj.collision_size[1] * sy / 2,
+          obj.collision_size[2] * sz / 2,
+        ],
+      )
+    else:
+      spec.add_mesh(
+        name=f"{obj.name}_collision", file=str(obj.collision_asset_path), scale=list(obj.scale)
+      )
+      collision = dict(
+        name=f"{obj.name}_collision",
+        type=mujoco.mjtGeom.mjGEOM_MESH,
+        meshname=f"{obj.name}_collision",
+      )
     body.add_geom(
-      name=f"{obj.name}_collision",
-      type=mujoco.mjtGeom.mjGEOM_MESH,
-      meshname=f"{obj.name}_collision",
+      **collision,
       rgba=list(obj.color[:3]) + [0.0],
       group=3,
       **common,

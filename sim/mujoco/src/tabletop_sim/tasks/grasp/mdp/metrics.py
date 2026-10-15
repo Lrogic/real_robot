@@ -32,6 +32,26 @@ def grasped_fraction(
   return grasped.float() / env.max_episode_length
 
 
+def grasped_lifted_fraction(
+  env: ManagerBasedRlEnv,
+  sensor_names: tuple[str, str],
+  finger_cfg: SceneEntityCfg,
+  finger_outward_axes: tuple[tuple[float, float, float], tuple[float, float, float]],
+  min_force: float,
+  max_angle_deg: float,
+  command_name: str,
+  object_cfg: SceneEntityCfg,
+  lift_threshold: float,
+) -> torch.Tensor:
+  """Use with ``reduce="sum"``: steps both grasped and within ``lift_threshold``
+  of the target / max episode length."""
+  grasped = task_state.is_grasped(
+    env, sensor_names, finger_cfg, finger_outward_axes, min_force, max_angle_deg
+  )
+  lifted = task_state.is_lifted(env, command_name, object_cfg, lift_threshold)
+  return (grasped & lifted).float() / env.max_episode_length
+
+
 def lift_height(
   env: ManagerBasedRlEnv, command_name: str, object_cfg: SceneEntityCfg
 ) -> torch.Tensor:

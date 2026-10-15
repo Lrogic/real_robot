@@ -234,6 +234,16 @@ def _metrics(task: TaskConfig, ent: _Entities) -> dict[str, MetricsTermCfg]:
       params={"command_name": COMMAND_NAME, "object_cfg": ent.object()},
       reduce="max",
     ),
+    "grasped_lifted_frac": MetricsTermCfg(
+      func=m.grasped_lifted_fraction,
+      params={
+        **ent.grasp_params(task),
+        "command_name": COMMAND_NAME,
+        "object_cfg": ent.object(),
+        "lift_threshold": task.lift_threshold,
+      },
+      reduce="sum",
+    ),
   }
 
 
@@ -278,8 +288,13 @@ def make_grasp_env_cfg_from_configs(
   events: dict[str, EventTermCfg] = {
     "reset_scene_to_default": EventTermCfg(func=reset_scene_to_default, mode="reset"),
   }
+  events[f"reset_{obj.name}_xy"] = EventTermCfg(
+    func=mdp.reset_object_xy_in_disk,
+    mode="reset",
+    params={"entity_name": obj.name, "radius": task.domain_randomization.object_reset_radius},
+  )
   for o in scene.objects:
-    if len(o.initial_poses) > 1:
+    if o.name != obj.name and len(o.initial_poses) > 1:
       events[f"reset_{o.name}_pose"] = EventTermCfg(
         func=mdp.reset_object_from_pose_list,
         mode="reset",

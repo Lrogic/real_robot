@@ -122,17 +122,24 @@ def test_observation_layout(ee_env):
   assert (obs["critic"][:, 37] == 0).all()
 
 
-def test_resets_sample_initial_poses(ee_env):
-  candidates = torch.tensor(CUBE_POSES, device=DEVICE)[:, :3]
-  seen = set()
-  for _ in range(6):
+def test_manipulated_object_resets_in_xy_disk(ee_env):
+  entity = ee_env.scene["cube"]
+  nominal = entity.data.default_root_state[:, :7] + torch.cat(
+    (ee_env.scene.env_origins, torch.zeros(NUM_ENVS, 4, device=DEVICE)), dim=-1
+  )
+  moved = False
+  for _ in range(8):
     ee_env.reset()
-    pos = _tracker(ee_env).object_pos_w
-    dist = torch.cdist(pos, candidates)
-    assert (dist.min(dim=1).values < 1e-3).all()
-    seen.update(dist.argmin(dim=1).tolist())
+    pos, quat = task_state.object_pose_w(ee_env, _tracker(ee_env).object_cfg)
+    delta = pos - nominal[:, :3]
+    assert (torch.linalg.norm(delta[:, :2], dim=-1) <= 0.05 + 1e-5).all()
+    torch.testing.assert_close(delta[:, 2], torch.zeros(NUM_ENVS, device=DEVICE), atol=1e-4, rtol=0)
+    alignment = (quat * nominal[:, 3:7]).sum(dim=-1).abs()
+    torch.testing.assert_close(alignment, torch.ones(NUM_ENVS, device=DEVICE), atol=1e-4, rtol=0)
+    torch.testing.assert_close(entity.data.root_link_vel_w, torch.zeros_like(entity.data.root_link_vel_w))
     torch.testing.assert_close(_tracker(ee_env).initial_object_pos, pos, atol=1e-4, rtol=0)
-  assert len(seen) > 1
+    moved = moved or bool((torch.linalg.norm(delta[:, :2], dim=-1) > 1e-3).any())
+  assert moved
 
 
 def test_reward_matches_formula(ee_env):

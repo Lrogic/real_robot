@@ -27,6 +27,8 @@
     "joint_delta_scale": 0.1,
     "gripper_delta_scale": 0.01
   },
-  "domain_randomization": {},
+  "domain_randomization": {
+    "object_reset_radius": 0.05
+  },
   "curriculum": {}
 }
