@@ -108,7 +108,9 @@ class ObjectConfig:
   ``size`` depends on the primitive: box = full extents [x, y, z];
   sphere = [radius]; cylinder / capsule = [radius, full height]. Meshes use
   ``asset_path`` (visual) and optional ``collision_asset_path`` (collision is the
-  convex hull MuJoCo computes for mesh geoms) with ``scale``.
+  convex hull MuJoCo computes for mesh geoms) with ``scale``. Optional
+  ``texture_path`` is a diffuse image for the visual mesh. When it is set it
+  replaces ``color``; otherwise the geom uses ``color``.
   """
 
   name: str
@@ -118,6 +120,7 @@ class ObjectConfig:
   size: tuple[float, ...] = ()
   asset_path: Path | None = None
   collision_asset_path: Path | None = None
+  texture_path: Path | None = None
   scale: tuple[float, float, float] = (1.0, 1.0, 1.0)
   density: float = 1000.0
   mass: float | None = None
@@ -151,7 +154,10 @@ class ObjectConfig:
 
     size_dims = {"box": 3, "sphere": 1, "cylinder": 2, "capsule": 2}
     size: tuple[float, ...] = ()
-    asset_path = collision_asset_path = None
+    asset_path = collision_asset_path = texture_path = None
+    raw_texture = data.get("texture_path")
+    if raw_texture is not None and primitive != "mesh":
+      raise ConfigError(f"{where}: 'texture_path' is only valid for mesh objects")
     if primitive == "mesh":
       if "asset_path" not in data:
         raise ConfigError(f"{where}: mesh objects need 'asset_path'")
@@ -164,6 +170,12 @@ class ObjectConfig:
       for p in (asset_path, collision_asset_path):
         if not p.exists():
           raise ConfigError(f"{where}: mesh file not found: {p}")
+      if raw_texture is not None:
+        if not isinstance(raw_texture, str) or not raw_texture:
+          raise ConfigError(f"{where}: 'texture_path' must be a non-empty string")
+        texture_path = (base_dir / raw_texture).resolve()
+        if not texture_path.is_file():
+          raise ConfigError(f"{where}: texture file not found: {texture_path}")
     else:
       size = _vec(f"{where}.size", data.get("size"), size_dims[primitive])
       if any(s <= 0 for s in size):
@@ -190,6 +202,7 @@ class ObjectConfig:
       size=size,
       asset_path=asset_path,
       collision_asset_path=collision_asset_path,
+      texture_path=texture_path,
       scale=scale,  # type: ignore[arg-type]
       density=float(data.get("density", cls.density)),
       mass=None if mass is None else float(mass),

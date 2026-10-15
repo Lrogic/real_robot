@@ -1,0 +1,35 @@
+{
+  "scene_name": "wxai_tabletop_jenga",
+  "robot": {
+    "embodiment": "menagerie_wxai",
+    "action_space": "ee_delta_pose_binary_gripper",
+    "base_pose": [-0.615, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
+  },
+  "camera": {
+    "render_eye": [0.45, 0.5, 0.5],
+    "render_target": [-0.2, 0.0, 0.2]
+  },
+  "ground_altitude": -0.92,
+  "manipulated_object": "jenga",
+  "objects": [
+    {
+      "name": "table",
+      "primitive": "box",
+      "dynamic": false,
+      "size": [1.2, 1.2, 0.06],
+      "color": [0.45, 0.28, 0.15, 1.0],
+      "initial_poses": [[-0.12, 0.0, -0.03, 1.0, 0.0, 0.0, 0.0]]
+    },
+    {
+      "name": "jenga",
+      "primitive": "mesh",
+      "dynamic": true,
+      "asset_path": "../../../../../assets/meshes/jenga/jenga.obj",
+      "texture_path": "../../../../../assets/meshes/jenga/jenga.png",
+      "density": 1000.0,
+      "friction": [1.0, 0.005, 0.0001],
+      "color": [0.76, 0.58, 0.36, 1.0],
+      "initial_poses": [[-0.25, 0.0, 0.0375, 0.5, 0.5, -0.5, 0.5]]
+    }
+  ]
+}

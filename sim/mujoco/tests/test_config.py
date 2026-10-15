@@ -1,13 +1,16 @@
 import copy
 import json
 import math
+import struct
+import zlib
 from pathlib import Path
 
+import mujoco
 import pytest
 
 from mjlab.envs import mdp as mjlab_mdp
 from tabletop_sim.embodiments import get_embodiment
-from tabletop_sim.scene import ConfigError, load_scene_config, load_task_config
+from tabletop_sim.scene import ConfigError, load_scene_config, load_task_config, object_spec
 from tabletop_sim.tasks.grasp import mdp
 from tabletop_sim.tasks.grasp.env_cfg import (
   DEFAULT_SCENE,
@@ -72,6 +75,71 @@ def test_static_manipulated_object_rejected(tmp_path, scene_dict):
 def test_bad_action_space_rejected(tmp_path, scene_dict):
   scene_dict["robot"]["action_space"] = "joint_velocity"
   with pytest.raises(ConfigError, match="action_space"):
+    load_scene_config(_write(tmp_path, scene_dict))
+
+
+def _write_png(path: Path) -> None:
+  def chunk(tag: bytes, data: bytes) -> bytes:
+    return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+
+  ihdr = struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)
+  path.write_bytes(
+    b"\x89PNG\r\n\x1a\n"
+    + chunk(b"IHDR", ihdr)
+    + chunk(b"IDAT", zlib.compress(b"\x00\xff\x00\x00"))
+    + chunk(b"IEND", b"")
+  )
+
+
+def _mesh_scene(tmp_path: Path, **obj_extra) -> dict:
+  mesh = tmp_path / "block.obj"
+  mesh.write_text(
+    "v 0 0 0\nv 0.01 0 0\nv 0 0.01 0\nv 0 0 0.01\n"
+    "f 1 2 3\nf 1 2 4\nf 1 3 4\nf 2 3 4\n"
+  )
+  obj = {
+    "name": "block",
+    "primitive": "mesh",
+    "dynamic": True,
+    "asset_path": "block.obj",
+    "color": [0.2, 0.4, 0.6, 1.0],
+    "initial_poses": [[0, 0, 0, 1, 0, 0, 0]],
+  }
+  obj.update(obj_extra)
+  return {
+    "scene_name": "mesh",
+    "manipulated_object": "block",
+    "objects": [obj],
+  }
+
+
+def test_texture_path_is_optional(tmp_path):
+  scene = load_scene_config(_write(tmp_path, _mesh_scene(tmp_path)))
+  assert scene.manipulated.texture_path is None
+  model = object_spec(scene.manipulated).compile()
+  visual = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "block_visual")
+  assert model.ntex == 0 and model.geom_matid[visual] == -1
+  assert model.geom_rgba[visual].tolist() == pytest.approx([0.2, 0.4, 0.6, 1.0])
+
+
+def test_texture_path_overrides_color(tmp_path):
+  _write_png(tmp_path / "block.png")
+  scene = load_scene_config(_write(tmp_path, _mesh_scene(tmp_path, texture_path="block.png")))
+  assert scene.manipulated.texture_path == (tmp_path / "block.png").resolve()
+  model = object_spec(scene.manipulated).compile()
+  visual = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "block_visual")
+  assert model.ntex == 1 and model.geom_matid[visual] >= 0
+  assert model.mat_rgba[model.geom_matid[visual]].tolist() == pytest.approx([1.0, 1.0, 1.0, 1.0])
+
+
+def test_missing_texture_rejected(tmp_path):
+  with pytest.raises(ConfigError, match="texture file not found"):
+    load_scene_config(_write(tmp_path, _mesh_scene(tmp_path, texture_path="missing.png")))
+
+
+def test_texture_path_rejected_for_primitives(tmp_path, scene_dict):
+  scene_dict["objects"][1]["texture_path"] = "cube.png"
+  with pytest.raises(ConfigError, match="only valid for mesh"):
     load_scene_config(_write(tmp_path, scene_dict))
 
 

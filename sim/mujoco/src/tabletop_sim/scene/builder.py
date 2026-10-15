@@ -25,6 +25,23 @@ def _half_size(obj: ObjectConfig) -> list[float]:
   return [obj.size[0] * sx, obj.size[1] * sz / 2]
 
 
+def _mesh_visual_kwargs(spec: mujoco.MjSpec, obj: ObjectConfig) -> dict:
+  """Appearance of a mesh visual geom. A texture replaces the flat color."""
+  if obj.texture_path is None:
+    return {"rgba": list(obj.color)}
+  tex_name = f"{obj.name}_tex"
+  mat_name = f"{obj.name}_mat"
+  spec.add_texture(
+    name=tex_name,
+    type=mujoco.mjtTexture.mjTEXTURE_2D,
+    file=str(obj.texture_path),
+  )
+  material = spec.add_material(name=mat_name)
+  material.rgba = [1.0, 1.0, 1.0, 1.0]
+  material.textures[mujoco.mjtTextureRole.mjTEXROLE_RGB.value] = tex_name
+  return {"material": mat_name}
+
+
 def object_spec(obj: ObjectConfig) -> mujoco.MjSpec:
   spec = mujoco.MjSpec()
   body = spec.worldbody.add_body(name=obj.name)
@@ -44,11 +61,11 @@ def object_spec(obj: ObjectConfig) -> mujoco.MjSpec:
       name=f"{obj.name}_visual",
       type=mujoco.mjtGeom.mjGEOM_MESH,
       meshname=f"{obj.name}_visual",
-      rgba=list(obj.color),
       contype=0,
       conaffinity=0,
       group=2,
       density=0.0,
+      **_mesh_visual_kwargs(spec, obj),
     )
     spec.add_mesh(
       name=f"{obj.name}_collision", file=str(obj.collision_asset_path), scale=list(obj.scale)
