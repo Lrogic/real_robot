@@ -54,6 +54,9 @@ class EmbodimentCfg:
   impratio: float = 1.0
   cone: Literal["pyramidal", "elliptic"] = "pyramidal"
   ik: IkDefaults = field(default_factory=IkDefaults)
+  soft_joint_pos_limit_factor: float = 0.85
+  """Fraction of each joint's model range that counts as the soft limit, used by
+  the joint-limit penalty and the entity's soft limits."""
 
   @property
   def obs_joint_names(self) -> tuple[str, ...]:
@@ -97,6 +100,6 @@ def build_entity_cfg(emb: EmbodimentCfg) -> EntityCfg:
           target_names_expr=(*emb.arm_joint_names, emb.gripper_actuator_joint)
         ),
       ),
-      soft_joint_pos_limit_factor=0.85,
+      soft_joint_pos_limit_factor=emb.soft_joint_pos_limit_factor,
     ),
   )
