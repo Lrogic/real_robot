@@ -97,5 +97,6 @@ def build_entity_cfg(emb: EmbodimentCfg) -> EntityCfg:
           target_names_expr=(*emb.arm_joint_names, emb.gripper_actuator_joint)
         ),
       ),
+      soft_joint_pos_limit_factor=0.85,
     ),
   )

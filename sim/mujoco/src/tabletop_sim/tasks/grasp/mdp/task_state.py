@@ -1,10 +1,10 @@
-"""Stateless task checks shared by rewards, observations, terminations and
-metrics. Every function recomputes from the current sim state and the goal
-command; none of them keeps memory between calls.
+"""Stateless task checks shared by rewards, observations and metrics. Every
+function recomputes from the current sim state and the goal command; none of
+them keeps memory between calls.
 
 Robot elements are passed as resolved ``SceneEntityCfg``s (``tcp_cfg`` with one
-site, ``arm_cfg`` / ``gripper_cfg`` with joints, ``finger_cfg`` with the two
-finger bodies in (left, right) order); the object as ``object_cfg``.
+site, ``finger_cfg`` with the two finger bodies in (left, right) order); the
+object as ``object_cfg``.
 """
 
 from __future__ import annotations
@@ -144,7 +144,7 @@ def is_lifted(
   return object_to_target_dist(env, command_name, object_cfg) <= lift_threshold
 
 
-# Velocities and stability.
+# Velocities.
 
 
 def object_speeds(
@@ -155,28 +155,4 @@ def object_speeds(
   return (
     torch.linalg.norm(data.root_link_lin_vel_w, dim=-1),
     torch.linalg.norm(data.root_link_ang_vel_w, dim=-1),
-  )
-
-
-def is_static(
-  env: ManagerBasedRlEnv,
-  object_cfg: SceneEntityCfg,
-  arm_cfg: SceneEntityCfg,
-  gripper_cfg: SceneEntityCfg,
-  linear_vel_tol: float,
-  angular_vel_tol: float,
-  arm_joint_vel_tol: float,
-  gripper_joint_vel_tol: float,
-) -> torch.Tensor:
-  """Object, arm and gripper are all nearly still. Revolute (rad/s) and
-  prismatic (m/s) joint speeds are thresholded separately."""
-  lin, ang = object_speeds(env, object_cfg)
-  qvel = env.scene[arm_cfg.name].data.joint_vel
-  arm_max = qvel[:, arm_cfg.joint_ids].abs().amax(dim=-1)
-  gripper_max = qvel[:, gripper_cfg.joint_ids].abs().amax(dim=-1)
-  return (
-    (lin < linear_vel_tol)
-    & (ang < angular_vel_tol)
-    & (arm_max < arm_joint_vel_tol)
-    & (gripper_max < gripper_joint_vel_tol)
   )

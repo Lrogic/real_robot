@@ -1,5 +1,8 @@
 """Episode metrics (logged as ``Episode_Metrics/<name>`` by mjlab's metrics
-manager, which evaluates them after rewards, on the pre-reset state)."""
+manager, which evaluates them after rewards, on the pre-reset state).
+
+``mean_hold_score`` has no function here: it registers
+:func:`rewards.stable_hold` itself with ``reduce="mean"``."""
 
 from __future__ import annotations
 
@@ -12,11 +15,6 @@ from tabletop_sim.tasks.grasp.mdp import task_state
 
 if TYPE_CHECKING:
   from mjlab.envs import ManagerBasedRlEnv
-
-
-def success(env: ManagerBasedRlEnv, termination_name: str) -> torch.Tensor:
-  """Use with ``reduce="max"``: 1 if the episode ended in success."""
-  return env.termination_manager.get_term(termination_name).float()
 
 
 def grasped_fraction(

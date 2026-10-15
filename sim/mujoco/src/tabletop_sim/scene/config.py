@@ -272,23 +272,30 @@ class ActionConfig:
 
 @dataclass(frozen=True)
 class TaskConfig:
-  """Reward, success and observation parameters of the grasp-lift-hold task."""
+  """Reward, metric and observation parameters of the grasp-lift-hold task."""
 
   lift_threshold: float = 0.01
-  stable_hold_duration_sec: float = 1.0
-  stable_linear_vel_tol: float = 0.05
-  stable_angular_vel_tol: float = 0.35
-  arm_joint_vel_tol: float = 0.5
-  gripper_joint_vel_tol: float = 0.05
+  """Object-to-target distance (m) within which the object counts as lifted."""
   reach_scale: float = 5.0
-  reach_saturation_dist: float = 0.05
   w_reach: float = 0.5
   w_grasp: float = 1.0
   target_lift_height: float = 0.03
   lift_target_scale: float = 30.0
   w_lift_target: float = 1.0
   w_hold: float = 1.0
-  w_success: float = 5.0
+  arm_speed_threshold: float = 0.5
+  """Per-joint arm speed (rad/s) above which the arm speed penalty applies.
+  A tuning value, not a hardware limit."""
+  gripper_speed_threshold: float = 0.5
+  """Per-joint gripper carriage speed (m/s) above which the gripper speed
+  penalty applies. A tuning value, not a hardware limit."""
+  w_arm_speed: float = -0.1
+  """Arm speed penalty weight (nonpositive)."""
+  w_gripper_speed: float = 0.0
+  """Gripper speed penalty weight (nonpositive)."""
+  w_joint_pos_limits: float = -10.0
+  """Weight (nonpositive) of the penalty on arm and gripper joint positions
+  outside their soft limits (central 90% of each model range)."""
   reward_normalization: float = 10.0
   include_is_grasped_obs: bool = True
   """Adds ``is_grasped`` to the critic observations (never the actor)."""
@@ -300,6 +307,16 @@ class TaskConfig:
   """Reserved: domain randomization terms (not implemented yet)."""
   curriculum: dict[str, Any] = field(default_factory=dict)
   """Reserved: curriculum terms (not implemented yet)."""
+
+  def __post_init__(self) -> None:
+    for name in ("arm_speed_threshold", "gripper_speed_threshold"):
+      value = getattr(self, name)
+      if not (math.isfinite(value) and value >= 0):
+        raise ConfigError(f"task.{name} must be finite and nonnegative, got {value}")
+    for name in ("w_arm_speed", "w_gripper_speed", "w_joint_pos_limits"):
+      value = getattr(self, name)
+      if not (math.isfinite(value) and value <= 0):
+        raise ConfigError(f"task.{name} must be finite and nonpositive, got {value}")
 
   @classmethod
   def from_dict(cls, data: dict[str, Any]) -> TaskConfig:

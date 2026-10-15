@@ -7,7 +7,7 @@ import math
 from pathlib import Path
 
 from mjlab.envs import ManagerBasedRlEnvCfg
-from mjlab.envs.mdp import time_out
+from mjlab.envs.mdp import joint_pos_limits, time_out
 from mjlab.envs.mdp.events import reset_scene_to_default
 from mjlab.managers.action_manager import ActionTermCfg
 from mjlab.managers.event_manager import EventTermCfg
@@ -108,6 +108,12 @@ class _Entities:
       "robot", joint_names=self.emb.gripper_joint_names, preserve_order=True
     )
 
+  def arm_and_gripper(self) -> SceneEntityCfg:
+    return SceneEntityCfg(
+      "robot", joint_names=(*self.emb.arm_joint_names, *self.emb.gripper_joint_names),
+      preserve_order=True,
+    )
+
   def fingers(self) -> SceneEntityCfg:
     return SceneEntityCfg("robot", body_names=self.emb.finger_bodies, preserve_order=True)
 
@@ -123,19 +129,14 @@ class _Entities:
       "max_angle_deg": task.grasp_max_angle_deg,
     }
 
-  def static_params(self, task: TaskConfig) -> dict:
+  def hold_params(self, task: TaskConfig) -> dict:
+    """Shared by the stable_hold reward and the mean_hold_score metric."""
     return {
-      "arm_cfg": self.arm(),
-      "gripper_cfg": self.gripper(),
-      "linear_vel_tol": task.stable_linear_vel_tol,
-      "angular_vel_tol": task.stable_angular_vel_tol,
-      "arm_joint_vel_tol": task.arm_joint_vel_tol,
-      "gripper_joint_vel_tol": task.gripper_joint_vel_tol,
+      "command_name": COMMAND_NAME,
+      "object_cfg": self.object(),
+      "lift_threshold": task.lift_threshold,
+      **self.grasp_params(task),
     }
-
-
-def hold_steps(task: TaskConfig) -> int:
-  return math.ceil(task.stable_hold_duration_sec * task.timing.control_hz - 1e-9)
 
 
 def _observations(task: TaskConfig, ent: _Entities) -> dict[str, ObservationGroupCfg]:
@@ -189,7 +190,6 @@ def _rewards(task: TaskConfig, ent: _Entities) -> dict[str, RewardTermCfg]:
         "tcp_cfg": ent.tcp(),
         "object_cfg": ent.object(),
         "scale": task.reach_scale,
-        "saturation_dist": task.reach_saturation_dist,
       },
     ),
     "grasp": RewardTermCfg(func=r.grasp, weight=task.w_grasp / n, params=ent.grasp_params(task)),
@@ -199,39 +199,37 @@ def _rewards(task: TaskConfig, ent: _Entities) -> dict[str, RewardTermCfg]:
       params={**goal(), **ent.grasp_params(task), "scale": task.lift_target_scale},
     ),
     "stable_hold": RewardTermCfg(
-      func=r.stable_hold,
-      weight=task.w_hold / n,
-      params={**goal(), **ent.grasp_params(task), "lift_threshold": task.lift_threshold},
+      func=r.stable_hold, weight=task.w_hold / n, params=ent.hold_params(task)
     ),
-    "success": RewardTermCfg(
-      func=r.success, weight=task.w_success / n, params={"termination_name": "success"}
+    "arm_speed": RewardTermCfg(
+      func=r.joint_speed_excess,
+      weight=task.w_arm_speed / n,
+      params={"asset_cfg": ent.arm(), "speed_threshold": task.arm_speed_threshold},
+    ),
+    "gripper_speed": RewardTermCfg(
+      func=r.joint_speed_excess,
+      weight=task.w_gripper_speed / n,
+      params={"asset_cfg": ent.gripper(), "speed_threshold": task.gripper_speed_threshold},
+    ),
+    "joint_pos_limits": RewardTermCfg(
+      func=joint_pos_limits,
+      weight=task.w_joint_pos_limits / n,
+      params={"asset_cfg": ent.arm_and_gripper()},
     ),
   }
 
 
-def _terminations(task: TaskConfig, ent: _Entities) -> dict[str, TerminationTermCfg]:
-  return {
-    "time_out": TerminationTermCfg(func=time_out, time_out=True),
-    # Name is referenced by the success reward and metric.
-    "success": TerminationTermCfg(
-      func=mdp.StableHoldSuccess,
-      params={
-        "command_name": COMMAND_NAME,
-        "hold_steps": hold_steps(task),
-        "object_cfg": ent.object(),
-        "lift_threshold": task.lift_threshold,
-        **ent.grasp_params(task),
-        **ent.static_params(task),
-      },
-    ),
-  }
+def _terminations() -> dict[str, TerminationTermCfg]:
+  return {"time_out": TerminationTermCfg(func=time_out, time_out=True)}
 
 
 def _metrics(task: TaskConfig, ent: _Entities) -> dict[str, MetricsTermCfg]:
   m = mdp.metrics
   return {
-    "success": MetricsTermCfg(
-      func=m.success, params={"termination_name": "success"}, reduce="max"
+    # Per-env sum of the unweighted stable_hold reward / that env's own step
+    # count, including the final pre-reset step.
+    "mean_hold_score": MetricsTermCfg(
+      func=mdp.rewards.stable_hold, params=ent.hold_params(task), reduce="mean"
     ),
     "grasped_frac": MetricsTermCfg(
       func=m.grasped_fraction, params=ent.grasp_params(task), reduce="sum"
@@ -309,7 +307,7 @@ def make_grasp_env_cfg_from_configs(
     commands={COMMAND_NAME: goal},
     events=events,
     rewards=_rewards(task, ent),
-    terminations=_terminations(task, ent),
+    terminations=_terminations(),
     metrics=_metrics(task, ent),
     viewer=_viewer(scene.camera),
     sim=SimulationCfg(
