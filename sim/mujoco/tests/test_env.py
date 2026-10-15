@@ -321,13 +321,14 @@ def _limit_joints(env):
   return cfg, robot, model_range
 
 
-def test_soft_limits_are_central_90_percent(ee_env):
+def test_soft_limits_are_central_fraction(ee_env):
   cfg, robot, model_range = _limit_joints(ee_env)
-  assert len(cfg.joint_ids) == 8  # 6 arm + 2 carriages
+  assert len(cfg.joint_ids) == 6  # arm only
+  factor = ee_env.cfg.scene.entities["robot"].articulation.soft_joint_pos_limit_factor
   soft = robot.data.soft_joint_pos_limits[:, cfg.joint_ids]
   mid = model_range.mean(-1)
   half = 0.5 * (model_range[:, 1] - model_range[:, 0])
-  expected = torch.stack((mid - 0.9 * half, mid + 0.9 * half), dim=-1)
+  expected = torch.stack((mid - factor * half, mid + factor * half), dim=-1)
   torch.testing.assert_close(soft, expected.expand_as(soft), atol=1e-6, rtol=0)
   torch.testing.assert_close(
     robot.data.joint_pos_limits[:, cfg.joint_ids], model_range.expand_as(soft), atol=1e-6, rtol=0
@@ -358,12 +359,23 @@ def test_joint_pos_limit_penalty_sign_and_normalization(ee_env):
   q_sel = soft.mean(-1).clone()
   q_sel[0] = soft[0, 1] + 0.1     # arm joint above
   q_sel[1] = soft[1, 0] - 0.05    # arm joint below
-  q_sel[6:] = model_range[6:, 1]  # both carriages at the hard open limit
-  outside = 0.1 + 0.05 + (model_range[6:, 1] - soft[6:, 1]).sum()
   torch.testing.assert_close(
     penalty_at(q_sel.expand(NUM_ENVS, -1)),
-    torch.full((NUM_ENVS,), -1.0 * outside.item(), device=DEVICE), atol=1e-5, rtol=0,
+    torch.full((NUM_ENVS,), -0.15, device=DEVICE), atol=1e-5, rtol=0,
   )
+
+  # The gripper is free over its full model range, fully open or fully closed.
+  ee_env.reset()
+  gripper_cfg = ee_env.reward_manager.get_term_cfg("gripper_speed").params["asset_cfg"]
+  g_ids = torch.as_tensor(gripper_cfg.joint_ids, device=DEVICE)
+  g_range = robot.data.joint_pos_limits[0, g_ids]
+  for bound in (0, 1):
+    q = robot.data.joint_pos.clone()
+    q[:, g_ids] = g_range[:, bound]
+    robot.write_joint_state_to_sim(q, torch.zeros_like(q))
+    ee_env.sim.forward()
+    ee_env.reward_manager.compute(dt=ee_env.step_dt)
+    assert (ee_env.reward_manager._step_reward[:, idx] == 0).all()
   ee_env.reset()
 
 

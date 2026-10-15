@@ -294,8 +294,9 @@ class TaskConfig:
   w_gripper_speed: float = 0.0
   """Gripper speed penalty weight (nonpositive)."""
   w_joint_pos_limits: float = -10.0
-  """Weight (nonpositive) of the penalty on arm and gripper joint positions
-  outside their soft limits (central 90% of each model range)."""
+  """Weight (nonpositive) of the penalty on arm joint positions outside their
+  soft limits (the embodiment's ``soft_joint_pos_limit_factor`` of each model
+  range). The gripper is not penalized."""
   reward_normalization: float = 10.0
   include_is_grasped_obs: bool = True
   """Adds ``is_grasped`` to the critic observations (never the actor)."""

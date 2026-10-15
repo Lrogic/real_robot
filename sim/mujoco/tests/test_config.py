@@ -128,10 +128,8 @@ def test_reward_terms_and_weights():
   assert arm["speed_threshold"] == 0.5 and gripper["speed_threshold"] == 0.5
   limits = cfg.rewards["joint_pos_limits"]
   assert limits.func is mjlab_mdp.joint_pos_limits
-  assert limits.params["asset_cfg"].joint_names == (
-    *emb.arm_joint_names, *emb.gripper_joint_names
-  )
-  assert cfg.scene.entities["robot"].articulation.soft_joint_pos_limit_factor == 0.9
+  assert limits.params["asset_cfg"].joint_names == emb.arm_joint_names
+  assert 0.0 < cfg.scene.entities["robot"].articulation.soft_joint_pos_limit_factor < 1.0
 
 
 def test_joint_pos_limit_weight_scales_with_normalization(tmp_path, task_dict):

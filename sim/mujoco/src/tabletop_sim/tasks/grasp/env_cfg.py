@@ -108,12 +108,6 @@ class _Entities:
       "robot", joint_names=self.emb.gripper_joint_names, preserve_order=True
     )
 
-  def arm_and_gripper(self) -> SceneEntityCfg:
-    return SceneEntityCfg(
-      "robot", joint_names=(*self.emb.arm_joint_names, *self.emb.gripper_joint_names),
-      preserve_order=True,
-    )
-
   def fingers(self) -> SceneEntityCfg:
     return SceneEntityCfg("robot", body_names=self.emb.finger_bodies, preserve_order=True)
 
@@ -214,7 +208,8 @@ def _rewards(task: TaskConfig, ent: _Entities) -> dict[str, RewardTermCfg]:
     "joint_pos_limits": RewardTermCfg(
       func=joint_pos_limits,
       weight=task.w_joint_pos_limits / n,
-      params={"asset_cfg": ent.arm_and_gripper()},
+      # Arm only: the gripper may open and close over its full range.
+      params={"asset_cfg": ent.arm()},
     ),
   }
 
