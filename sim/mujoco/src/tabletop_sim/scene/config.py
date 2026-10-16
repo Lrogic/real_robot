@@ -413,6 +413,76 @@ class ObjectSizeVariantsConfig:
     return cls(**kwargs)
 
 
+FrictionCoefficients = tuple[float, float, float]
+"""(sliding, torsional, rolling)."""
+
+
+@dataclass(frozen=True)
+class FrictionRandomizationConfig:
+  """Explicit condim-6 contact pairs between the manipulated object and the
+  fingers / support surface, with curriculum-scaled friction at every reset.
+
+  Each interface's compiled pair friction is ``gripper_object`` or
+  ``table_object``. At every reset each env draws one log-uniform multiplier
+  per component (sliding, torsional, rolling) and per interface, shared by all
+  of that interface's pairs, within the component's ``*_scale_range`` at
+  episode difficulty 1. At difficulty d each bound is 1 + d * (bound - 1), so
+  d = 0 keeps the baselines exactly. When disabled no pairs exist and the
+  object / robot geom friction applies as before.
+  """
+
+  enabled: bool = False
+  gripper_object: FrictionCoefficients = (1.0, 0.005, 0.0005)
+  table_object: FrictionCoefficients = (1.0, 0.005, 0.0001)
+  sliding_scale_range: tuple[float, float] = (0.7, 1.3)
+  torsional_scale_range: tuple[float, float] = (0.7, 1.3)
+  rolling_scale_range: tuple[float, float] = (0.7, 1.3)
+
+  def __post_init__(self) -> None:
+    where = "domain_randomization.friction"
+    if not isinstance(self.enabled, bool):
+      raise ConfigError(f"{where}.enabled must be a bool, got {self.enabled!r}")
+    for name in ("gripper_object", "table_object"):
+      value = getattr(self, name)
+      if len(value) != 3 or not all(math.isfinite(v) and v > 0 for v in value):
+        raise ConfigError(
+          f"{where}.{name} must be 3 finite positive coefficients "
+          f"(sliding, torsional, rolling), got {list(value)}"
+        )
+    for name in ("sliding_scale_range", "torsional_scale_range", "rolling_scale_range"):
+      lower, upper = getattr(self, name)
+      if not (math.isfinite(lower) and math.isfinite(upper) and 0 < lower <= upper):
+        raise ConfigError(
+          f"{where}.{name} must be finite with 0 < lower <= upper, got [{lower}, {upper}]"
+        )
+
+  @classmethod
+  def from_dict(cls, data: Any) -> FrictionRandomizationConfig:
+    where = "task.domain_randomization.friction"
+    if not isinstance(data, dict):
+      raise ConfigError(f"{where} must be an object")
+    _check_keys(where, data, cls)
+    kwargs: dict[str, Any] = {}
+    if "enabled" in data:
+      kwargs["enabled"] = data["enabled"]
+    sizes = {
+      "gripper_object": 3,
+      "table_object": 3,
+      "sliding_scale_range": 2,
+      "torsional_scale_range": 2,
+      "rolling_scale_range": 2,
+    }
+    for name, n in sizes.items():
+      if name in data:
+        value = data[name]
+        if not isinstance(value, list) or any(
+          isinstance(v, bool) or not isinstance(v, (int, float)) for v in value
+        ):
+          raise ConfigError(f"{where}.{name} must be a list of {n} numbers, got {value!r}")
+        kwargs[name] = _vec(f"{where}.{name}", value, n)
+    return cls(**kwargs)
+
+
 @dataclass(frozen=True)
 class DomainRandomizationConfig:
   object_reset_radius: float = 0.05
@@ -430,6 +500,7 @@ class DomainRandomizationConfig:
   damping_scale_range: tuple[float, float] = (0.8, 1.2)
   """Damping multiplier range at difficulty 1, interpolated the same way."""
   object_size_variants: ObjectSizeVariantsConfig = field(default_factory=ObjectSizeVariantsConfig)
+  friction: FrictionRandomizationConfig = field(default_factory=FrictionRandomizationConfig)
 
   def __post_init__(self) -> None:
     where = "domain_randomization"
@@ -480,6 +551,8 @@ class DomainRandomizationConfig:
       kwargs["object_size_variants"] = ObjectSizeVariantsConfig.from_dict(
         data["object_size_variants"]
       )
+    if "friction" in data:
+      kwargs["friction"] = FrictionRandomizationConfig.from_dict(data["friction"])
     return cls(**kwargs)
 
 

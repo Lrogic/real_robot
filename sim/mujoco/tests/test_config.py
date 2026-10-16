@@ -238,7 +238,7 @@ def test_domain_randomization_object_reset_radius(tmp_path, task_dict):
 
 
 def test_domain_randomization_unknown_key_rejected(tmp_path, task_dict):
-  task_dict["domain_randomization"] = {"friction": [0.5, 1.5]}
+  task_dict["domain_randomization"] = {"mass_scale_range": [0.5, 1.5]}
   with pytest.raises(ConfigError, match="unknown keys"):
     load_task_config(_write(tmp_path, task_dict))
 

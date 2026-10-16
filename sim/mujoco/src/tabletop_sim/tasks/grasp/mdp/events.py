@@ -11,9 +11,11 @@ import torch
 
 from mjlab.actuator import BuiltinPositionActuator
 from mjlab.actuator.xml_actuator import XmlActuator
+from mjlab.envs.mdp import dr
 from mjlab.envs.mdp.events import resolve_env_ids
 from mjlab.managers.event_manager import requires_model_fields
 from mjlab.managers.manager_base import ManagerTermBase
+from mjlab.managers.scene_entity_config import SceneEntityCfg
 from mjlab.utils.lab_api.math import quat_from_angle_axis, quat_mul
 from tabletop_sim.tasks.grasp.mdp import curriculum, object_size
 
@@ -258,3 +260,89 @@ STIFFNESS_DAMPING_EVENTS: dict[str, type[_StiffnessDampingRandomization]] = {
   "actuator": RandomizeKpActuatorKv,
 }
 """Event term class per ``StiffnessDampingTargets.damping_source``."""
+
+
+@requires_model_fields("pair_friction")
+class RandomizePairFriction(ManagerTermBase):
+  """Curriculum-scaled ``dr.pair_friction`` on two contact pair groups.
+
+  Resetting envs are grouped by curriculum stage, and each group's episode
+  difficulty d sets the log-uniform multiplier range of every component to
+  :func:`difficulty_scale_bounds`. Per group, ``dr.pair_friction`` runs once
+  for the gripper pairs and once for the table pairs, each drawing one sliding,
+  one torsional and one rolling multiplier per env, shared by all pairs of the
+  call and mirrored to tangent2 / roll2. ``operation="scale"`` multiplies the
+  compiled pair friction, so samples never compound.
+  """
+
+  def __init__(self, cfg: EventTermCfg, env: ManagerBasedRlEnv):
+    super().__init__(env)
+    m = env.sim.mj_model
+    groups = {
+      "gripper_cfg": cfg.params["gripper_friction"],
+      "table_cfg": cfg.params["table_friction"],
+    }
+    geom_pairs: set[frozenset[int]] = set()
+    for i in range(m.npair):
+      key = frozenset((int(m.pair_geom1[i]), int(m.pair_geom2[i])))
+      if key in geom_pairs:
+        raise ValueError(f"contact pair '{m.pair(i).name}' duplicates another pair's geoms")
+      geom_pairs.add(key)
+    for key, (sliding, torsional, rolling) in groups.items():
+      asset_cfg: SceneEntityCfg = cfg.params[key]
+      entity: Entity = env.scene[asset_cfg.name]
+      names = [f"{asset_cfg.name}/{n}" for n in asset_cfg.pair_names]  # type: ignore[union-attr]
+      compiled = {mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_PAIR, n) for n in names}
+      # mjlab numbers pairs in spec order, but the compiler sorts them by body,
+      # which permutes ids within a group. Every pair of a group gets the same
+      # multipliers on the same baseline, so only the id set has to match.
+      resolved = set(entity.indexing.pair_ids[asset_cfg.pair_ids].tolist())
+      if not names or -1 in compiled or resolved != compiled:
+        raise ValueError(
+          f"{key}: pairs {names} compiled to ids {sorted(compiled)}, but mjlab "
+          f"indexes them as {sorted(resolved)}"
+        )
+      expected = [sliding, sliding, torsional, rolling, rolling]
+      for i in compiled:
+        if m.pair_dim[i] != 6 or m.pair_friction[i].tolist() != expected:
+          raise ValueError(
+            f"{key}: pair '{m.pair(i).name}' has condim {m.pair_dim[i]} and friction "
+            f"{m.pair_friction[i].tolist()}, expected 6 and {expected}"
+          )
+
+  def __call__(
+    self,
+    env: ManagerBasedRlEnv,
+    env_ids: torch.Tensor | None,
+    gripper_cfg: SceneEntityCfg,
+    table_cfg: SceneEntityCfg,
+    gripper_friction: tuple[float, float, float],
+    table_friction: tuple[float, float, float],
+    sliding_scale_range: tuple[float, float],
+    torsional_scale_range: tuple[float, float],
+    rolling_scale_range: tuple[float, float],
+  ) -> None:
+    del gripper_friction, table_friction  # Compiled into the pairs.
+    env_ids = resolve_env_ids(env, env_ids).to(torch.long)
+    state = curriculum.get_curriculum_state(env)
+    stages = state.episode_stage[env_ids]
+    axis_ranges = {0: sliding_scale_range, 2: torsional_scale_range, 3: rolling_scale_range}
+    for stage in torch.unique(stages).tolist():
+      ids = env_ids[stages == stage]
+      d = state.episode_difficulty[ids[0]]
+      ranges = {
+        axis: tuple(b.item() for b in difficulty_scale_bounds(d, r))
+        for axis, r in axis_ranges.items()
+      }
+      for asset_cfg in (gripper_cfg, table_cfg):
+        dr.pair_friction(
+          env,
+          ids,
+          ranges=ranges,  # type: ignore[arg-type]
+          asset_cfg=asset_cfg,
+          distribution="log_uniform",
+          operation="scale",
+          axes=[0, 2, 3],
+          shared_random=True,
+          isotropic=True,
+        )

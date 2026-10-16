@@ -8,7 +8,13 @@ import mujoco
 import numpy as np
 
 from mjlab.entity import Entity, EntityCfg, VariantEntityCfg
-from tabletop_sim.scene.config import ConfigError, ObjectConfig, ObjectSizeVariantsConfig, SceneConfig
+from tabletop_sim.scene.config import (
+  ConfigError,
+  FrictionCoefficients,
+  ObjectConfig,
+  ObjectSizeVariantsConfig,
+  SceneConfig,
+)
 _GEOM_TYPES = {
   "box": mujoco.mjtGeom.mjGEOM_BOX,
   "sphere": mujoco.mjtGeom.mjGEOM_SPHERE,
@@ -146,6 +152,131 @@ def object_spec(obj: ObjectConfig, size_scale: float | None = None) -> mujoco.Mj
   return spec
 
 
+_MINVAL = 1e-15
+"""MuJoCo's ``mjMINVAL``, the solmix threshold in contact parameter mixing."""
+
+
+@dataclass(frozen=True)
+class PairGeom:
+  """The contact attributes of a geom that decide its contact parameters."""
+
+  name: str
+  contype: int
+  conaffinity: int
+  priority: int
+  solmix: float
+  solref: tuple[float, ...]
+  solimp: tuple[float, ...]
+  margin: float
+  gap: float
+
+  @classmethod
+  def from_spec(cls, geom: mujoco.MjsGeom, prefix: str = "") -> PairGeom:
+    if not geom.name:
+      raise ValueError("contact pair geoms must be named")
+    return cls(
+      name=f"{prefix}{geom.name}",
+      contype=int(geom.contype),
+      conaffinity=int(geom.conaffinity),
+      priority=int(geom.priority),
+      solmix=float(geom.solmix),
+      solref=tuple(float(v) for v in geom.solref),
+      solimp=tuple(float(v) for v in geom.solimp),
+      margin=float(geom.margin),
+      gap=float(geom.gap),
+    )
+
+  def collides_with(self, other: PairGeom) -> bool:
+    """The contype/conaffinity filter of dynamic collision detection."""
+    return bool(self.contype & other.conaffinity or other.contype & self.conaffinity)
+
+
+def mixed_solver_params(a: PairGeom, b: PairGeom) -> dict:
+  """solref / solimp / margin / gap a dynamic a-b contact would get, mixed as
+  MuJoCo (Warp) mixes them: the higher-priority geom wins, otherwise a
+  solmix-weighted average (elementwise min for direct solrefs); margins and
+  gaps add. Explicit pairs do not inherit these from their geoms."""
+  if a.priority != b.priority:
+    w = 1.0 if a.priority > b.priority else 0.0
+  elif a.solmix < _MINVAL and b.solmix < _MINVAL:
+    w = 0.5
+  elif a.solmix < _MINVAL:
+    w = 0.0
+  elif b.solmix < _MINVAL:
+    w = 1.0
+  else:
+    w = a.solmix / (a.solmix + b.solmix)
+  if a.solref[0] > 0 and b.solref[0] > 0:
+    solref = [w * x + (1 - w) * y for x, y in zip(a.solref, b.solref, strict=True)]
+  else:
+    solref = [min(x, y) for x, y in zip(a.solref, b.solref, strict=True)]
+  return {
+    "solref": solref,
+    "solimp": [w * x + (1 - w) * y for x, y in zip(a.solimp, b.solimp, strict=True)],
+    "margin": a.margin + b.margin,
+    "gap": a.gap + b.gap,
+  }
+
+
+@dataclass(frozen=True)
+class ContactPairGroup:
+  """Explicit pairs between an object's collision geoms and ``partners`` (geoms
+  of other entities, by scene name), named ``<name>_<k>``."""
+
+  name: str
+  partners: tuple[PairGeom, ...]
+  friction: FrictionCoefficients
+  """(sliding, torsional, rolling) of every pair in the group."""
+
+  @property
+  def pair_name_pattern(self) -> str:
+    return rf"{self.name}_\d+"
+
+
+def add_contact_pairs(spec: mujoco.MjSpec, groups: tuple[ContactPairGroup, ...]) -> None:
+  """Add condim-6 pairs from every collidable geom of ``spec`` to every partner
+  it would collide with dynamically, one per geom pair, with the group's
+  friction and the dynamic contact's solver parameters.
+
+  Partner names refer to the scene, so the entity owning ``spec`` must be
+  attached after the partners' entities (``MjSpec.attach`` drops pairs whose
+  geoms are not in the scene yet).
+  """
+  own = [PairGeom.from_spec(g) for g in spec.geoms if g.contype or g.conaffinity]
+  seen: set[frozenset[str]] = set()
+  for group in groups:
+    sliding, torsional, rolling = group.friction
+    k = 0
+    for a in own:
+      for b in group.partners:
+        key = frozenset((a.name, b.name))
+        if not a.collides_with(b) or key in seen:
+          continue
+        seen.add(key)
+        spec.add_pair(
+          name=f"{group.name}_{k:02d}",
+          geomname1=a.name,
+          geomname2=b.name,
+          condim=6,
+          friction=[sliding, sliding, torsional, rolling, rolling],
+          solreffriction=[0.0, 0.0],
+          **mixed_solver_params(a, b),
+        )
+        k += 1
+    if k == 0:
+      raise ConfigError(f"contact pairs '{group.name}': no geom pair can collide")
+
+
+def scene_pair_geoms(obj: ObjectConfig) -> tuple[PairGeom, ...]:
+  """Collidable geoms of a (non-variant) scene object, by scene name."""
+  spec = object_spec(obj)
+  return tuple(
+    PairGeom.from_spec(g, prefix=f"{obj.name}/")
+    for g in spec.geoms
+    if g.contype or g.conaffinity
+  )
+
+
 HULL_REF_PREFIX = "hull_ref/"
 HULL_REF_CONTYPE = 1 << 30
 """Contype bit of the hull-reference geoms; no other geom may use it as conaffinity."""
@@ -156,9 +287,14 @@ class SizeVariantEntityCfg(VariantEntityCfg):
   """``VariantEntityCfg`` whose variant ``i`` is the object at size ``scales[i]``."""
 
   scales: tuple[float, ...] = ()
+  contact_pairs: tuple[ContactPairGroup, ...] = ()
 
   def build(self) -> Entity:
     entity = super().build()
+    # Pairs reference the merged template's collision slot geoms, which every
+    # variant fills per world; the hull references below never collide.
+    if self.contact_pairs:
+      add_contact_pairs(entity.spec, self.contact_pairs)
     _add_hull_references(entity)
     return entity
 
@@ -215,12 +351,26 @@ class BalancedRandomAssignment:
     return rng.permutation(order).tolist()
 
 
+def _object_spec_with_pairs(
+  obj: ObjectConfig, contact_pairs: tuple[ContactPairGroup, ...]
+) -> mujoco.MjSpec:
+  spec = object_spec(obj)
+  add_contact_pairs(spec, contact_pairs)
+  return spec
+
+
 def object_entity_cfg(
-  obj: ObjectConfig, size_variants: ObjectSizeVariantsConfig | None = None
+  obj: ObjectConfig,
+  size_variants: ObjectSizeVariantsConfig | None = None,
+  contact_pairs: tuple[ContactPairGroup, ...] = (),
 ) -> EntityCfg:
   pose = obj.initial_poses[0]
   init_state = EntityCfg.InitialStateCfg(pos=tuple(pose[:3]), rot=tuple(pose[3:]))
   if size_variants is None or not size_variants.enabled:
+    if contact_pairs:
+      return EntityCfg(
+        spec_fn=lambda: _object_spec_with_pairs(obj, contact_pairs), init_state=init_state
+      )
     return EntityCfg(spec_fn=lambda: object_spec(obj), init_state=init_state)
   if obj.primitive != "mesh" or not obj.dynamic:
     raise ConfigError(f"object {obj.name!r}: size variants need a dynamic mesh object")
@@ -232,6 +382,7 @@ def object_entity_cfg(
     },
     assignment=BalancedRandomAssignment(len(scales)),
     scales=scales,
+    contact_pairs=contact_pairs,
     init_state=init_state,
   )
 
@@ -263,9 +414,11 @@ def scene_entity_cfgs(
   scene: SceneConfig,
   robot: EntityCfg,
   size_variants: ObjectSizeVariantsConfig | None = None,
+  contact_pairs: tuple[ContactPairGroup, ...] = (),
 ) -> dict[str, EntityCfg]:
   """Robot first, then ground (if any), then objects in config order.
-  ``size_variants`` applies to the manipulated object only."""
+  ``size_variants`` and ``contact_pairs`` apply to the manipulated object only;
+  with contact pairs it goes last, after every entity its pairs reference."""
   base = scene.robot.base_pose
   robot.init_state.pos = tuple(base[:3])
   robot.init_state.rot = tuple(base[3:])
@@ -277,5 +430,9 @@ def scene_entity_cfgs(
     )
   for obj in scene.objects:
     manipulated = obj.name == scene.manipulated_object
-    entities[obj.name] = object_entity_cfg(obj, size_variants if manipulated else None)
+    entities[obj.name] = object_entity_cfg(
+      obj, size_variants if manipulated else None, contact_pairs if manipulated else ()
+    )
+  if contact_pairs:
+    entities[scene.manipulated_object] = entities.pop(scene.manipulated_object)
   return entities

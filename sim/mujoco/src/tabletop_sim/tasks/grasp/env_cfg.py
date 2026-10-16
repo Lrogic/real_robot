@@ -23,16 +23,19 @@ from mjlab.sim import MujocoCfg, SimulationCfg
 from mjlab.viewer import ViewerConfig
 from tabletop_sim import CONFIGS_DIR
 from tabletop_sim.embodiments import EmbodimentCfg, build_entity_cfg, get_embodiment
+from tabletop_sim.embodiments.base import finger_collision_geoms, load_spec
 from tabletop_sim.scene import (
   ACTION_SPACES,
   CameraConfig,
   ConfigError,
+  FrictionRandomizationConfig,
   SceneConfig,
   TaskConfig,
   load_scene_config,
   load_task_config,
   scene_entity_cfgs,
 )
+from tabletop_sim.scene.builder import ContactPairGroup, PairGeom, scene_pair_geoms
 from tabletop_sim.tasks.grasp import mdp
 
 COMMAND_NAME = "grasp"
@@ -43,6 +46,8 @@ DEFAULT_TASK = CONFIGS_DIR / "tasks" / "grasp_standard_wxai.json"
 # rows per contact, and a gripped box can touch the fingers and table at once.
 NCONMAX_PER_OBJECT = 32
 NJMAX_PER_OBJECT = 192
+GRIPPER_PAIRS = "gripper_object"
+TABLE_PAIRS = "table_object"
 
 
 # action_space -> (arm control, gripper mode).
@@ -294,6 +299,28 @@ def _finger_sensors(emb: EmbodimentCfg, object_name: str) -> tuple[ContactSensor
   )
 
 
+def _friction_pair_groups(
+  scene: SceneConfig, emb: EmbodimentCfg, friction: FrictionRandomizationConfig
+) -> tuple[ContactPairGroup, ...]:
+  """Gripper-object and table-object pair groups of the manipulated object;
+  none when friction randomization is disabled."""
+  if not friction.enabled:
+    return ()
+  support = scene.support_surface
+  if support is None or support.object is None:
+    raise ConfigError(
+      "domain_randomization.friction needs the scene's 'support_surface' to be an object"
+    )
+  table = next(o for o in scene.objects if o.name == support.object)
+  robot_spec = load_spec(emb)  # Owns the geoms below; keep it alive while reading them.
+  left, right = finger_collision_geoms(robot_spec, emb)
+  fingers = tuple(PairGeom.from_spec(g, prefix="robot/") for g in (*left, *right))
+  return (
+    ContactPairGroup(GRIPPER_PAIRS, fingers, friction.gripper_object),
+    ContactPairGroup(TABLE_PAIRS, scene_pair_geoms(table), friction.table_object),
+  )
+
+
 def _viewer(camera: CameraConfig) -> ViewerConfig:
   eye, target = camera.render_eye, camera.render_target
   fwd = [t - e for e, t in zip(eye, target, strict=True)]
@@ -378,6 +405,25 @@ def make_grasp_env_cfg_from_configs(
         "damping_scale_range": dr.damping_scale_range,
       },
     )
+  friction = dr.friction
+  pair_groups = _friction_pair_groups(scene, emb, friction)
+  if pair_groups:
+    # Like the stiffness/damping event, reads the episode difficulty the
+    # curriculum manager assigned earlier in the same reset.
+    gripper_pairs, table_pairs = pair_groups
+    events["randomize_pair_friction"] = EventTermCfg(
+      func=mdp.RandomizePairFriction,
+      mode="reset",
+      params={
+        "gripper_cfg": SceneEntityCfg(obj.name, pair_names=(gripper_pairs.pair_name_pattern,)),
+        "table_cfg": SceneEntityCfg(obj.name, pair_names=(table_pairs.pair_name_pattern,)),
+        "gripper_friction": friction.gripper_object,
+        "table_friction": friction.table_object,
+        "sliding_scale_range": friction.sliding_scale_range,
+        "torsional_scale_range": friction.torsional_scale_range,
+        "rolling_scale_range": friction.rolling_scale_range,
+      },
+    )
 
   ent = _Entities(emb, obj.name)
   metrics = _metrics(task, ent)
@@ -388,7 +434,12 @@ def make_grasp_env_cfg_from_configs(
   return ManagerBasedRlEnvCfg(
     scene=SceneCfg(
       num_envs=num_envs,
-      entities=scene_entity_cfgs(scene, build_entity_cfg(emb), size_variants),
+      entities=scene_entity_cfgs(
+        scene,
+        build_entity_cfg(emb, name_finger_geoms=friction.enabled),
+        size_variants,
+        pair_groups,
+      ),
       sensors=_finger_sensors(emb, obj.name),
     ),
     observations=_observations(task, ent),

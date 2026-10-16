@@ -79,6 +79,10 @@ class EmbodimentCfg:
   ready_joint_pos: dict[str, float]
   stiffness_damping: StiffnessDampingTargets
   """Where kp and damping live in this model, for their randomization."""
+  finger_collision_bodies: tuple[tuple[str, ...], tuple[str, ...]] = ((), ())
+  """(left, right) bodies that move with each finger and whose collidable geoms
+  are that finger's object contact surfaces (explicit friction pairs). Empty
+  means the finger's ``finger_bodies`` entry alone."""
   gripper_open: float = 0.044
   gripper_closed: float = 0.0
   strip_bodies: tuple[str, ...] = ()
@@ -98,9 +102,46 @@ class EmbodimentCfg:
   def obs_joint_names(self) -> tuple[str, ...]:
     return (*self.arm_joint_names, *self.gripper_joint_names)
 
+  @property
+  def finger_contact_bodies(self) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    left, right = self.finger_collision_bodies
+    return (left or (self.finger_bodies[0],), right or (self.finger_bodies[1],))
 
-def load_spec(emb: EmbodimentCfg) -> mujoco.MjSpec:
-  """Load the robot XML, drop stripped bodies and any keyframes."""
+
+def finger_collision_geoms(
+  spec: mujoco.MjSpec, emb: EmbodimentCfg
+) -> tuple[tuple[mujoco.MjsGeom, ...], tuple[mujoco.MjsGeom, ...]]:
+  """(left, right) collidable geoms (contype or conaffinity set) on each
+  finger's ``finger_contact_bodies``. Unnamed ones are named
+  ``<body>_collision_<k>``, ``k`` counting the body's collidable geoms in
+  order, so the same XML always yields the same names."""
+  taken = {g.name for g in spec.geoms if g.name}
+  out: list[tuple[mujoco.MjsGeom, ...]] = []
+  for bodies in emb.finger_contact_bodies:
+    geoms: list[mujoco.MjsGeom] = []
+    for body_name in bodies:
+      body = spec.body(body_name)
+      if body is None:
+        raise ValueError(f"{emb.name}: finger body '{body_name}' not found")
+      collidable = [g for g in body.geoms if g.contype or g.conaffinity]
+      for k, g in enumerate(collidable):
+        if not g.name:
+          name = f"{body_name}_collision_{k}"
+          if name in taken:
+            raise ValueError(f"{emb.name}: geom name '{name}' already in use")
+          g.name = name
+          taken.add(name)
+      geoms.extend(collidable)
+    if not geoms:
+      raise ValueError(f"{emb.name}: finger bodies {bodies} have no collidable geoms")
+    out.append(tuple(geoms))
+  return out[0], out[1]
+
+
+def load_spec(emb: EmbodimentCfg, name_finger_geoms: bool = False) -> mujoco.MjSpec:
+  """Load the robot XML, drop stripped bodies and any keyframes. With
+  ``name_finger_geoms``, also name the finger collision geoms (see
+  :func:`finger_collision_geoms`) so contact pairs can reference them."""
   spec = mujoco.MjSpec.from_file(str(emb.xml_path))  # mjlab builds its own init_state keyframe and uses only the first key. Keys
   # must go before any body deletion, otherwise MuJoCo resurrects them on compile.
   for key in list(spec.keys):
@@ -120,12 +161,14 @@ def load_spec(emb: EmbodimentCfg) -> mujoco.MjSpec:
   spec.option.impratio = 1.0
   spec.option.cone = mujoco.mjtCone.mjCONE_PYRAMIDAL
   spec.option.integrator = mujoco.mjtIntegrator.mjINT_EULER
+  if name_finger_geoms:
+    finger_collision_geoms(spec, emb)
   return spec
 
 
-def build_entity_cfg(emb: EmbodimentCfg) -> EntityCfg:
+def build_entity_cfg(emb: EmbodimentCfg, name_finger_geoms: bool = False) -> EntityCfg:
   return EntityCfg(
-    spec_fn=lambda: load_spec(emb),
+    spec_fn=lambda: load_spec(emb, name_finger_geoms),
     init_state=EntityCfg.InitialStateCfg(
       joint_pos=dict(emb.ready_joint_pos),
       joint_vel={".*": 0.0},

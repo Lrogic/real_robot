@@ -1,0 +1,62 @@
+{
+  "lift_threshold": 0.01,
+  "reach_scale": 5.0,
+  "w_reach": 0.5,
+  "w_grasp": 1.0,
+  "target_lift_height": 0.03,
+  "lift_target_scale": 30.0,
+  "w_lift_target": 1.0,
+  "w_hold": 1.0,
+  "arm_speed_threshold": 0.5,
+  "gripper_speed_threshold": 0.5,
+  "w_arm_speed": -0.1,
+  "w_gripper_speed": 0.0,
+  "w_joint_pos_limits": -10.0,
+  "reward_normalization": 10.0,
+  "include_is_grasped_obs": true,
+  "grasp_min_force": 0.2,
+  "grasp_max_angle_deg": 110.0,
+  "timing": {
+    "sim_dt": 0.002,
+    "control_hz": 20.0,
+    "episode_steps": 300
+  },
+  "action": {
+    "ee_pos_scale": 0.01,
+    "ee_rot_scale": 0.05,
+    "joint_delta_scale": 0.1,
+    "gripper_delta_scale": 0.01
+  },
+  "domain_randomization": {
+    "object_reset_radius": 0.05,
+    "object_reset_yaw_range_deg": 20.0,
+    "stiffness_damping_enabled": true,
+    "stiffness_scale_range": [0.8, 1.2],
+    "damping_scale_range": [0.8, 1.2],
+    "object_size_variants": {
+      "enabled": true,
+      "scales": [
+        0.90, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.98, 0.99, 1.00,
+        1.01, 1.02, 1.03, 1.04, 1.05, 1.06, 1.07, 1.08, 1.09, 1.10
+      ],
+      "clearance": 0.0
+    },
+    "friction": {
+      "enabled": true,
+      "gripper_object": [1.0, 0.005, 0.0005],
+      "table_object": [1.0, 0.005, 0.0001],
+      "sliding_scale_range": [0.7, 1.3],
+      "torsional_scale_range": [0.7, 1.3],
+      "rolling_scale_range": [0.7, 1.3]
+    }
+  },
+  "curriculum": {
+    "enabled": true,
+    "metric_name": "grasped_lifted_frac",
+    "initial_difficulty": 0.0,
+    "max_difficulty": 1.0,
+    "difficulty_increment": 0.05,
+    "performance_threshold": 0.7,
+    "min_completed_episodes": 5000
+  }
+}

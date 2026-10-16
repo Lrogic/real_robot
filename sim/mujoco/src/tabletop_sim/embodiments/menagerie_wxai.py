@@ -19,6 +19,9 @@ MENAGERIE_WXAI = EmbodimentCfg(
   tcp_site="ee_gripper_link",
   finger_bodies=("gripper_left", "gripper_right"),
   finger_outward_axes=((0.0, 1.0, 0.0), (0.0, -1.0, 0.0)),
+  # Each jaw is welded to its sliding carriage, whose collision mesh is the
+  # back of the finger.
+  finger_collision_bodies=(("carriage_left", "gripper_left"), ("carriage_right", "gripper_right")),
   ready_joint_pos={
     "joint_0": 0.0,
     "joint_1": 1.38,
