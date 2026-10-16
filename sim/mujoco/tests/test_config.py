@@ -6,6 +6,7 @@ from pathlib import Path
 
 import mujoco
 import pytest
+import torch
 
 from mjlab.envs import mdp as mjlab_mdp
 from tabletop_sim.embodiments import get_embodiment
@@ -258,6 +259,105 @@ def test_domain_randomization_negative_yaw_range_rejected(tmp_path, task_dict):
   task_dict["domain_randomization"] = {"object_reset_yaw_range_deg": -5.0}
   with pytest.raises(ConfigError, match="object_reset_yaw_range_deg"):
     load_task_config(_write(tmp_path, task_dict))
+
+
+def test_stiffness_damping_dr_defaults(tmp_path, task_dict):
+  task_dict["domain_randomization"] = {}
+  dr = load_task_config(_write(tmp_path, task_dict)).domain_randomization
+  assert dr.stiffness_damping_enabled is False
+  assert dr.stiffness_scale_range == (0.8, 1.2) and dr.damping_scale_range == (0.8, 1.2)
+  assert not load_task_config(DEFAULT_TASK).domain_randomization.stiffness_damping_enabled
+  assert load_task_config(CURRICULUM_TASK).domain_randomization.stiffness_damping_enabled
+
+
+def test_stiffness_damping_dr_ranges_load(tmp_path, task_dict):
+  task_dict["domain_randomization"].update(
+    stiffness_damping_enabled=True, stiffness_scale_range=[0.5, 1], damping_scale_range=[1.1, 1.3]
+  )
+  dr = load_task_config(_write(tmp_path, task_dict)).domain_randomization
+  assert dr.stiffness_damping_enabled is True
+  assert dr.stiffness_scale_range == (0.5, 1.0) and dr.damping_scale_range == (1.1, 1.3)
+
+
+@pytest.mark.parametrize(
+  ("override", "match"),
+  [
+    ({"stiffness_damping_enabled": 1}, "must be a bool"),
+    ({"stiffness_scale_range": [1.2, 0.8]}, "lower <= upper"),
+    ({"damping_scale_range": [0.0, 1.2]}, "0 < lower"),
+    ({"damping_scale_range": [-0.1, 1.2]}, "0 < lower"),
+    ({"stiffness_scale_range": [0.8]}, "list of 2"),
+    ({"stiffness_scale_range": 0.8}, "list of 2"),
+    ({"damping_scale_range": [0.8, "1.2"]}, "list of 2"),
+    ({"damping_scale_range": [True, 1.2]}, "list of 2"),
+  ],
+)
+def test_stiffness_damping_dr_invalid_rejected(tmp_path, task_dict, override, match):
+  task_dict["domain_randomization"].update(override)
+  with pytest.raises(ConfigError, match=match):
+    load_task_config(_write(tmp_path, task_dict))
+
+
+def test_stiffness_damping_event_absent_when_disabled():
+  cfg = make_grasp_env_cfg(task_path=DEFAULT_TASK)
+  assert "randomize_stiffness_damping" not in cfg.events
+  assert list(cfg.events) == ["reset_scene_to_default", "reset_cube_xy"]
+
+
+@pytest.mark.parametrize(
+  ("embodiment", "func", "kp", "damping"),
+  [
+    (
+      "menagerie_wxai",
+      mdp.RandomizeKpJointDamping,
+      (*(f"joint_{i}" for i in range(6)), "right_carriage_joint"),
+      (*(f"joint_{i}" for i in range(6)), "left_carriage_joint", "right_carriage_joint"),
+    ),
+    (
+      "trossen_wxai_base",
+      mdp.RandomizeKpActuatorKv,
+      (*(f"joint_{i}" for i in range(6)), "left_gripper"),
+      (*(f"joint_{i}" for i in range(6)), "left_gripper"),
+    ),
+  ],
+)
+def test_stiffness_damping_event_per_embodiment(tmp_path, scene_dict, embodiment, func, kp, damping):
+  scene_dict["robot"]["embodiment"] = embodiment
+  cfg = make_grasp_env_cfg(_write(tmp_path, scene_dict), CURRICULUM_TASK)
+  # Reset events run in insertion order; DR comes after the state resets.
+  assert list(cfg.events)[-1] == "randomize_stiffness_damping"
+  term = cfg.events["randomize_stiffness_damping"]
+  assert term.func is func and term.mode == "reset"
+  assert term.params == {
+    "entity_name": "robot",
+    "stiffness_actuators": kp,
+    "damping_targets": damping,
+    "stiffness_scale_range": (0.8, 1.2),
+    "damping_scale_range": (0.8, 1.2),
+  }
+
+
+def test_difficulty_scale_bounds_interpolate():
+  d = torch.tensor([0.0, 0.25, 0.5, 1.0])
+  lower, upper = mdp.events.difficulty_scale_bounds(d, (0.8, 1.2))
+  torch.testing.assert_close(lower, torch.tensor([1.0, 0.95, 0.9, 0.8]))
+  torch.testing.assert_close(upper, torch.tensor([1.0, 1.05, 1.1, 1.2]))
+  lower, upper = mdp.events.difficulty_scale_bounds(d, (1.1, 1.5))
+  torch.testing.assert_close(lower, torch.tensor([1.0, 1.025, 1.05, 1.1]))
+  torch.testing.assert_close(upper, torch.tensor([1.0, 1.125, 1.25, 1.5]))
+
+
+def test_sample_difficulty_scales_respect_bounds():
+  torch.manual_seed(0)
+  d = torch.tensor([0.0, 0.5, 1.0]).repeat_interleave(2000)
+  s = mdp.events.sample_difficulty_scales(d, (0.8, 1.2), 7)
+  assert s.shape == (6000, 7)
+  assert (s[:2000] == 1.0).all()
+  for block, lo, hi in ((s[2000:4000], 0.9, 1.1), (s[4000:], 0.8, 1.2)):
+    assert block.min() >= lo and block.max() <= hi
+    assert block.min() < lo + 0.01 and block.max() > hi - 0.01
+  # Independent per target and per env.
+  assert torch.unique(s[4000:]).numel() > 0.99 * s[4000:].numel()
 
 
 def test_incompatible_control_rate_rejected(tmp_path, task_dict):

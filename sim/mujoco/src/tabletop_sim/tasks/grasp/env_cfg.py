@@ -338,6 +338,26 @@ def make_grasp_env_cfg_from_configs(
         mode="reset",
         params={"entity_name": o.name, "poses": o.initial_poses},
       )
+  dr = task.domain_randomization
+  if dr.stiffness_damping_enabled:
+    # Reads each env's episode difficulty, which mjlab's curriculum manager
+    # assigns before any reset event runs.
+    targets = emb.stiffness_damping
+    events["randomize_stiffness_damping"] = EventTermCfg(
+      func=mdp.STIFFNESS_DAMPING_EVENTS[targets.damping_source],
+      mode="reset",
+      params={
+        "entity_name": "robot",
+        "stiffness_actuators": targets.stiffness_actuators,
+        "damping_targets": (
+          targets.damping_joints
+          if targets.damping_source == "joint"
+          else targets.damping_actuators
+        ),
+        "stiffness_scale_range": dr.stiffness_scale_range,
+        "damping_scale_range": dr.damping_scale_range,
+      },
+    )
 
   ent = _Entities(emb, obj.name)
   metrics = _metrics(task, ent)

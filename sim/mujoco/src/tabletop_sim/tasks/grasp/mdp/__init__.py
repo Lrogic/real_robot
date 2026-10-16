@@ -12,16 +12,22 @@ from tabletop_sim.tasks.grasp.mdp.actions import (
 )
 from tabletop_sim.tasks.grasp.mdp.commands import GraspGoalCommand, GraspGoalCommandCfg
 from tabletop_sim.tasks.grasp.mdp.events import (
+  STIFFNESS_DAMPING_EVENTS,
+  RandomizeKpActuatorKv,
+  RandomizeKpJointDamping,
   reset_object_from_pose_list,
   reset_object_xy_in_disk_with_yaw,
 )
 
 __all__ = [
+  "STIFFNESS_DAMPING_EVENTS",
   "ClippedDifferentialIKActionCfg",
   "DeltaJointPositionActionCfg",
   "GraspGoalCommand",
   "GraspGoalCommandCfg",
   "GripperActionCfg",
+  "RandomizeKpActuatorKv",
+  "RandomizeKpJointDamping",
   "curriculum",
   "metrics",
   "observations",

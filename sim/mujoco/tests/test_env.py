@@ -2,11 +2,13 @@
 
 import json
 
+import mujoco
 import pytest
 import torch
 
 from mjlab.envs import ManagerBasedRlEnv
 from mjlab.managers.event_manager import EventTermCfg
+from tabletop_sim.embodiments import get_embodiment
 from tabletop_sim.tasks.grasp.env_cfg import DEFAULT_SCENE, DEFAULT_TASK, make_grasp_env_cfg
 from tabletop_sim.tasks.grasp.mdp import GraspGoalCommand, curriculum, task_state
 
@@ -502,6 +504,189 @@ def test_delta_gripper_action(tmp_path_factory, action_space):
       torch.testing.assert_close(gripper._target, (q + 0.01).clamp(max=0.044), atol=1e-6, rtol=0)
     assert (gripper._target == 0.044).all()
     assert (carriage() > 0.035).all()
+  finally:
+    env.close()
+
+
+DR_EVENT = "randomize_stiffness_damping"
+_DYNAMICS_FIELDS = (
+  "actuator_gainprm", "actuator_biasprm", "actuator_forcerange", "actuator_ctrlrange",
+  "dof_damping", "dof_armature", "dof_frictionloss", "jnt_actfrcrange", "jnt_stiffness",
+)
+
+
+def _dr_env(tmp_path_factory, embodiment, **dr):
+  task = json.loads(CURRICULUM_TASK.read_text())
+  task["domain_randomization"].update(dr)
+  # No promotions of its own; tests set the stage directly.
+  task["curriculum"]["min_completed_episodes"] = 10**9
+  path = tmp_path_factory.mktemp("task") / "task.json"
+  path.write_text(json.dumps(task))
+  return _make_env(_scene_file(tmp_path_factory, embodiment=embodiment), path)
+
+
+def _set_difficulty(env, d):
+  """Difficulty the next resetting episodes start with."""
+  state = curriculum.get_curriculum_state(env)
+  state.stage = round(d / state.difficulty_increment)
+  assert state.difficulty == pytest.approx(d)
+
+
+class _GainView:
+  """Live kp / damping multipliers against the compiled nominal values, at
+  model ids looked up by name independently of the event term."""
+
+  def __init__(self, env, embodiment):
+    self.env = env
+    t = get_embodiment(embodiment).stiffness_damping
+    m = env.sim.mj_model
+    act = lambda n: mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_ACTUATOR, f"robot/{n}")  # noqa: E731
+    jnt = lambda n: mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, f"robot/{n}")  # noqa: E731
+    self.source = t.damping_source
+    self.kp_ids = torch.tensor([act(n) for n in t.stiffness_actuators], device=DEVICE)
+    if self.source == "joint":
+      ids = [int(m.jnt_dofadr[jnt(n)]) for n in t.damping_joints]
+    else:
+      ids = [act(n) for n in t.damping_actuators]
+    assert min(ids) >= 0
+    self.damping_ids = torch.tensor(ids, device=DEVICE)
+
+  def field(self, name):
+    return getattr(self.env.sim.model, name)
+
+  def nominal(self, name):
+    return self.env.sim.get_default_field(name)
+
+  def kp_scale(self):
+    kp = self.field("actuator_gainprm")[:, self.kp_ids, 0]
+    # A position servo's kp also sits, negated, in biasprm[1].
+    torch.testing.assert_close(self.field("actuator_biasprm")[:, self.kp_ids, 1], -kp)
+    return kp / self.nominal("actuator_gainprm")[self.kp_ids, 0]
+
+  def damping_scale(self):
+    if self.source == "joint":
+      return self.field("dof_damping")[:, self.damping_ids] / self.nominal("dof_damping")[
+        self.damping_ids
+      ]
+    return (
+      self.field("actuator_biasprm")[:, self.damping_ids, 2]
+      / self.nominal("actuator_biasprm")[self.damping_ids, 2]
+    )
+
+  def assert_rest_nominal(self):
+    """Everything but the targeted kp and damping entries is still nominal."""
+    expected = {n: self.nominal(n).expand_as(self.field(n)).clone() for n in _DYNAMICS_FIELDS}
+    expected["actuator_gainprm"][:, self.kp_ids, 0] = self.field("actuator_gainprm")[:, self.kp_ids, 0]
+    expected["actuator_biasprm"][:, self.kp_ids, 1] = self.field("actuator_biasprm")[:, self.kp_ids, 1]
+    if self.source == "joint":
+      expected["dof_damping"][:, self.damping_ids] = self.field("dof_damping")[:, self.damping_ids]
+    else:
+      expected["actuator_biasprm"][:, self.damping_ids, 2] = self.field("actuator_biasprm")[
+        :, self.damping_ids, 2
+      ]
+    for name, value in expected.items():
+      assert torch.equal(self.field(name), value), name
+
+
+EMBODIMENT_NAMES = ["menagerie_wxai", "trossen_wxai_base"]
+
+
+def test_stiffness_damping_disabled_leaves_model_nominal(ee_env):
+  assert DR_EVENT not in ee_env.event_manager.active_terms["reset"]
+  assert "actuator_gainprm" not in ee_env.event_manager.domain_randomization_fields
+  ee_env.reset()
+  g = _GainView(ee_env, "menagerie_wxai")
+  assert (g.kp_scale() == 1).all() and (g.damping_scale() == 1).all()
+  g.assert_rest_nominal()
+
+
+@pytest.mark.parametrize("embodiment", EMBODIMENT_NAMES)
+def test_stiffness_damping_nominal_at_zero_bounded_at_one(tmp_path_factory, embodiment):
+  env = _dr_env(tmp_path_factory, embodiment)
+  try:
+    term = env.event_manager.get_term_cfg(DR_EVENT).func
+    g = _GainView(env, embodiment)
+    assert term.damping_source == g.source
+    assert term._kp_ids.tolist() == g.kp_ids.tolist()
+    assert term._damping_ids.tolist() == g.damping_ids.tolist()
+
+    env.reset()
+    assert (g.kp_scale() == 1).all() and (g.damping_scale() == 1).all()
+    g.assert_rest_nominal()
+
+    _set_difficulty(env, 1.0)
+    for _ in range(5):
+      env.reset()
+      kp, damping = g.kp_scale(), g.damping_scale()
+      for s in (kp, damping):
+        assert (s >= 0.8 - 1e-6).all() and (s <= 1.2 + 1e-6).all()
+        assert (s - 1).abs().max() > 0.01
+        assert torch.unique(s).numel() == s.numel()  # per env and per target
+      n = min(kp.shape[1], damping.shape[1])
+      assert not torch.allclose(kp[:, :n], damping[:, :n])  # independent draws
+      g.assert_rest_nominal()
+
+    # Held for the whole episode.
+    kp, damping = g.kp_scale().clone(), g.damping_scale().clone()
+    for _ in range(5):
+      obs, reward, *_ = env.step(torch.zeros(NUM_ENVS, 7, device=DEVICE))
+    assert torch.isfinite(obs["actor"]).all() and torch.isfinite(reward).all()
+    assert torch.equal(g.kp_scale(), kp) and torch.equal(g.damping_scale(), damping)
+
+    # Back to exactly nominal, whatever was sampled before.
+    _set_difficulty(env, 0.0)
+    env.reset()
+    assert (g.kp_scale() == 1).all() and (g.damping_scale() == 1).all()
+    g.assert_rest_nominal()
+  finally:
+    env.close()
+
+
+@pytest.mark.parametrize("embodiment", EMBODIMENT_NAMES)
+def test_stiffness_damping_subset_reset_no_compounding(tmp_path_factory, embodiment):
+  # Degenerate ranges make every multiplier deterministic.
+  env = _dr_env(
+    tmp_path_factory, embodiment, stiffness_scale_range=[1.2, 1.2], damping_scale_range=[0.9, 0.9]
+  )
+  try:
+    g = _GainView(env, embodiment)
+
+    def scales():
+      return g.kp_scale().clone(), g.damping_scale().clone()
+
+    def expect(ids, kp, damping):
+      s_kp, s_d = scales()
+      torch.testing.assert_close(s_kp[ids], torch.full_like(s_kp[ids], kp))
+      torch.testing.assert_close(s_d[ids], torch.full_like(s_d[ids], damping))
+
+    env.reset()
+    expect(slice(None), 1.0, 1.0)
+
+    # The curriculum assigns env 1's new difficulty before this event reads it.
+    _set_difficulty(env, 1.0)
+    env.reset(env_ids=torch.tensor([1], device=DEVICE))
+    torch.testing.assert_close(
+      curriculum.episode_difficulty(env), torch.tensor([0.0, 1.0, 0.0, 0.0], device=DEVICE)
+    )
+    expect([1], 1.2, 0.9)
+    expect([0, 2, 3], 1.0, 1.0)
+
+    # Repeated resets rescale the nominal values rather than the current ones.
+    for _ in range(4):
+      env.reset(env_ids=torch.tensor([1], device=DEVICE))
+      expect([1], 1.2, 0.9)
+    before = scales()
+    env.reset(env_ids=torch.tensor([0, 2], device=DEVICE))
+    expect([0, 1, 2], 1.2, 0.9)
+    expect([3], 1.0, 1.0)
+    after = scales()
+    assert torch.equal(after[0][1], before[0][1]) and torch.equal(after[1][1], before[1][1])
+
+    _set_difficulty(env, 0.5)
+    env.reset(env_ids=torch.tensor([3], device=DEVICE))
+    expect([3], 1.1, 0.95)
+    expect([0, 1, 2], 1.2, 0.9)
+    g.assert_rest_nominal()
   finally:
     env.close()
 

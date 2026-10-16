@@ -4,16 +4,17 @@ The follower's D405 camera mount and camera are stripped to get the base arm.
 """
 
 from tabletop_sim import ASSETS_DIR
-from tabletop_sim.embodiments.base import EmbodimentCfg
+from tabletop_sim.embodiments.base import EmbodimentCfg, StiffnessDampingTargets
 
 ARM_JOINTS = tuple(f"joint_{i}" for i in range(6))
+GRIPPER_JOINTS = ("left_carriage_joint", "right_carriage_joint")
 
 MENAGERIE_WXAI = EmbodimentCfg(
   name="menagerie_wxai",
   xml_path=ASSETS_DIR / "robots" / "trossen_wxai" / "wxai_follower.xml",
   strip_bodies=("camera_mount_d405",),
   arm_joint_names=ARM_JOINTS,
-  gripper_joint_names=("left_carriage_joint", "right_carriage_joint"),
+  gripper_joint_names=GRIPPER_JOINTS,
   gripper_actuator_joint="right_carriage_joint",
   tcp_site="ee_gripper_link",
   finger_bodies=("gripper_left", "gripper_right"),
@@ -28,6 +29,13 @@ MENAGERIE_WXAI = EmbodimentCfg(
     "left_carriage_joint": 0.026,
     "right_carriage_joint": 0.026,
   },
+  # kp-only position actuators (named after their joints); the system-identified
+  # damping is on the joints, including the unactuated left carriage.
+  stiffness_damping=StiffnessDampingTargets(
+    stiffness_actuators=(*ARM_JOINTS, "right_carriage_joint"),
+    damping_source="joint",
+    damping_joints=(*ARM_JOINTS, *GRIPPER_JOINTS),
+  ),
   integrator="euler",
   impratio=10.0,
   cone="elliptic",

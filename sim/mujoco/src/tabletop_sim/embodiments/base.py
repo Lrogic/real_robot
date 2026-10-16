@@ -22,6 +22,40 @@ class IkDefaults:
 
 
 @dataclass(frozen=True)
+class StiffnessDampingTargets:
+  """Model parameters scaled by stiffness/damping domain randomization.
+
+  kp is scaled on the position actuators in ``stiffness_actuators``. Damping is
+  scaled on the ``dof_damping`` of ``damping_joints`` when ``damping_source`` is
+  ``"joint"``, or on the kv of the position actuators in ``damping_actuators``
+  when it is ``"actuator"``. The other damping mechanism is never touched.
+  """
+
+  stiffness_actuators: tuple[str, ...]
+  damping_source: Literal["joint", "actuator"]
+  damping_joints: tuple[str, ...] = ()
+  damping_actuators: tuple[str, ...] = ()
+
+  def __post_init__(self) -> None:
+    if not self.stiffness_actuators:
+      raise ValueError("stiffness_actuators must not be empty")
+    if self.damping_source == "joint":
+      if not self.damping_joints or self.damping_actuators:
+        raise ValueError(
+          "damping_source='joint' needs damping_joints and no damping_actuators"
+        )
+    elif self.damping_source == "actuator":
+      if not self.damping_actuators or self.damping_joints:
+        raise ValueError(
+          "damping_source='actuator' needs damping_actuators and no damping_joints"
+        )
+    else:
+      raise ValueError(
+        f"damping_source must be 'joint' or 'actuator', got {self.damping_source!r}"
+      )
+
+
+@dataclass(frozen=True)
 class EmbodimentCfg:
   """Everything the task needs to know about a robot arm + parallel gripper.
 
@@ -43,6 +77,8 @@ class EmbodimentCfg:
   """Per finger, the local-frame axis the object's contact force on that finger
   points along during a grasp (away from the gripper centre)."""
   ready_joint_pos: dict[str, float]
+  stiffness_damping: StiffnessDampingTargets
+  """Where kp and damping live in this model, for their randomization."""
   gripper_open: float = 0.044
   gripper_closed: float = 0.0
   strip_bodies: tuple[str, ...] = ()

@@ -303,8 +303,28 @@ class DomainRandomizationConfig:
   object_reset_yaw_range_deg: float = 20.0
   """Half-width (deg) of the uniform yaw range about the world z-axis applied to
   the manipulated object at every reset: yaw ~ U[-r, r]."""
+  stiffness_damping_enabled: bool = False
+  """Scale the embodiment's actuator kp and its damping (joint damping or
+  actuator kv, see ``StiffnessDampingTargets``) at every reset."""
+  stiffness_scale_range: tuple[float, float] = (0.8, 1.2)
+  """kp multiplier range [lower, upper] at episode difficulty 1. At difficulty d
+  each bound is 1 + d * (bound - 1), so d = 0 gives the nominal gains."""
+  damping_scale_range: tuple[float, float] = (0.8, 1.2)
+  """Damping multiplier range at difficulty 1, interpolated the same way."""
 
   def __post_init__(self) -> None:
+    where = "domain_randomization"
+    if not isinstance(self.stiffness_damping_enabled, bool):
+      raise ConfigError(
+        f"{where}.stiffness_damping_enabled must be a bool, "
+        f"got {self.stiffness_damping_enabled!r}"
+      )
+    for name in ("stiffness_scale_range", "damping_scale_range"):
+      lower, upper = getattr(self, name)
+      if not (math.isfinite(lower) and math.isfinite(upper) and 0 < lower <= upper):
+        raise ConfigError(
+          f"{where}.{name} must be finite with 0 < lower <= upper, got [{lower}, {upper}]"
+        )
     if not (math.isfinite(self.object_reset_radius) and self.object_reset_radius >= 0):
       raise ConfigError(
         "domain_randomization.object_reset_radius must be finite and nonnegative, "
@@ -316,6 +336,28 @@ class DomainRandomizationConfig:
         "domain_randomization.object_reset_yaw_range_deg must be finite and nonnegative, "
         f"got {self.object_reset_yaw_range_deg}"
       )
+
+  @classmethod
+  def from_dict(cls, data: Any) -> DomainRandomizationConfig:
+    where = "task.domain_randomization"
+    if not isinstance(data, dict):
+      raise ConfigError(f"{where} must be an object")
+    _check_keys(where, data, cls)
+    kwargs: dict[str, Any] = {}
+    for name in ("object_reset_radius", "object_reset_yaw_range_deg"):
+      if name in data:
+        kwargs[name] = float(data[name])
+    if "stiffness_damping_enabled" in data:
+      kwargs["stiffness_damping_enabled"] = data["stiffness_damping_enabled"]
+    for name in ("stiffness_scale_range", "damping_scale_range"):
+      if name in data:
+        value = data[name]
+        if not isinstance(value, list) or any(
+          isinstance(v, bool) or not isinstance(v, (int, float)) for v in value
+        ):
+          raise ConfigError(f"{where}.{name} must be a list of 2 numbers, got {value!r}")
+        kwargs[name] = _vec(f"{where}.{name}", value, 2)
+    return cls(**kwargs)
 
 
 @dataclass(frozen=True)
@@ -450,10 +492,7 @@ class TaskConfig:
         _check_keys("task.action", value, ActionConfig)
         kwargs[f.name] = ActionConfig(**{k: float(v) for k, v in value.items()})
       elif f.name == "domain_randomization":
-        _check_keys("task.domain_randomization", value, DomainRandomizationConfig)
-        kwargs[f.name] = DomainRandomizationConfig(
-          **{k: float(v) for k, v in value.items()}
-        )
+        kwargs[f.name] = DomainRandomizationConfig.from_dict(value)
       elif f.name == "curriculum":
         kwargs[f.name] = CurriculumConfig.from_dict(value)
       elif f.type in ("bool",):

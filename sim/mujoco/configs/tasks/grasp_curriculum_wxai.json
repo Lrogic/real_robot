@@ -29,7 +29,10 @@
   },
   "domain_randomization": {
     "object_reset_radius": 0.05,
-    "object_reset_yaw_range_deg": 20.0
+    "object_reset_yaw_range_deg": 20.0,
+    "stiffness_damping_enabled": true,
+    "stiffness_scale_range": [0.8, 1.2],
+    "damping_scale_range": [0.8, 1.2]
   },
   "curriculum": {
     "enabled": true,
