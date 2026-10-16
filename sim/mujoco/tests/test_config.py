@@ -1,4 +1,3 @@
-import copy
 import json
 import math
 import struct
@@ -161,11 +160,74 @@ def test_multiple_initial_poses(tmp_path, scene_dict):
   assert len(scene.manipulated.initial_poses) == 3
 
 
-def test_reserved_curriculum_rejected(tmp_path, task_dict):
-  data = copy.deepcopy(task_dict)
-  data["curriculum"] = {"friction": [0.5, 1.5]}
-  with pytest.raises(ConfigError, match="not implemented"):
+CURRICULUM_TASK = DEFAULT_TASK.parent / "grasp_curriculum_wxai.json"
+
+
+def test_curriculum_disabled_by_default():
+  task = load_task_config(DEFAULT_TASK)
+  assert not task.curriculum.enabled
+  assert make_grasp_env_cfg(task_path=DEFAULT_TASK).curriculum == {}
+
+
+def test_curriculum_config_loads():
+  c = load_task_config(CURRICULUM_TASK).curriculum
+  assert c.enabled and c.metric_name == "grasped_lifted_frac"
+  assert (c.initial_difficulty, c.max_difficulty, c.difficulty_increment) == (0.0, 1.0, 0.05)
+  assert c.performance_threshold == 0.70
+  assert c.min_completed_episodes == 5000 and isinstance(c.min_completed_episodes, int)
+
+
+def test_curriculum_term_registered_when_enabled():
+  cfg = make_grasp_env_cfg(task_path=CURRICULUM_TASK)
+  assert list(cfg.curriculum) == [mdp.curriculum.TERM_NAME]
+  term = cfg.curriculum[mdp.curriculum.TERM_NAME]
+  assert term.func is mdp.curriculum.GraspDifficultyCurriculum
+  assert term.params["metric_name"] == "grasped_lifted_frac"
+  assert term.params["min_completed_episodes"] == 5000
+  assert cfg.metrics["grasped_lifted_frac"].reduce == "sum"
+
+
+@pytest.mark.parametrize(
+  ("override", "match"),
+  [
+    ({"friction": [0.5, 1.5]}, "unknown keys"),
+    ({"enabled": 1}, "must be a bool"),
+    ({"metric_name": ""}, "non-empty"),
+    ({"initial_difficulty": -0.1}, r"in \[0, 1\]"),
+    ({"max_difficulty": 1.5}, r"in \[0, 1\]"),
+    ({"performance_threshold": 1.01}, r"in \[0, 1\]"),
+    ({"initial_difficulty": 0.6, "max_difficulty": 0.5}, "must not exceed"),
+    ({"difficulty_increment": 0.0}, "must be positive"),
+    ({"difficulty_increment": -0.05}, "must be positive"),
+    ({"min_completed_episodes": 0}, "integer >= 1"),
+    ({"min_completed_episodes": 10.5}, "integer >= 1"),
+    ({"min_completed_episodes": True}, "integer >= 1"),
+    ({"initial_difficulty": "0.1"}, "must be a number"),
+  ],
+)
+def test_curriculum_invalid_rejected(tmp_path, override, match):
+  data = json.loads(CURRICULUM_TASK.read_text())
+  data["curriculum"].update(override)
+  with pytest.raises(ConfigError, match=match):
     load_task_config(_write(tmp_path, data))
+
+
+def test_curriculum_not_an_object_rejected(tmp_path, task_dict):
+  task_dict["curriculum"] = [1, 2]
+  with pytest.raises(ConfigError, match="must be an object"):
+    load_task_config(_write(tmp_path, task_dict))
+
+
+@pytest.mark.parametrize(
+  ("metric", "match"), [("no_such_metric", "is not a metric"), ("max_lift", "reduce='sum'")]
+)
+def test_curriculum_invalid_metric_rejected(tmp_path, metric, match):
+  data = json.loads(CURRICULUM_TASK.read_text())
+  data["curriculum"]["metric_name"] = metric
+  path = _write(tmp_path, data)
+  load_task_config(path)
+  with pytest.raises(ConfigError, match=match):
+    make_grasp_env_cfg(task_path=path)
 
 
 def test_domain_randomization_object_reset_radius(tmp_path, task_dict):

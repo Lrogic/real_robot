@@ -319,6 +319,72 @@ class DomainRandomizationConfig:
 
 
 @dataclass(frozen=True)
+class CurriculumConfig:
+  """Performance-based difficulty curriculum. A global difficulty d in
+  [initial_difficulty, max_difficulty] steps up when the mean completed-episode
+  score at the current stage beats ``performance_threshold``; each episode keeps
+  the d it started with."""
+
+  enabled: bool = False
+  metric_name: str = "grasped_lifted_frac"
+  """Episode metric (``reduce="sum"``) whose per-episode total is the score."""
+  initial_difficulty: float = 0.0
+  max_difficulty: float = 1.0
+  difficulty_increment: float = 0.05
+  """Difficulty added per promotion (capped at ``max_difficulty``)."""
+  performance_threshold: float = 0.70
+  """Promote when the window's mean score is strictly greater than this."""
+  min_completed_episodes: int = 5000
+  """Eligible completed episodes needed before the window is evaluated."""
+
+  def __post_init__(self) -> None:
+    where = "task.curriculum"
+    if not isinstance(self.enabled, bool):
+      raise ConfigError(f"{where}.enabled must be a bool, got {self.enabled!r}")
+    if not isinstance(self.metric_name, str) or not self.metric_name:
+      raise ConfigError(f"{where}.metric_name must be a non-empty string")
+    for name in ("initial_difficulty", "max_difficulty", "performance_threshold"):
+      value = getattr(self, name)
+      if not (math.isfinite(value) and 0.0 <= value <= 1.0):
+        raise ConfigError(f"{where}.{name} must be in [0, 1], got {value}")
+    if self.initial_difficulty > self.max_difficulty:
+      raise ConfigError(
+        f"{where}.initial_difficulty ({self.initial_difficulty}) must not exceed "
+        f"max_difficulty ({self.max_difficulty})"
+      )
+    if not (math.isfinite(self.difficulty_increment) and self.difficulty_increment > 0):
+      raise ConfigError(
+        f"{where}.difficulty_increment must be positive, got {self.difficulty_increment}"
+      )
+    count = self.min_completed_episodes
+    if isinstance(count, bool) or not isinstance(count, int) or count < 1:
+      raise ConfigError(f"{where}.min_completed_episodes must be an integer >= 1, got {count!r}")
+
+  @classmethod
+  def from_dict(cls, data: Any) -> CurriculumConfig:
+    if not isinstance(data, dict):
+      raise ConfigError("task.curriculum must be an object")
+    _check_keys("task.curriculum", data, cls)
+    kwargs: dict[str, Any] = {}
+    for name in ("enabled", "metric_name"):
+      if name in data:
+        kwargs[name] = data[name]
+    for name in ("initial_difficulty", "max_difficulty", "difficulty_increment",
+                 "performance_threshold"):
+      if name in data:
+        value = data[name]
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+          raise ConfigError(f"task.curriculum.{name} must be a number, got {value!r}")
+        kwargs[name] = float(value)
+    if "min_completed_episodes" in data:
+      value = data["min_completed_episodes"]
+      if isinstance(value, float) and value.is_integer():
+        value = int(value)
+      kwargs["min_completed_episodes"] = value
+    return cls(**kwargs)
+
+
+@dataclass(frozen=True)
 class TaskConfig:
   """Reward, metric and observation parameters of the grasp-lift-hold task."""
 
@@ -353,8 +419,7 @@ class TaskConfig:
   timing: TimingConfig = field(default_factory=TimingConfig)
   action: ActionConfig = field(default_factory=ActionConfig)
   domain_randomization: DomainRandomizationConfig = field(default_factory=DomainRandomizationConfig)
-  curriculum: dict[str, Any] = field(default_factory=dict)
-  """Reserved: curriculum terms (not implemented yet)."""
+  curriculum: CurriculumConfig = field(default_factory=CurriculumConfig)
 
   def __post_init__(self) -> None:
     for name in ("arm_speed_threshold", "gripper_speed_threshold"):
@@ -390,16 +455,12 @@ class TaskConfig:
           **{k: float(v) for k, v in value.items()}
         )
       elif f.name == "curriculum":
-        if not isinstance(value, dict):
-          raise ConfigError(f"task.{f.name} must be an object")
-        kwargs[f.name] = dict(value)
+        kwargs[f.name] = CurriculumConfig.from_dict(value)
       elif f.type in ("bool",):
         kwargs[f.name] = bool(value)
       else:
         kwargs[f.name] = float(value)
     cfg = cls(**kwargs)
-    if cfg.curriculum:
-      raise ConfigError("task: curriculum is reserved but not implemented yet")
     if cfg.reward_normalization <= 0:
       raise ConfigError("task.reward_normalization must be positive")
     _ = cfg.timing.decimation  # validates timing

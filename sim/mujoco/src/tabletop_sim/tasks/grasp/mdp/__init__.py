@@ -1,4 +1,5 @@
 from tabletop_sim.tasks.grasp.mdp import (
+  curriculum,
   metrics,
   observations,
   rewards,
@@ -21,6 +22,7 @@ __all__ = [
   "GraspGoalCommand",
   "GraspGoalCommandCfg",
   "GripperActionCfg",
+  "curriculum",
   "metrics",
   "observations",
   "reset_object_from_pose_list",

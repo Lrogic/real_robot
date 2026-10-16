@@ -10,6 +10,7 @@ from mjlab.envs import ManagerBasedRlEnvCfg
 from mjlab.envs.mdp import joint_pos_limits, time_out
 from mjlab.envs.mdp.events import reset_scene_to_default
 from mjlab.managers.action_manager import ActionTermCfg
+from mjlab.managers.curriculum_manager import CurriculumTermCfg
 from mjlab.managers.event_manager import EventTermCfg
 from mjlab.managers.metrics_manager import MetricsTermCfg
 from mjlab.managers.observation_manager import ObservationGroupCfg, ObservationTermCfg
@@ -25,6 +26,7 @@ from tabletop_sim.embodiments import EmbodimentCfg, build_entity_cfg, get_embodi
 from tabletop_sim.scene import (
   ACTION_SPACES,
   CameraConfig,
+  ConfigError,
   SceneConfig,
   TaskConfig,
   load_scene_config,
@@ -247,6 +249,38 @@ def _metrics(task: TaskConfig, ent: _Entities) -> dict[str, MetricsTermCfg]:
   }
 
 
+def _curriculum(
+  task: TaskConfig, metrics: dict[str, MetricsTermCfg]
+) -> dict[str, CurriculumTermCfg]:
+  c = task.curriculum
+  if not c.enabled:
+    return {}
+  metric = metrics.get(c.metric_name)
+  if metric is None:
+    raise ConfigError(
+      f"task.curriculum.metric_name {c.metric_name!r} is not a metric; "
+      f"available: {sorted(metrics)}"
+    )
+  if metric.reduce != "sum":
+    raise ConfigError(
+      f"task.curriculum.metric_name {c.metric_name!r} must use reduce='sum', "
+      f"got {metric.reduce!r}"
+    )
+  return {
+    mdp.curriculum.TERM_NAME: CurriculumTermCfg(
+      func=mdp.curriculum.GraspDifficultyCurriculum,
+      params={
+        "metric_name": c.metric_name,
+        "initial_difficulty": c.initial_difficulty,
+        "max_difficulty": c.max_difficulty,
+        "difficulty_increment": c.difficulty_increment,
+        "performance_threshold": c.performance_threshold,
+        "min_completed_episodes": c.min_completed_episodes,
+      },
+    )
+  }
+
+
 def _finger_sensors(emb: EmbodimentCfg, object_name: str) -> tuple[ContactSensorCfg, ...]:
   return tuple(
     ContactSensorCfg(
@@ -306,6 +340,7 @@ def make_grasp_env_cfg_from_configs(
       )
 
   ent = _Entities(emb, obj.name)
+  metrics = _metrics(task, ent)
   goal = mdp.GraspGoalCommandCfg(
     object_name=obj.name, target_lift_height=task.target_lift_height, debug_vis=True
   )
@@ -322,7 +357,8 @@ def make_grasp_env_cfg_from_configs(
     events=events,
     rewards=_rewards(task, ent),
     terminations=_terminations(),
-    metrics=_metrics(task, ent),
+    curriculum=_curriculum(task, metrics),
+    metrics=metrics,
     viewer=_viewer(scene.camera),
     sim=SimulationCfg(
       nconmax=NCONMAX_PER_OBJECT * len(scene.objects) + 32,

@@ -6,12 +6,14 @@ import pytest
 import torch
 
 from mjlab.envs import ManagerBasedRlEnv
+from mjlab.managers.event_manager import EventTermCfg
 from tabletop_sim.tasks.grasp.env_cfg import DEFAULT_SCENE, DEFAULT_TASK, make_grasp_env_cfg
-from tabletop_sim.tasks.grasp.mdp import GraspGoalCommand, task_state
+from tabletop_sim.tasks.grasp.mdp import GraspGoalCommand, curriculum, task_state
 
 pytestmark = pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 DEVICE = "cuda:0"
 NUM_ENVS = 4
+CURRICULUM_TASK = DEFAULT_TASK.parent / "grasp_curriculum_wxai.json"
 CUBE_POSES = [[-0.25, y, 0.015, 1.0, 0.0, 0.0, 0.0] for y in (-0.06, 0.0, 0.06)]
 
 
@@ -316,6 +318,66 @@ def test_partial_reset_leaves_other_envs(ee_env):
   sums, counts = _metric_state(ee_env)
   assert (counts[keep] == 0).all() and counts[1] == 200
   torch.testing.assert_close(sums[1], means.sum[1], atol=1e-4, rtol=0)
+
+
+def test_curriculum_disabled_by_default(ee_env):
+  assert ee_env.curriculum_manager.active_terms == []
+  ee_env.reset()
+  d = curriculum.episode_difficulty(ee_env)
+  assert d.shape == (NUM_ENVS,) and (d == 0).all()
+
+
+def test_curriculum_reads_scores_before_clear_and_assigns_before_events(tmp_path_factory):
+  task = json.loads(CURRICULUM_TASK.read_text())
+  task["curriculum"].update(min_completed_episodes=NUM_ENVS, performance_threshold=0.0)
+  task_path = tmp_path_factory.mktemp("task") / "task.json"
+  task_path.write_text(json.dumps(task))
+  cfg = make_grasp_env_cfg(_scene_file(tmp_path_factory), task_path, None, NUM_ENVS)
+  cfg.seed = 0
+  seen = []
+
+  def probe(env, env_ids):
+    seen.append(curriculum.episode_difficulty(env, env_ids).clone())
+
+  cfg.events["curriculum_probe"] = EventTermCfg(func=probe, mode="reset")
+  env = ManagerBasedRlEnv(cfg, device=DEVICE)
+  try:
+    state = curriculum.get_curriculum_state(env)
+    t = _tracker(env)
+    m = env.metrics_manager
+    idx = m.active_terms.index("grasped_lifted_frac")
+
+    _, extras = env.reset()
+    # The initialization reset is not a completed episode.
+    assert state.window_count == 0 and state.last_eval_count == 0 and state.stage == 0
+    assert (seen[-1] == 0).all()
+    assert extras["log"]["Curriculum/grasp_difficulty/difficulty"] == 0.0
+
+    for i in range(env.max_episode_length):
+      sums_before = m._episode_sums["grasped_lifted_frac"].clone()
+      _, _, _, truncated, extras = env.step(_scripted_action(t, i))
+    assert truncated.all()
+    # Per-env episode totals: everything up to the last step plus the last
+    # step's own value, i.e. read after the final compute and before the clear.
+    expected = sums_before + m._step_values[:, idx]
+    assert (expected > 0).all()
+    assert state.last_eval_count == NUM_ENVS
+    assert state.last_eval_mean == pytest.approx(expected.double().mean().item(), abs=1e-5)
+    assert (m._episode_sums["grasped_lifted_frac"] == 0).all()
+    # Promoted in this reset batch, and the reset events already saw it.
+    assert state.stage == 1 and state.window_count == 0
+    torch.testing.assert_close(seen[-1], torch.full((NUM_ENVS,), 0.05, device=DEVICE))
+    torch.testing.assert_close(
+      curriculum.episode_difficulty(env), torch.full((NUM_ENVS,), 0.05, device=DEVICE)
+    )
+    log = extras["log"]
+    assert log["Curriculum/grasp_difficulty/difficulty"] == pytest.approx(0.05)
+    assert log["Curriculum/grasp_difficulty/stage"] == 1.0
+    assert log["Curriculum/grasp_difficulty/promotions"] == 1.0
+    assert log["Curriculum/grasp_difficulty/last_eval_count"] == float(NUM_ENVS)
+    assert log["Curriculum/grasp_difficulty/window_count"] == 0.0
+  finally:
+    env.close()
 
 
 def _limit_joints(env):
