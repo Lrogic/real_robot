@@ -7,6 +7,7 @@ Scene JSON layout::
     "robot": {"embodiment": str, "action_space": str, "base_pose": [x,y,z,qw,qx,qy,qz]},
     "camera": {"render_eye": [x,y,z], "render_target": [x,y,z]},     # optional
     "ground_altitude": float | null,                                  # optional
+    "support_surface": {"object": str} | {"height": float},          # optional
     "manipulated_object": str,
     "objects": [ObjectConfig, ...]
   }
@@ -224,6 +225,48 @@ class ObjectConfig:
 
 
 @dataclass(frozen=True)
+class SupportSurfaceConfig:
+  """The horizontal plane the manipulated object rests on at reset: the top face
+  of a static box ``object``, or an explicit world-frame ``height`` (relative to
+  each env origin). Exactly one is set."""
+
+  object: str | None = None
+  height: float | None = None
+
+  @classmethod
+  def from_dict(cls, data: Any) -> SupportSurfaceConfig:
+    where = "scene.support_surface"
+    if not isinstance(data, dict):
+      raise ConfigError(f"{where} must be an object")
+    _check_keys(where, data, cls)
+    if len(data) != 1:
+      raise ConfigError(f"{where} needs exactly one of 'object' or 'height', got {sorted(data)}")
+    if "object" in data:
+      if not isinstance(data["object"], str) or not data["object"]:
+        raise ConfigError(f"{where}.object must be a non-empty string")
+      return cls(object=data["object"])
+    height = data["height"]
+    if isinstance(height, bool) or not isinstance(height, (int, float)) or not math.isfinite(height):
+      raise ConfigError(f"{where}.height must be a finite number, got {height!r}")
+    return cls(height=float(height))
+
+
+def _box_top_height(obj: ObjectConfig) -> float:
+  """World z of the upward-facing face of a static, horizontally placed box."""
+  where = f"scene.support_surface: object {obj.name!r}"
+  if obj.primitive != "box" or obj.dynamic or len(obj.initial_poses) != 1:
+    raise ConfigError(f"{where} must be a static box with exactly one initial pose")
+  pose = obj.initial_poses[0]
+  w, x, y, z = pose[3:]
+  # Bottom row of the rotation matrix: world z of each box axis.
+  up = (2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x * x + y * y))
+  axis = max(range(3), key=lambda i: abs(up[i]))
+  if abs(abs(up[axis]) - 1.0) > 1e-6:
+    raise ConfigError(f"{where} has no horizontal face (one box axis must be vertical)")
+  return pose[2] + obj.size[axis] * obj.scale[axis] / 2
+
+
+@dataclass(frozen=True)
 class SceneConfig:
   scene_name: str
   robot: RobotConfig
@@ -231,10 +274,25 @@ class SceneConfig:
   objects: tuple[ObjectConfig, ...]
   camera: CameraConfig = field(default_factory=CameraConfig)
   ground_altitude: float | None = None
+  support_surface: SupportSurfaceConfig | None = None
 
   @property
   def manipulated(self) -> ObjectConfig:
     return next(o for o in self.objects if o.name == self.manipulated_object)
+
+  def support_height(self) -> float:
+    """z of the support plane relative to each env origin."""
+    s = self.support_surface
+    if s is None:
+      raise ConfigError("scene: 'support_surface' is not set")
+    if s.height is not None:
+      return s.height
+    obj = next((o for o in self.objects if o.name == s.object), None)
+    if obj is None:
+      raise ConfigError(f"scene.support_surface: object {s.object!r} is not in objects")
+    if obj.name == self.manipulated_object:
+      raise ConfigError("scene.support_surface: object must not be the manipulated object")
+    return _box_top_height(obj)
 
   @classmethod
   def from_dict(cls, data: dict[str, Any], base_dir: Path) -> SceneConfig:
@@ -251,14 +309,19 @@ class SceneConfig:
     if not next(o for o in objects if o.name == manipulated).dynamic:
       raise ConfigError(f"scene: manipulated_object {manipulated!r} must be dynamic")
     ground = data.get("ground_altitude")
-    return cls(
+    support = data.get("support_surface")
+    scene = cls(
       scene_name=str(data.get("scene_name", "scene")),
       robot=RobotConfig.from_dict(data.get("robot", {})),
       manipulated_object=manipulated,
       objects=objects,
       camera=CameraConfig.from_dict(data.get("camera", {})),
       ground_altitude=None if ground is None else float(ground),
+      support_surface=None if support is None else SupportSurfaceConfig.from_dict(support),
     )
+    if scene.support_surface is not None:
+      scene.support_height()  # validates the selected object
+    return scene
 
 
 @dataclass(frozen=True)
@@ -295,6 +358,61 @@ class ActionConfig:
   only). Each finger moves this much, so the gap changes by twice as much."""
 
 
+DEFAULT_SIZE_SCALES = tuple(round(0.90 + 0.01 * i, 2) for i in range(21))
+
+
+@dataclass(frozen=True)
+class ObjectSizeVariantsConfig:
+  """Fixed per-env size variants of the manipulated (mesh) object.
+
+  Each env is assigned one isotropic factor from ``scales``, applied on top of
+  the object's configured ``scale``, once at simulation start (seeded by the
+  env seed); it never changes on reset. At constant density mass scales by s^3
+  and inertia by s^5; an explicit ``mass`` is the s = 1 mass. Every reset
+  re-seats the object so its lowest collision point is ``clearance`` above the
+  scene's ``support_surface``. Independent of the curriculum difficulty.
+  """
+
+  enabled: bool = False
+  scales: tuple[float, ...] = DEFAULT_SIZE_SCALES
+  clearance: float = 0.0
+  """Gap (m) between the lowest collision point and the support surface at reset."""
+
+  def __post_init__(self) -> None:
+    where = "domain_randomization.object_size_variants"
+    if not isinstance(self.enabled, bool):
+      raise ConfigError(f"{where}.enabled must be a bool, got {self.enabled!r}")
+    if not self.scales or not all(math.isfinite(s) and s > 0 for s in self.scales):
+      raise ConfigError(f"{where}.scales must be a non-empty list of positive numbers")
+    if len(set(self.scales)) != len(self.scales):
+      raise ConfigError(f"{where}.scales must be unique, got {list(self.scales)}")
+    if not (math.isfinite(self.clearance) and self.clearance >= 0):
+      raise ConfigError(f"{where}.clearance must be finite and nonnegative, got {self.clearance}")
+
+  @classmethod
+  def from_dict(cls, data: Any) -> ObjectSizeVariantsConfig:
+    where = "task.domain_randomization.object_size_variants"
+    if not isinstance(data, dict):
+      raise ConfigError(f"{where} must be an object")
+    _check_keys(where, data, cls)
+    kwargs: dict[str, Any] = {}
+    if "enabled" in data:
+      kwargs["enabled"] = data["enabled"]
+    if "scales" in data:
+      value = data["scales"]
+      if not isinstance(value, list) or any(
+        isinstance(v, bool) or not isinstance(v, (int, float)) for v in value
+      ):
+        raise ConfigError(f"{where}.scales must be a list of numbers, got {value!r}")
+      kwargs["scales"] = tuple(float(v) for v in value)
+    if "clearance" in data:
+      value = data["clearance"]
+      if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ConfigError(f"{where}.clearance must be a number, got {value!r}")
+      kwargs["clearance"] = float(value)
+    return cls(**kwargs)
+
+
 @dataclass(frozen=True)
 class DomainRandomizationConfig:
   object_reset_radius: float = 0.05
@@ -311,6 +429,7 @@ class DomainRandomizationConfig:
   each bound is 1 + d * (bound - 1), so d = 0 gives the nominal gains."""
   damping_scale_range: tuple[float, float] = (0.8, 1.2)
   """Damping multiplier range at difficulty 1, interpolated the same way."""
+  object_size_variants: ObjectSizeVariantsConfig = field(default_factory=ObjectSizeVariantsConfig)
 
   def __post_init__(self) -> None:
     where = "domain_randomization"
@@ -357,6 +476,10 @@ class DomainRandomizationConfig:
         ):
           raise ConfigError(f"{where}.{name} must be a list of 2 numbers, got {value!r}")
         kwargs[name] = _vec(f"{where}.{name}", value, 2)
+    if "object_size_variants" in data:
+      kwargs["object_size_variants"] = ObjectSizeVariantsConfig.from_dict(
+        data["object_size_variants"]
+      )
     return cls(**kwargs)
 
 

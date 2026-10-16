@@ -1,4 +1,5 @@
-"""Reset events: object placement and curriculum-scaled domain randomization."""
+"""Reset events: object placement (optionally seated on the support surface by
+size variant) and curriculum-scaled domain randomization."""
 
 from __future__ import annotations
 
@@ -14,7 +15,7 @@ from mjlab.envs.mdp.events import resolve_env_ids
 from mjlab.managers.event_manager import requires_model_fields
 from mjlab.managers.manager_base import ManagerTermBase
 from mjlab.utils.lab_api.math import quat_from_angle_axis, quat_mul
-from tabletop_sim.tasks.grasp.mdp import curriculum
+from tabletop_sim.tasks.grasp.mdp import curriculum, object_size
 
 if TYPE_CHECKING:
   from mjlab.entity import Entity
@@ -45,19 +46,14 @@ def reset_object_from_pose_list(
     entity.write_root_state_to_sim(state, env_ids=env_ids)
 
 
-def reset_object_xy_in_disk_with_yaw(
+def _sample_xy_in_disk_with_yaw(
   env: ManagerBasedRlEnv,
-  env_ids: torch.Tensor | None,
-  entity_name: str,
+  env_ids: torch.Tensor,
+  entity: Entity,
   radius: float,
   yaw_range_deg: float,
-) -> None:
-  """Place an object uniformly in a disk of ``radius`` (m) around its default
-  xy, and rotate it about the world z-axis by a yaw sampled uniformly from
-  ``[-yaw_range_deg, yaw_range_deg]`` degrees. The yaw is applied on top of the
-  default orientation. z and velocity stay at their default values."""
-  env_ids = resolve_env_ids(env, env_ids)
-  entity: Entity = env.scene[entity_name]
+) -> torch.Tensor:
+  """World-frame root states for :func:`reset_object_xy_in_disk_with_yaw`."""
   state = entity.data.default_root_state[env_ids].clone()
   state[:, 0:3] += env.scene.env_origins[env_ids]
   n = len(env_ids)
@@ -74,8 +70,61 @@ def reset_object_xy_in_disk_with_yaw(
   yaw_quat = quat_from_angle_axis(yaw, z_axis)
   # Left-multiply so the rotation is about the world z-axis.
   state[:, 3:7] = quat_mul(yaw_quat, state[:, 3:7])
+  return state
 
+
+def reset_object_xy_in_disk_with_yaw(
+  env: ManagerBasedRlEnv,
+  env_ids: torch.Tensor | None,
+  entity_name: str,
+  radius: float,
+  yaw_range_deg: float,
+) -> None:
+  """Place an object uniformly in a disk of ``radius`` (m) around its default
+  xy, and rotate it about the world z-axis by a yaw sampled uniformly from
+  ``[-yaw_range_deg, yaw_range_deg]`` degrees. The yaw is applied on top of the
+  default orientation. z and velocity stay at their default values."""
+  env_ids = resolve_env_ids(env, env_ids)
+  entity: Entity = env.scene[entity_name]
+  state = _sample_xy_in_disk_with_yaw(env, env_ids, entity, radius, yaw_range_deg)
   entity.write_root_state_to_sim(state, env_ids=env_ids)
+
+
+class ResetObjectOnSupport(ManagerTermBase):
+  """:func:`reset_object_xy_in_disk_with_yaw`, then the root height that puts
+  the lowest collision point of the env's size variant, under the sampled
+  orientation, ``clearance`` above the support plane:
+
+    root_z = env_origin_z + support_height - lowest_collision_z + clearance
+
+  The geometry is cached per variant at init (see
+  :func:`object_size.collision_points_per_variant`), so resets do no mesh work
+  and never change an env's variant. mjlab runs ``forward()`` after the reset
+  events and before the command captures the lift goal from this pose.
+  """
+
+  def __init__(self, cfg: EventTermCfg, env: ManagerBasedRlEnv):
+    super().__init__(env)
+    self._points, self._variant = object_size.collision_points_per_variant(
+      env, cfg.params["entity_name"]
+    )
+
+  def __call__(
+    self,
+    env: ManagerBasedRlEnv,
+    env_ids: torch.Tensor | None,
+    entity_name: str,
+    radius: float,
+    yaw_range_deg: float,
+    support_height: float,
+    clearance: float,
+  ) -> None:
+    env_ids = resolve_env_ids(env, env_ids).to(torch.long)
+    entity: Entity = env.scene[entity_name]
+    state = _sample_xy_in_disk_with_yaw(env, env_ids, entity, radius, yaw_range_deg)
+    lowest = object_size.lowest_point_z(self._points[self._variant[env_ids]], state[:, 3:7])
+    state[:, 2] = env.scene.env_origins[env_ids, 2] + support_height - lowest + clearance
+    entity.write_root_state_to_sim(state, env_ids=env_ids)
 
 
 def difficulty_scale_bounds(

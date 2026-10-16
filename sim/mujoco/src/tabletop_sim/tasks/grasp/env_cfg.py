@@ -319,18 +319,39 @@ def make_grasp_env_cfg_from_configs(
   timing = task.timing
   obj = scene.manipulated
 
+  dr = task.domain_randomization
+  size_variants = dr.object_size_variants
   events: dict[str, EventTermCfg] = {
     "reset_scene_to_default": EventTermCfg(func=reset_scene_to_default, mode="reset"),
   }
-  events[f"reset_{obj.name}_xy"] = EventTermCfg(
-    func=mdp.reset_object_xy_in_disk_with_yaw,
-    mode="reset",
-    params={
-      "entity_name": obj.name,
-      "radius": task.domain_randomization.object_reset_radius,
-      "yaw_range_deg": task.domain_randomization.object_reset_yaw_range_deg,
-    },
-  )
+  placement = {
+    "entity_name": obj.name,
+    "radius": dr.object_reset_radius,
+    "yaw_range_deg": dr.object_reset_yaw_range_deg,
+  }
+  if size_variants.enabled:
+    if obj.primitive != "mesh":
+      raise ConfigError(
+        f"domain_randomization.object_size_variants needs a mesh manipulated object, "
+        f"got {obj.name!r} ({obj.primitive})"
+      )
+    if scene.support_surface is None:
+      raise ConfigError(
+        "domain_randomization.object_size_variants needs the scene's 'support_surface'"
+      )
+    events[f"reset_{obj.name}_xy"] = EventTermCfg(
+      func=mdp.ResetObjectOnSupport,
+      mode="reset",
+      params={
+        **placement,
+        "support_height": scene.support_height(),
+        "clearance": size_variants.clearance,
+      },
+    )
+  else:
+    events[f"reset_{obj.name}_xy"] = EventTermCfg(
+      func=mdp.reset_object_xy_in_disk_with_yaw, mode="reset", params=placement
+    )
   for o in scene.objects:
     if o.name != obj.name and len(o.initial_poses) > 1:
       events[f"reset_{o.name}_pose"] = EventTermCfg(
@@ -338,7 +359,6 @@ def make_grasp_env_cfg_from_configs(
         mode="reset",
         params={"entity_name": o.name, "poses": o.initial_poses},
       )
-  dr = task.domain_randomization
   if dr.stiffness_damping_enabled:
     # Reads each env's episode difficulty, which mjlab's curriculum manager
     # assigns before any reset event runs.
@@ -368,7 +388,7 @@ def make_grasp_env_cfg_from_configs(
   return ManagerBasedRlEnvCfg(
     scene=SceneCfg(
       num_envs=num_envs,
-      entities=scene_entity_cfgs(scene, build_entity_cfg(emb)),
+      entities=scene_entity_cfgs(scene, build_entity_cfg(emb), size_variants),
       sensors=_finger_sensors(emb, obj.name),
     ),
     observations=_observations(task, ent),

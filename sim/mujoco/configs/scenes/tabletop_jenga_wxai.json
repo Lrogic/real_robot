@@ -10,6 +10,7 @@
     "render_target": [-0.2, 0.0, 0.2]
   },
   "ground_altitude": -0.92,
+  "support_surface": {"object": "table"},
   "manipulated_object": "jenga",
   "objects": [
     {
