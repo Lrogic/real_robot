@@ -3,6 +3,7 @@ from tabletop_sim.tasks.grasp.mdp import (
   metrics,
   object_size,
   observations,
+  perception,
   rewards,
   task_state,
 )
@@ -21,14 +22,22 @@ from tabletop_sim.tasks.grasp.mdp.events import (
   reset_object_from_pose_list,
   reset_object_xy_in_disk_with_yaw,
 )
+from tabletop_sim.tasks.grasp.mdp.perception import (
+  GaussianPoseNoise,
+  PerceivedObjectPose,
+  PerceivedObjectPoseCfg,
+)
 
 __all__ = [
   "STIFFNESS_DAMPING_EVENTS",
   "ClippedDifferentialIKActionCfg",
   "DeltaJointPositionActionCfg",
+  "GaussianPoseNoise",
   "GraspGoalCommand",
   "GraspGoalCommandCfg",
   "GripperActionCfg",
+  "PerceivedObjectPose",
+  "PerceivedObjectPoseCfg",
   "RandomizeKpActuatorKv",
   "RandomizeKpJointDamping",
   "RandomizePairFriction",
@@ -37,6 +46,7 @@ __all__ = [
   "metrics",
   "object_size",
   "observations",
+  "perception",
   "reset_object_from_pose_list",
   "reset_object_xy_in_disk_with_yaw",
   "rewards",

@@ -29,6 +29,7 @@ from tabletop_sim.scene import (
   CameraConfig,
   ConfigError,
   FrictionRandomizationConfig,
+  PoseNoiseSourceConfig,
   SceneConfig,
   TaskConfig,
   load_scene_config,
@@ -39,6 +40,7 @@ from tabletop_sim.scene.builder import ContactPairGroup, PairGeom, scene_pair_ge
 from tabletop_sim.tasks.grasp import mdp
 
 COMMAND_NAME = "grasp"
+PERCEPTION_NAME = "object_perception"
 FINGER_SENSORS = ("left_finger_object_contact", "right_finger_object_contact")
 DEFAULT_SCENE = CONFIGS_DIR / "scenes" / "tabletop_cube_wxai.json"
 DEFAULT_TASK = CONFIGS_DIR / "tasks" / "grasp_standard_wxai.json"
@@ -157,22 +159,37 @@ def _observations(task: TaskConfig, ent: _Entities) -> dict[str, ObservationGrou
           "closed_pos": ent.emb.gripper_closed,
         },
       ),
-      "object_pose": ObservationTermCfg(
-        func=obs.object_pose, params={"object_cfg": ent.object()}
-      ),
-      "tcp_to_obj_pos": ObservationTermCfg(
-        func=obs.tcp_to_obj_pos, params={"tcp_cfg": ent.tcp(), "object_cfg": ent.object()}
-      ),
-      "obj_to_goal_pos": ObservationTermCfg(
-        func=obs.obj_to_goal_pos,
-        params={"command_name": COMMAND_NAME, "object_cfg": ent.object()},
-      ),
     }
+    if critic:
+      t |= {
+        "object_pose": ObservationTermCfg(
+          func=obs.object_pose, params={"object_cfg": ent.object()}
+        ),
+        "tcp_to_obj_pos": ObservationTermCfg(
+          func=obs.tcp_to_obj_pos, params={"tcp_cfg": ent.tcp(), "object_cfg": ent.object()}
+        ),
+        "obj_to_goal_pos": ObservationTermCfg(
+          func=obs.obj_to_goal_pos,
+          params={"command_name": COMMAND_NAME, "object_cfg": ent.object()},
+        ),
+      }
+    else:
+      perceived = {"perception_name": PERCEPTION_NAME}
+      t |= {
+        "object_pose": ObservationTermCfg(func=obs.perceived_object_pose, params=perceived),
+        "tcp_to_obj_pos": ObservationTermCfg(
+          func=obs.perceived_tcp_to_obj_pos, params={"tcp_cfg": ent.tcp(), **perceived}
+        ),
+        "obj_to_goal_pos": ObservationTermCfg(
+          func=obs.perceived_obj_to_goal_pos, params=perceived
+        ),
+      }
     if critic and task.include_is_grasped_obs:
       t["is_grasped"] = ObservationTermCfg(func=obs.is_grasped, params=ent.grasp_params(task))
     return t
 
-  # Noise goes here once domain randomization lands.
+  # Object pose noise lives in the PERCEPTION_NAME command; observation-manager
+  # corruption stays off so it is never applied twice.
   return {
     "actor": ObservationGroupCfg(terms(critic=False), enable_corruption=False),
     "critic": ObservationGroupCfg(terms(critic=True), enable_corruption=False),
@@ -321,6 +338,16 @@ def _friction_pair_groups(
   )
 
 
+def _pose_noise(src: PoseNoiseSourceConfig) -> mdp.GaussianPoseNoise:
+  return mdp.GaussianPoseNoise(
+    enabled=src.enabled,
+    translation_std=src.translation_std_m,
+    rotation_std=tuple(math.radians(v) for v in src.rotation_std_deg),  # type: ignore[arg-type]
+    translation_clip_sigma=src.translation_clip_sigma,
+    rotation_clip_sigma=src.rotation_clip_sigma,
+  )
+
+
 def _viewer(camera: CameraConfig) -> ViewerConfig:
   eye, target = camera.render_eye, camera.render_target
   fwd = [t - e for e, t in zip(eye, target, strict=True)]
@@ -430,6 +457,12 @@ def make_grasp_env_cfg_from_configs(
   goal = mdp.GraspGoalCommandCfg(
     object_name=obj.name, target_lift_height=task.target_lift_height, debug_vis=True
   )
+  perception = mdp.PerceivedObjectPoseCfg(
+    object_name=obj.name,
+    target_lift_height=task.target_lift_height,
+    persistent_bias=_pose_noise(dr.object_pose_noise.persistent_bias),
+    per_step=_pose_noise(dr.object_pose_noise.per_step),
+  )
 
   return ManagerBasedRlEnvCfg(
     scene=SceneCfg(
@@ -444,7 +477,7 @@ def make_grasp_env_cfg_from_configs(
     ),
     observations=_observations(task, ent),
     actions=_actions(emb, action_space, task),
-    commands={COMMAND_NAME: goal},
+    commands={COMMAND_NAME: goal, PERCEPTION_NAME: perception},
     events=events,
     rewards=_rewards(task, ent),
     terminations=_terminations(),

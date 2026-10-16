@@ -68,6 +68,32 @@ def obj_to_goal_pos(
   return task_state.root_relative_vec(env, robot_name, delta)
 
 
+# Actor counterparts of the three terms above. They read the perceived object
+# pose and actor goal cached for this control step, and never sample noise.
+
+
+def perceived_object_pose(
+  env: ManagerBasedRlEnv, perception_name: str, robot_name: str = "robot"
+) -> torch.Tensor:
+  p = task_state.perception(env, perception_name)
+  return task_state.root_relative_pose(env, robot_name, p.pos_w, p.quat_w)
+
+
+def perceived_tcp_to_obj_pos(
+  env: ManagerBasedRlEnv, tcp_cfg: SceneEntityCfg, perception_name: str
+) -> torch.Tensor:
+  tcp_pos, _ = task_state.tcp_pose_w(env, tcp_cfg)
+  obj_pos = task_state.perception(env, perception_name).pos_w
+  return task_state.root_relative_vec(env, tcp_cfg.name, obj_pos - tcp_pos)
+
+
+def perceived_obj_to_goal_pos(
+  env: ManagerBasedRlEnv, perception_name: str, robot_name: str = "robot"
+) -> torch.Tensor:
+  p = task_state.perception(env, perception_name)
+  return task_state.root_relative_vec(env, robot_name, p.actor_target_pos - p.pos_w)
+
+
 def is_grasped(
   env: ManagerBasedRlEnv,
   sensor_names: tuple[str, str],

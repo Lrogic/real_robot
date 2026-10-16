@@ -22,6 +22,7 @@ from mjlab.utils.lab_api.math import (
   subtract_frame_transforms,
 )
 from tabletop_sim.tasks.grasp.mdp.commands import GraspGoalCommand
+from tabletop_sim.tasks.grasp.mdp.perception import PerceivedObjectPose
 
 if TYPE_CHECKING:
   from mjlab.entity import Entity
@@ -51,6 +52,13 @@ def _const(values: tuple, device: str) -> torch.Tensor:
 def goal(env: ManagerBasedRlEnv, command_name: str) -> GraspGoalCommand:
   term = env.command_manager.get_term(command_name)
   assert isinstance(term, GraspGoalCommand)
+  return term
+
+
+def perception(env: ManagerBasedRlEnv, perception_name: str) -> PerceivedObjectPose:
+  """The actor's corrupted object pose and goal; only actor observations read it."""
+  term = env.command_manager.get_term(perception_name)
+  assert isinstance(term, PerceivedObjectPose)
   return term
 
 

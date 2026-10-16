@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import json
 import math
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field, fields, replace
 from pathlib import Path
 from typing import Any, Literal
 
@@ -483,6 +483,111 @@ class FrictionRandomizationConfig:
     return cls(**kwargs)
 
 
+Axes3 = tuple[float, float, float]
+
+
+@dataclass(frozen=True)
+class PoseNoiseSourceConfig:
+  """One Gaussian error source on the actor's view of the object pose, in the
+  robot base frame.
+
+  ``translation_std_m`` (m) and ``rotation_std_deg`` (deg, components of a
+  rotation vector) are per-axis (x, y, z) standard deviations at episode
+  difficulty 1, before clipping; at difficulty d they are d times these. Each
+  sampled component is clamped to +-``*_clip_sigma`` current standard deviations.
+  """
+
+  enabled: bool = False
+  translation_std_m: Axes3 = (0.0, 0.0, 0.0)
+  rotation_std_deg: Axes3 = (0.0, 0.0, 0.0)
+  translation_clip_sigma: float = 2.0
+  rotation_clip_sigma: float = 2.0
+
+  def validate(self, where: str) -> None:
+    if not isinstance(self.enabled, bool):
+      raise ConfigError(f"{where}.enabled must be a bool, got {self.enabled!r}")
+    for name in ("translation_std_m", "rotation_std_deg"):
+      value = getattr(self, name)
+      if len(value) != 3 or not all(math.isfinite(v) and v >= 0 for v in value):
+        raise ConfigError(f"{where}.{name} must be 3 finite nonnegative numbers, got {list(value)}")
+    for name in ("translation_clip_sigma", "rotation_clip_sigma"):
+      value = getattr(self, name)
+      if not (math.isfinite(value) and value > 0):
+        raise ConfigError(f"{where}.{name} must be finite and positive, got {value}")
+
+  @classmethod
+  def from_dict(cls, data: Any, where: str, defaults: PoseNoiseSourceConfig) -> PoseNoiseSourceConfig:
+    if not isinstance(data, dict):
+      raise ConfigError(f"{where} must be an object")
+    _check_keys(where, data, cls)
+    kwargs: dict[str, Any] = {}
+    if "enabled" in data:
+      kwargs["enabled"] = data["enabled"]
+    for name in ("translation_std_m", "rotation_std_deg"):
+      if name in data:
+        value = data[name]
+        if not isinstance(value, list) or any(
+          isinstance(v, bool) or not isinstance(v, (int, float)) for v in value
+        ):
+          raise ConfigError(f"{where}.{name} must be a list of 3 numbers, got {value!r}")
+        kwargs[name] = _vec(f"{where}.{name}", value, 3)
+    for name in ("translation_clip_sigma", "rotation_clip_sigma"):
+      if name in data:
+        value = data[name]
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+          raise ConfigError(f"{where}.{name} must be a number, got {value!r}")
+        kwargs[name] = float(value)
+    return replace(defaults, **kwargs)
+
+
+def _default_pose_bias() -> PoseNoiseSourceConfig:
+  return PoseNoiseSourceConfig(
+    translation_std_m=(0.0005, 0.0005, 0.0005), rotation_std_deg=(0.1, 0.1, 0.1)
+  )
+
+
+def _default_pose_step_noise() -> PoseNoiseSourceConfig:
+  return PoseNoiseSourceConfig(
+    translation_std_m=(0.01, 0.01, 0.01), rotation_std_deg=(5.0, 5.0, 5.0)
+  )
+
+
+@dataclass(frozen=True)
+class ObjectPoseNoiseConfig:
+  """Curriculum-scaled corruption of the object pose the actor observes; the
+  simulated pose, critic, rewards and metrics stay clean.
+
+  ``persistent_bias`` (b) is drawn once per episode at reset, ``per_step`` (e)
+  once per control step. In the robot base frame::
+
+    observed_position = true_position + b_p + e_p
+    observed_rotation = Exp(e_r) @ Exp(b_r) @ true_rotation
+
+  Defaults are the difficulty-1 values; both sources are off unless enabled.
+  With the curriculum disabled every episode has d = 0, so nothing is added.
+  """
+
+  persistent_bias: PoseNoiseSourceConfig = field(default_factory=_default_pose_bias)
+  per_step: PoseNoiseSourceConfig = field(default_factory=_default_pose_step_noise)
+
+  def __post_init__(self) -> None:
+    self.persistent_bias.validate("domain_randomization.object_pose_noise.persistent_bias")
+    self.per_step.validate("domain_randomization.object_pose_noise.per_step")
+
+  @classmethod
+  def from_dict(cls, data: Any) -> ObjectPoseNoiseConfig:
+    where = "task.domain_randomization.object_pose_noise"
+    if not isinstance(data, dict):
+      raise ConfigError(f"{where} must be an object")
+    _check_keys(where, data, cls)
+    kwargs: dict[str, Any] = {}
+    defaults = {"persistent_bias": _default_pose_bias(), "per_step": _default_pose_step_noise()}
+    for name, default in defaults.items():
+      if name in data:
+        kwargs[name] = PoseNoiseSourceConfig.from_dict(data[name], f"{where}.{name}", default)
+    return cls(**kwargs)
+
+
 @dataclass(frozen=True)
 class DomainRandomizationConfig:
   object_reset_radius: float = 0.05
@@ -501,6 +606,7 @@ class DomainRandomizationConfig:
   """Damping multiplier range at difficulty 1, interpolated the same way."""
   object_size_variants: ObjectSizeVariantsConfig = field(default_factory=ObjectSizeVariantsConfig)
   friction: FrictionRandomizationConfig = field(default_factory=FrictionRandomizationConfig)
+  object_pose_noise: ObjectPoseNoiseConfig = field(default_factory=ObjectPoseNoiseConfig)
 
   def __post_init__(self) -> None:
     where = "domain_randomization"
@@ -553,6 +659,8 @@ class DomainRandomizationConfig:
       )
     if "friction" in data:
       kwargs["friction"] = FrictionRandomizationConfig.from_dict(data["friction"])
+    if "object_pose_noise" in data:
+      kwargs["object_pose_noise"] = ObjectPoseNoiseConfig.from_dict(data["object_pose_noise"])
     return cls(**kwargs)
 
 
