@@ -9,11 +9,14 @@ Remaining flags go to mjlab's PlayConfig (``--viewer viser``, ``--video`` ...).
 from __future__ import annotations
 
 import argparse
+import math
 import sys
 import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+import mujoco
+import numpy as np
 import mjlab
 import mjlab.viewer as viewer_mod
 import tyro
@@ -102,9 +105,49 @@ class _JointVelStatsLogger:
 _LOGGER: _JointVelStatsLogger | None = None
 _OrigNativeViewer = viewer_mod.NativeMujocoViewer
 _OrigViserViewer = viewer_mod.ViserPlayViewer
+# Viewer-only spacing (m) between envs drawn around the selected one.
+_VISUAL_SPACING = 1.5
 
 
-class _StatsNativeViewer(_OrigNativeViewer):
+def _grid_xy(i: int, n: int, spacing: float) -> np.ndarray:
+  """(x, y) of env ``i`` on the same grid mjlab uses for env origins."""
+  rows = math.ceil(n / math.isqrt(n))
+  cols = math.ceil(n / rows)
+  ii, jj = divmod(i, cols)
+  return np.array(
+    [-(ii - (rows - 1) / 2) * spacing, (jj - (cols - 1) / 2) * spacing]
+  )
+
+
+class _SpreadNativeViewer(_OrigNativeViewer):
+  """Native viewer that draws the other envs offset from the selected one.
+
+  mjlab draws every env at its physical origin. This task has no per-env
+  origin offset, so all envs overlap. Only the drawn geoms are shifted here;
+  the simulation state is unchanged.
+  """
+
+  def _render_other_env_geoms(self, viewer, sim, sim_data) -> None:
+    if self.vd is None:
+      return
+    assert self.mjm is not None and self.vopt is not None and self.pert is not None
+    n = self.env.unwrapped.num_envs
+    ref = _grid_xy(self.env_idx, n, _VISUAL_SPACING)
+    for i in range(n):
+      if i == self.env_idx:
+        continue
+      self._sync_env_state_to_mjdata(self.vd, sim_data, i)
+      self._sync_model_fields(sim, i)
+      mujoco.mj_forward(self.mjm, self.vd)
+      dx, dy = _grid_xy(i, n, _VISUAL_SPACING) - ref
+      self.vd.geom_xpos[:] += np.array([dx, dy, 0.0])
+      mujoco.mjv_addGeoms(
+        self.mjm, self.vd, self.vopt, self.pert, self.catmask, viewer.user_scn
+      )
+    self._sync_model_fields(sim, self.env_idx)
+
+
+class _StatsNativeViewer(_SpreadNativeViewer):
   def reset_environment(self) -> None:
     if _LOGGER is not None:
       _LOGGER.on_reset()
@@ -138,7 +181,7 @@ def _install_stats_viewers() -> None:
 
 
 def main() -> None:
-  global _LOGGER
+  global _LOGGER, _VISUAL_SPACING
 
   parser = argparse.ArgumentParser(
     description=__doc__, add_help=False, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -158,11 +201,19 @@ def main() -> None:
     default=0,
     help="which parallel env index to log (default: 0)",
   )
+  parser.add_argument(
+    "--visual-spacing",
+    type=float,
+    default=1.5,
+    help="native viewer only: metres between envs drawn around the selected one "
+    "(does not change the simulation; default: 1.5)",
+  )
   ours, rest = parser.parse_known_args()
   if "-h" in rest or "--help" in rest:
     parser.print_help()
     print("\nmjlab PlayConfig flags:\n")
 
+  _VISUAL_SPACING = ours.visual_spacing
   scene_cfg = load_scene_config(ours.scene)
   emb = get_embodiment(scene_cfg.robot.embodiment)
   _LOGGER = _JointVelStatsLogger(
