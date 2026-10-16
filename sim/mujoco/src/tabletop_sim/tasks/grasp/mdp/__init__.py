@@ -12,7 +12,7 @@ from tabletop_sim.tasks.grasp.mdp.actions import (
 from tabletop_sim.tasks.grasp.mdp.commands import GraspGoalCommand, GraspGoalCommandCfg
 from tabletop_sim.tasks.grasp.mdp.events import (
   reset_object_from_pose_list,
-  reset_object_xy_in_disk,
+  reset_object_xy_in_disk_with_yaw,
 )
 
 __all__ = [
@@ -24,7 +24,7 @@ __all__ = [
   "metrics",
   "observations",
   "reset_object_from_pose_list",
-  "reset_object_xy_in_disk",
+  "reset_object_xy_in_disk_with_yaw",
   "rewards",
   "task_state",
 ]

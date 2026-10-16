@@ -186,6 +186,18 @@ def test_domain_randomization_negative_radius_rejected(tmp_path, task_dict):
     load_task_config(_write(tmp_path, task_dict))
 
 
+def test_domain_randomization_yaw_range_deg(tmp_path, task_dict):
+  task_dict["domain_randomization"] = {"object_reset_yaw_range_deg": 15.0}
+  task = load_task_config(_write(tmp_path, task_dict))
+  assert task.domain_randomization.object_reset_yaw_range_deg == 15.0
+
+
+def test_domain_randomization_negative_yaw_range_rejected(tmp_path, task_dict):
+  task_dict["domain_randomization"] = {"object_reset_yaw_range_deg": -5.0}
+  with pytest.raises(ConfigError, match="object_reset_yaw_range_deg"):
+    load_task_config(_write(tmp_path, task_dict))
+
+
 def test_incompatible_control_rate_rejected(tmp_path, task_dict):
   task_dict["timing"]["control_hz"] = 30.0
   with pytest.raises(ConfigError, match="control_hz"):

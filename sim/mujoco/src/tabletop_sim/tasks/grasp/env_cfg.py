@@ -289,9 +289,13 @@ def make_grasp_env_cfg_from_configs(
     "reset_scene_to_default": EventTermCfg(func=reset_scene_to_default, mode="reset"),
   }
   events[f"reset_{obj.name}_xy"] = EventTermCfg(
-    func=mdp.reset_object_xy_in_disk,
+    func=mdp.reset_object_xy_in_disk_with_yaw,
     mode="reset",
-    params={"entity_name": obj.name, "radius": task.domain_randomization.object_reset_radius},
+    params={
+      "entity_name": obj.name,
+      "radius": task.domain_randomization.object_reset_radius,
+      "yaw_range_deg": task.domain_randomization.object_reset_yaw_range_deg,
+    },
   )
   for o in scene.objects:
     if o.name != obj.name and len(o.initial_poses) > 1:

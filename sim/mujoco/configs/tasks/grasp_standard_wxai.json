@@ -28,7 +28,8 @@
     "gripper_delta_scale": 0.01
   },
   "domain_randomization": {
-    "object_reset_radius": 0.05
+    "object_reset_radius": 0.05,
+    "object_reset_yaw_range_deg": 20.0
   },
   "curriculum": {}
 }

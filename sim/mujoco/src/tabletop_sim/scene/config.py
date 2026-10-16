@@ -300,12 +300,21 @@ class DomainRandomizationConfig:
   object_reset_radius: float = 0.05
   """Radius (m) of the disk around each object's default position in which the
   manipulated object is placed uniformly at every reset."""
+  object_reset_yaw_range_deg: float = 20.0
+  """Half-width (deg) of the uniform yaw range about the world z-axis applied to
+  the manipulated object at every reset: yaw ~ U[-r, r]."""
 
   def __post_init__(self) -> None:
     if not (math.isfinite(self.object_reset_radius) and self.object_reset_radius >= 0):
       raise ConfigError(
         "domain_randomization.object_reset_radius must be finite and nonnegative, "
         f"got {self.object_reset_radius}"
+      )
+    yaw_range = self.object_reset_yaw_range_deg
+    if not (math.isfinite(yaw_range) and yaw_range >= 0):
+      raise ConfigError(
+        "domain_randomization.object_reset_yaw_range_deg must be finite and nonnegative, "
+        f"got {self.object_reset_yaw_range_deg}"
       )
 
 

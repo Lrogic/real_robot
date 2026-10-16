@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import torch
 
 from mjlab.envs.mdp.events import resolve_env_ids
+from mjlab.utils.lab_api.math import quat_from_angle_axis, quat_mul
 
 if TYPE_CHECKING:
   from mjlab.entity import Entity
@@ -37,14 +38,17 @@ def reset_object_from_pose_list(
     entity.write_root_state_to_sim(state, env_ids=env_ids)
 
 
-def reset_object_xy_in_disk(
+def reset_object_xy_in_disk_with_yaw(
   env: ManagerBasedRlEnv,
   env_ids: torch.Tensor | None,
   entity_name: str,
   radius: float,
+  yaw_range_deg: float,
 ) -> None:
   """Place an object uniformly in a disk of ``radius`` (m) around its default
-  xy. z, orientation, and velocity stay at that default pose."""
+  xy, and rotate it about the world z-axis by a yaw sampled uniformly from
+  ``[-yaw_range_deg, yaw_range_deg]`` degrees. The yaw is applied on top of the
+  default orientation. z and velocity stay at their default values."""
   env_ids = resolve_env_ids(env, env_ids)
   entity: Entity = env.scene[entity_name]
   state = entity.data.default_root_state[env_ids].clone()
@@ -55,4 +59,13 @@ def reset_object_xy_in_disk(
   radial = radius * torch.sqrt(torch.rand(n, device=env.device))
   state[:, 0] += radial * torch.cos(angle)
   state[:, 1] += radial * torch.sin(angle)
+
+  # Uniform yaw in [-yaw_range_deg, yaw_range_deg], converted to radians.
+  yaw_range = math.radians(yaw_range_deg)
+  yaw = (torch.rand(n, device=env.device) * 2.0 - 1.0) * yaw_range
+  z_axis = torch.tensor([0.0, 0.0, 1.0], device=env.device).expand(n, 3)
+  yaw_quat = quat_from_angle_axis(yaw, z_axis)
+  # Left-multiply so the rotation is about the world z-axis.
+  state[:, 3:7] = quat_mul(yaw_quat, state[:, 3:7])
+
   entity.write_root_state_to_sim(state, env_ids=env_ids)
