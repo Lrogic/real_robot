@@ -27,6 +27,9 @@ def pipeline_parser(description: str) -> argparse.ArgumentParser:
     camera.add_argument("--width", type=int, default=640)
     camera.add_argument("--height", type=int, default=480)
     camera.add_argument("--fps", type=int, default=30)
+    camera.add_argument("--undistort", dest="undistort", action="store_true",
+                        help="Undistort RGB and depth so FoundationPose's pinhole K is exact "
+                             "(default: off, RealSense's distorted frames as before)")
 
     setup = parser.add_argument_group("setup (segment_objects.py)")
     setup.add_argument("--meshes-dir", type=Path, default=DEFAULT_MESHES_DIR,
@@ -91,4 +94,4 @@ def parse_pipeline_args(parser: argparse.ArgumentParser) -> argparse.Namespace:
 
 
 def camera_settings(args: argparse.Namespace) -> CameraSettings:
-    return CameraSettings(args.width, args.height, args.fps, args.settle_frames)
+    return CameraSettings(args.width, args.height, args.fps, args.settle_frames, args.undistort)

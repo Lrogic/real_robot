@@ -46,11 +46,15 @@ def trackable_objects(run):
     return objects
 
 
-def check_live_camera(saved_K, saved_shape, stream):
+def check_live_camera(saved_K, saved_shape, saved_undistorted, stream):
     live_shape = (stream.settings.height, stream.settings.width)
     if live_shape != saved_shape:
         raise ValueError(f"Live resolution {live_shape[::-1]} differs from saved "
                          f"{saved_shape[::-1]}; pass the same --width/--height as setup")
+    if stream.settings.undistort != saved_undistorted:
+        state = lambda on: "undistorted (--undistort)" if on else "distorted (default)"
+        raise ValueError(f"Run was captured {state(saved_undistorted)} but tracking is "
+                         f"{state(stream.settings.undistort)}; use the same setting as setup, or rerun setup")
     if not np.allclose(saved_K, stream.K, rtol=1e-3, atol=0.5):
         raise ValueError("Camera intrinsics changed since setup; rerun setup")
 
@@ -189,7 +193,7 @@ def main():
         tracker.register(objects, run.capture.rgb, run.capture.depth, run.capture.K,
                          args.est_refine_iter)
         with RealSenseStream(camera_settings(args)) as stream:
-            check_live_camera(run.capture.K, run.capture.depth.shape, stream)
+            check_live_camera(run.capture.K, run.capture.depth.shape, run.capture.undistorted, stream)
             if args.manipulation:
                 from manipulation.session import manipulation_session
                 with manipulation_session(args) as session:

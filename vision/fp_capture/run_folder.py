@@ -1,7 +1,7 @@
 """On-disk layout for one scene and its segmented objects.
 
     <run>/camera_intrinsics.json
-    <run>/depth.npy                aligned depth in metres
+    <run>/depth.npy                aligned depth in metres (undistorted only with --undistort)
     <run>/rgb.png
     <run>/obj1/mask_overlay.png
     <run>/obj1/mask.png            one-channel uint8 0/255, as format_foundationpose_mask.py
@@ -77,7 +77,8 @@ class RunWriter:
         self.root.mkdir(parents=True, exist_ok=True)
         height, width = self.capture.rgb.shape[:2]
         (self.root / INTRINSICS_FILE).write_text(json.dumps(
-            {"width": width, "height": height, "K": self.capture.K.tolist()},
+            {"width": width, "height": height, "K": self.capture.K.tolist(),
+             "undistorted": self.capture.undistorted},
             indent=2) + "\n")
         np.save(self.root / DEPTH_FILE, self.capture.depth)
         _write_image(self.root / RGB_FILE, self.capture.rgb)
@@ -118,7 +119,10 @@ def load_run(root: Path) -> SavedRun:
         raise ValueError(f"Could not read {root / RGB_FILE}")
     rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
     depth = np.load(root / DEPTH_FILE, allow_pickle=False)
-    K = np.asarray(json.loads((root / INTRINSICS_FILE).read_text())["K"], dtype=np.float64)
+    intrinsics = json.loads((root / INTRINSICS_FILE).read_text())
+    # Runs written before this flag existed were captured with distorted frames.
+    undistorted = bool(intrinsics.get("undistorted", False))
+    K = np.asarray(intrinsics["K"], dtype=np.float64)
     if depth.shape != rgb.shape[:2]:
         raise ValueError(f"{DEPTH_FILE} and {RGB_FILE} have different resolutions")
 
@@ -132,4 +136,4 @@ def load_run(root: Path) -> SavedRun:
         if mask.shape != rgb.shape[:2]:
             raise ValueError(f"{obj_dir / MASK_FILE} does not match {RGB_FILE} resolution")
         objects.append(SavedObject(obj_dir.name, mask > 0, find_mesh_file(obj_dir)))
-    return SavedRun(root, Capture(rgb=rgb, depth=depth, K=K), objects)
+    return SavedRun(root, Capture(rgb=rgb, depth=depth, K=K, undistorted=undistorted), objects)
