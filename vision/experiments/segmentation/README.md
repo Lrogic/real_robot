@@ -27,6 +27,7 @@ cd /home/luka/research/real_robot/vision     # all commands below run from here
 ```bash
 python -m experiments.segmentation.live --model sam2-small
 python -m experiments.segmentation.live --model sam3 --tracking-fps 10 --camera-fps 30 --width 640 --height 480
+python -m experiments.segmentation.live --model sam3 --tracking-fps 5 --view camera   # full-rate video, held mask
 ```
 
 1. Space freezes the current camera frame as the init frame.
@@ -70,6 +71,7 @@ python -m experiments.segmentation.replay --video experiments/segmentation/recor
 # all models, sequentially, one process each -> runs/.../comparison.mp4 (one panel per model)
 python -m experiments.segmentation.replay --video .../video.mkv --model all
 python -m experiments.segmentation.replay --video .../video.mkv --model all --tracking-fps 10
+python -m experiments.segmentation.replay --video .../video.mkv --model all --tracking-fps 10 --view camera
 ```
 
 Frames are decoded one at a time and passed individually to the same `HfVideoTracker` used
@@ -101,9 +103,17 @@ rejected; `--recreate-mask` replaces it interactively.
   source frame at or after *k* / tracking_fps, and frame 0 is always processed. The selection
   depends only on frame indices and the two rates, so every model gets the same frames.
   Example: at 30 → 10 FPS the processed frames are 0, 3, 6, …
-- **Playback of outputs**: videos play at the source FPS with one output frame per source
-  frame. Each panel shows the newest prediction at or before that frame and is labelled
-  `inferred`, `held from src N`, or `init`.
+- **What is shown** (`--view`, both modes):
+  - `model` (default): only processed frames, each drawn with the mask inferred on it.
+    Replay videos play at `--tracking-fps`, or at the source FPS when it is omitted. At
+    rates that don't divide the source FPS (for example 30 → 12), processed frames are
+    unevenly spaced, so playback is slightly uneven.
+  - `camera`: every source or camera frame. Replay videos play at the source FPS. Each
+    frame shows the newest prediction at or before it, labelled `inferred`, `held from src N`,
+    or `init`. Live mode shows how old the held mask is in frames and ms. In live mode the
+    extra frames are drawn between tracking requests; the window still freezes while a
+    request runs. Drawing can delay the start of the next request by a few ms, but it is
+    never inside `tracking_ms`.
 
 ## Init mask
 

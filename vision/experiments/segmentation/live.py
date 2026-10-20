@@ -44,6 +44,9 @@ def parse_args():
     parser.add_argument("--warmup-steps", type=int, default=5,
                         help="Tracking requests on a disposable warm-up session (default: 5)")
     parser.add_argument("--num-seconds", type=float, default=None, help="Stop tracking after this long")
+    parser.add_argument("--view", choices=("model", "camera"), default="model",
+                        help="model: show only processed frames with their own masks (default); "
+                             "camera: also show newer camera frames between requests, holding the last mask")
     parser.add_argument("--output-dir", type=Path, default=None,
                         help=f"Run folder (default: {RUNS_DIR}/live_<model>_<time>)")
     args = parser.parse_args()
@@ -101,6 +104,7 @@ def main() -> int:
                        "settle_frames": args.settle_frames, "undistort": False,
                        "stream": "fp_capture RealSenseStream (color + aligned depth; depth unused)"},
             "tracking_fps": args.tracking_fps,
+            "view": args.view,
             "frame_policy": "each request takes the newest camera frame not yet processed, at most "
                             "tracking_fps requests per second; no queue, no duplicates",
             "timing_definition": TIMING_DEFINITION, "memory_definition": MEMORY_DEFINITION,
@@ -129,6 +133,7 @@ def main() -> int:
             log.add("init", first, tracker, source_idx=init.timing.frame_number,
                     camera_timestamp_ms=init.timing.camera_timestamp_ms)
             last_seq, last_number = init.seq, init.timing.frame_number
+            last_result, last_received, shown_seq = first, init.received, init.seq
             log.loop_started = next_tick = time.perf_counter()
             while True:
                 now = time.perf_counter()
@@ -138,12 +143,23 @@ def main() -> int:
                 if now >= next_tick:
                     frame = reader.latest(newer_than=last_seq, timeout=0.005)
                 if frame is None:
-                    key = cv2.waitKey(1) & 0xFF
+                    newer = reader.latest(newer_than=shown_seq) if args.view == "camera" else None
+                    if newer is None:
+                        key = cv2.waitKey(1) & 0xFF
+                    else:
+                        shown_seq = newer.seq
+                        age_ms = (newer.received - last_received) * 1000
+                        status = (f"cam frame {newer.timing.frame_number} | held mask from cam frame "
+                                  f"{last_number} ({newer.timing.frame_number - last_number} frames, "
+                                  f"{age_ms:.0f} ms old) | q: quit")
+                        key = show(annotate(newer.rgb, last_result.mask, args.model,
+                                            last_result.presence, status))
                 else:
                     next_tick = max(next_tick + period, now)
                     result = tracker.step(frame.rgb)
                     skipped = frame.timing.frame_number - last_number - 1
                     last_seq, last_number = frame.seq, frame.timing.frame_number
+                    last_result, last_received, shown_seq = result, frame.received, frame.seq
                     log.add("track", result, tracker, source_idx=frame.timing.frame_number,
                             camera_timestamp_ms=frame.timing.camera_timestamp_ms, skipped=skipped)
                     status = (f"cam frame {frame.timing.frame_number} | proc {result.frame_idx} | "

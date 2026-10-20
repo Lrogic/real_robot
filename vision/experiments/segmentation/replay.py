@@ -6,6 +6,8 @@
 The init mask is <video>.init_mask.png; if missing it is created interactively on the first
 decoded frame with --mask-model, then reused unchanged by every model. With --model all the
 models run sequentially, each in its own process, and the panel video is built afterwards.
+--view model (default) writes only processed frames at the tracking FPS; --view camera writes
+every source frame at the source FPS, holding the latest mask.
 """
 
 import argparse
@@ -26,10 +28,14 @@ from .video_io import ANNOTATED_FOURCC, FrameSelector, iter_frames, open_writer,
 from .worker import PREDICTIONS_FILE, SUMMARY_FILE, worker_entry
 
 RUNS_DIR = Path(__file__).resolve().parent / "runs"
-PLAYBACK_POLICY = (
-    "Output video plays at the source FPS with one output frame per source frame. Each panel "
-    "shows the newest prediction whose source index is <= the displayed frame; frames that "
-    "were not processed are labelled 'held from src N' instead of 'inferred'.")
+PLAYBACK_POLICIES = {
+    "model": "One output frame per processed source frame, played at the tracking FPS (source FPS "
+             "when --tracking-fps is omitted), so every displayed mask was inferred on the frame "
+             "it is drawn over. Unprocessed source frames are not shown.",
+    "camera": "One output frame per source frame, played at the source FPS. Each panel shows the "
+              "newest prediction whose source index is <= the displayed frame; frames that were "
+              "not processed are labelled 'held from src N' instead of 'inferred'.",
+}
 
 
 def parse_args():
@@ -47,6 +53,9 @@ def parse_args():
     parser.add_argument("--output-dir", type=Path, default=None,
                         help=f"Run folder (default: {RUNS_DIR}/replay_<video>_<time>)")
     parser.add_argument("--no-video", action="store_true", help="Skip writing the annotated video")
+    parser.add_argument("--view", choices=list(PLAYBACK_POLICIES), default="model",
+                        help="model: only processed frames, at the tracking FPS (default); "
+                             "camera: every source frame at the source FPS, holding the latest mask")
     args = parser.parse_args()
     if not args.video.is_file():
         parser.error(f"--video {args.video} does not exist")
@@ -78,11 +87,14 @@ def load_predictions(path: Path) -> dict:
         return {key: data[key] for key in data.files}
 
 
-def render_video(video: Path, fps: float, predictions: dict, out_path: Path) -> None:
+def render_video(video: Path, fps: float, predictions: dict, out_path: Path, view: str) -> None:
     writer = None
     cursor = {model: 0 for model in predictions}
+    processed = set(next(iter(predictions.values()))["source_idx"].tolist())
     try:
         for idx, rgb in iter_frames(video):
+            if view == "model" and idx not in processed:
+                continue
             panels = []
             for model, pred in predictions.items():
                 sources = pred["source_idx"]
@@ -150,7 +162,8 @@ def main() -> int:
     if predictions and same_frames and not args.no_video:
         name = "comparison.mp4" if args.model == "all" else f"annotated_{models[0]}.mp4"
         video_path = out_dir / name
-        render_video(args.video, info.fps, predictions, video_path)
+        fps = info.fps if args.view == "camera" or args.tracking_fps is None else args.tracking_fps
+        render_video(args.video, fps, predictions, video_path, args.view)
 
     write_json(out_dir / "summary.json", {
         "mode": "recorded-video",
@@ -163,7 +176,8 @@ def main() -> int:
         "identical_frame_indices_across_models": same_frames,
         "sequential_workers": sequential,
         "worker_timeline": timeline,
-        "playback_policy": PLAYBACK_POLICY,
+        "view": args.view,
+        "playback_policy": PLAYBACK_POLICIES[args.view],
         "output_video": str(video_path) if video_path else None,
         "timing_definition": TIMING_DEFINITION,
         "memory_definition": MEMORY_DEFINITION,
