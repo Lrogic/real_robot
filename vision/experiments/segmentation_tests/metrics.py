@@ -19,6 +19,7 @@ class FrameStats:
     infer_s: float
     loop_s: float
     warmup: bool = False
+    ran_inference: bool = True
 
 
 @dataclass
@@ -39,20 +40,23 @@ class RunMetrics:
         steady = self._steady()
         if not steady:
             return
-        infer_ms = 1000 * np.mean([s.infer_s for s in steady])
+        infer_steady = [s for s in steady if s.ran_inference]
+        infer_ms = 1000 * np.mean([s.infer_s for s in infer_steady]) if infer_steady else 0.0
         loop_ms = 1000 * np.mean([s.loop_s for s in steady])
         wait_ms = 1000 * np.mean([s.wait_s for s in steady])
         prep_ms = 1000 * np.mean([s.prepare_s for s in steady])
-        processed_fps = len(steady) / max(window_s, 1e-6)
+        display_fps = len(steady) / max(window_s, 1e-6)
+        tracking_fps = len(infer_steady) / max(window_s, 1e-6)
         skipped = sum(s.skipped_camera_frames for s in steady)
         peak_gb = self.peak_gpu_bytes / (1024 ** 3) if self.peak_gpu_bytes else 0.0
         print(
-            f"[{label}] {len(steady)} steady frames in {window_s:.1f}s: "
-            f"{processed_fps:.1f} processed fps (camera configured {camera_fps} fps), "
+            f"[{label}] {len(steady)} steady display frames in {window_s:.1f}s: "
+            f"{display_fps:.1f} display fps (camera {camera_fps} fps), "
+            f"{len(infer_steady)} tracking steps ({tracking_fps:.1f} tracking fps), "
             f"{skipped} camera frame numbers skipped"
         )
         print(
-            f"  Mean: infer {infer_ms:.1f} ms, loop {loop_ms:.1f} ms, "
+            f"  Mean: infer {infer_ms:.1f} ms (on tracking steps only), loop {loop_ms:.1f} ms, "
             f"camera wait {wait_ms:.1f} ms, prepare {prep_ms:.1f} ms, "
             f"peak GPU alloc {peak_gb:.2f} GiB"
         )

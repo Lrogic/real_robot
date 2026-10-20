@@ -18,29 +18,38 @@ SAM 2.1 uses `sam2.build_sam2_video_predictor` with the official 2.1 Hiera confi
 ```bash
 cd /home/luka/research/real_robot/vision
 
+# Picks sam21 vs sam3 from --model:
+./experiments/segmentation_tests/run_sam_tracking.sh --model sam21-small
+
 conda run -n sam21 python experiments/segmentation_tests/test_sam_tracking.py --model sam21-small
 conda run -n sam21 python experiments/segmentation_tests/test_sam_tracking.py --model sam21-base-plus
 conda run -n sam21 python experiments/segmentation_tests/test_sam_tracking.py --model sam21-large
 
-conda run -n sam3 python experiments/segmentation_tests/test_sam_tracking.py --model sam31
+./experiments/segmentation_tests/run_sam_tracking.sh --model sam31
 ```
 
-Optional: `--checkpoint /path/to.pt`, `--width`, `--height`, `--fps`, `--undistort`, `--warmup-frames`, `--stats-every`.
+SAM 3.1 enables Flash Attention 3 only when `flash_attn_interface` is installed **and** the GPU is Hopper (compute **9.x**, e.g. H100). Other GPUs (Ampere/Ada, Blackwell, etc.) use `use_fa3=False` (PyTorch SDPA). Do not run `--model sam31` from the `sam21` env (use `run_sam_tracking.sh` or `conda activate sam3`).
+
+Optional: `--checkpoint /path/to.pt`, `--width`, `--height`, `--fps`, `--tracking-fps`, `--undistort`, `--warmup-frames`, `--stats-every`.
+
+`--tracking-fps` caps how often SAM runs on the live stream (default: same as `--fps`). Example: `--fps 60 --tracking-fps 15` runs inference every 4th camera frame; skipped frames still show the live image with the last mask held (`mask hold` in the status bar). Only frames that run inference are appended to tracker state.
 
 ## Interaction
 
-1. Live preview → **Space** freezes a frame.
-2. On the frozen frame: left = positive, right = negative, **r** = clear prompts, **Enter** = start tracking (stay still while clicking).
-3. Tracking: translucent mask + contour; **r** = new trial, **q** / Esc = quit.
+Setup steps show a short hint bar in the window; tracking shows only the mask overlay (stats in the terminal).
+
+1. Live feed → **i** or **Space** picks the current frame for clicks.
+2. Left / right click = positive / negative; **Enter** starts tracking (keep the scene still while clicking).
+3. **r** = new object, **q** = quit.
 
 Video frame 0 is the frozen init frame (prompt + memory commit). Live camera frames append as frame 1, 2, … and are not re-prompted.
 
 ## Streaming adapters
 
-- **SAM 2.1**: grows `inference_state["images"]` and runs `SAM2VideoPredictor._run_single_frame_inference` per new frame (same memory path as `propagate_in_video`).
-- **SAM 3.1**: appends preprocessed frames to the multiplex `input_batch` and calls `propagate_in_video` for one frame index at a time.
+- **SAM 2.1**: one new frame per step, then official `propagate_in_video(..., max_frame_num_to_track=1)` with default `offload_video_to_cpu` / `offload_state_to_cpu`. Pixel buffers and past outputs outside SAM2’s memory horizon are dropped after each step.
+- **SAM 3.1**: appends one frame and calls multiplex `propagate_in_video` for that index only.
 
-Algorithmic tracking memory is preserved; camera frames are not queued (skipped frame numbers are reported).
+Skipped camera frame numbers are reported when inference falls behind the camera.
 
 ## Scores shown
 

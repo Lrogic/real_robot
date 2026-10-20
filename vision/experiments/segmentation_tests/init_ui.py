@@ -1,4 +1,4 @@
-"""Click-based mask initialization on a frozen camera frame."""
+"""Click prompts on a single RGB frame (live capture, not a video editor)."""
 
 from dataclasses import dataclass, field
 from typing import Callable, List, Optional, Tuple
@@ -8,8 +8,10 @@ import numpy as np
 
 from fp_capture.drawing import draw_prompts, overlay_mask
 
+from experiments.segmentation_tests.screen_hints import draw_setup_banner
+from experiments.segmentation_tests.ui_display import show_rgb, snap_window_to_frame
+
 WINDOW = "SAM live tracking"
-FONT = cv2.FONT_HERSHEY_SIMPLEX
 
 
 @dataclass
@@ -30,14 +32,11 @@ PredictFn = Callable[[List, List, bool], object]
 
 
 class InitPromptUI:
-    """Freeze-frame point prompts with live mask preview."""
-
     def __init__(self, predict: PredictFn):
         self.predict = predict
         self.rgb: Optional[np.ndarray] = None
         self.prompts = PromptState()
         self.mask: Optional[np.ndarray] = None
-        self.score_line = ""
         self._dirty = False
         self._done = False
         self._confirmed = False
@@ -50,10 +49,10 @@ class InitPromptUI:
         self._dirty = True
 
     def run(self) -> bool:
-        """Return True if user confirmed with Enter, False if cancelled."""
         if self.rgb is None:
             raise RuntimeError("No frame set for initialization")
         cv2.namedWindow(WINDOW, cv2.WINDOW_NORMAL)
+        snap_window_to_frame(WINDOW, self.rgb)
         cv2.setMouseCallback(WINDOW, self._on_mouse)
         self._done = False
         self._confirmed = False
@@ -62,8 +61,23 @@ class InitPromptUI:
             while not self._done:
                 if self._dirty:
                     self._update_mask()
-                vis = self._render()
-                cv2.imshow(WINDOW, cv2.cvtColor(vis, cv2.COLOR_RGB2BGR))
+                image = overlay_mask(self.rgb, self.mask)
+                image = draw_prompts(image, self.prompts.points, self.prompts.labels, None)
+                ready = self.mask is not None and not self.prompts.empty
+                hint_lines = [
+                    "Left click: object    Right click: background",
+                    "r: clear clicks",
+                    "Enter: start tracking" + ("  (ready)" if ready else "  (add clicks first)"),
+                    "q / Esc: quit",
+                ]
+                if self.prompts.empty:
+                    hint_lines.insert(0, "Add at least one click on the object")
+                elif self.mask is None or not self.mask.any():
+                    hint_lines.insert(0, "no mask — adjust clicks")
+                else:
+                    hint_lines.insert(0, f"mask area {int(self.mask.sum())}")
+                image = draw_setup_banner(image, "Object selection", hint_lines)
+                show_rgb(WINDOW, image, snap=False)
                 self._on_key(cv2.waitKey(20) & 0xFF)
                 if cv2.getWindowProperty(WINDOW, cv2.WND_PROP_VISIBLE) < 1:
                     self._cancelled = True
@@ -76,34 +90,9 @@ class InitPromptUI:
         self._dirty = False
         if self.prompts.empty:
             self.mask = None
-            self.score_line = ""
             return
         out = self.predict(self.prompts.points, self.prompts.labels, False)
         self.mask = out.mask
-        self.score_line = ""
-        if out.presence:
-            parts = [f"{k}={v:.3f}" for k, v in out.presence.items()]
-            self.score_line = ", ".join(parts)
-
-    def _render(self) -> np.ndarray:
-        assert self.rgb is not None
-        image = overlay_mask(self.rgb, self.mask)
-        image = draw_prompts(image, self.prompts.points, self.prompts.labels, None)
-        h, w = image.shape[:2]
-        lines = [
-            "Init: left=positive, right=negative, r=clear, Enter=track, q=quit",
-            "Keep the scene still while clicking.",
-        ]
-        if self.score_line:
-            lines.append(self.score_line)
-        if self.mask is None and not self.prompts.empty:
-            lines.append("(no mask)")
-        y = 24
-        for line in lines:
-            cv2.putText(image, line, (8, y), FONT, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
-            cv2.putText(image, line, (8, y), FONT, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
-            y += 22
-        return image
 
     def _on_key(self, key: int) -> None:
         if key in (ord("q"), 27):
