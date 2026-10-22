@@ -182,7 +182,15 @@ last 6 frames' memories (`num_maskmem` − 1), and the last 15 frames' object po
 input frames older than the current one and outputs older than that 15-frame window. This
 edits the session's dictionaries directly, outside the documented API, but it changes no
 model input. `validate.py` checks that pruned and unpruned sessions give bit-identical masks
-and logits. Storage counts are logged per request: steady state is 1 frame and 15 outputs.
+and logits. Storage counts are logged per request: steady state is 1 frame and 15 outputs
+per object.
+
+**Several objects.** `HfVideoTracker.start_objects` / `step_objects` track several caller-chosen
+object IDs in one session (used by FoundationPose recovery, `track_objects.py --recovery`). The
+image is encoded once per frame; each object keeps its own mask prompt, memories, and object
+pointers, and HF applies no cross-object constraint. `start` / `step` are the one-object case.
+`validate.py` repeats the pruning check with two objects (IDs 3 and 7): pruned and unpruned
+sessions are bit-identical, IDs are stable, and storage is 1 frame and 30 outputs.
 Replay workers also keep bit-packed host masks (about 38 KB per frame at 640×480) in CPU
 memory for the output video.
 
@@ -205,7 +213,7 @@ The validation writes a synthetic FFV1 video with a known frame-0 mask. In it, a
 target leaves the image for about 80 frames and comes back, and a static distractor is
 present. It checks:
 
-- pruned and unpruned sessions give identical results;
+- pruned and unpruned sessions give identical results, with one object and with two;
 - a mismatched init mask is rejected;
 - `replay --model all`, with and without `--tracking-fps 10`, runs workers sequentially in
   separate processes, gives identical frame indices and the same mask hash for all models,

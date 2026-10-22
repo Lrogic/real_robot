@@ -57,8 +57,16 @@ class RealSenseStream:
         config.enable_stream(rs.stream.depth, s.width, s.height, rs.format.z16, s.fps)
         config.enable_stream(rs.stream.color, s.width, s.height, rs.format.bgr8, s.fps)
         self._pipeline = rs.pipeline()
+        if not config.can_resolve(rs.pipeline_wrapper(self._pipeline)):
+            raise RuntimeError(f"The camera has no {s.width}x{s.height} @ {s.fps} fps profile for both "
+                               f"depth (z16) and color (bgr8); {_available_profiles(s.width, s.height)}")
         profile = self._pipeline.start(config)
         try:
+            for stream in (rs.stream.depth, rs.stream.color):
+                started = profile.get_stream(stream).as_video_stream_profile()
+                if (started.width(), started.height(), started.fps()) != (s.width, s.height, s.fps):
+                    raise RuntimeError(f"Requested {stream} {s.width}x{s.height} @ {s.fps} fps but the camera "
+                                       f"started {started.width()}x{started.height()} @ {started.fps()} fps")
             self._align = rs.align(rs.stream.color)
             self._depth_scale = profile.get_device().first_depth_sensor().get_depth_scale()
             intr = profile.get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
@@ -108,6 +116,20 @@ class RealSenseStream:
                              wait_s=after_wait - started,
                              prepare_s=time.perf_counter() - after_wait)
         return rgb, depth, timing
+
+
+def _available_profiles(width: int, height: int) -> str:
+    fps = {rs.stream.depth: set(), rs.stream.color: set()}
+    for device in rs.context().devices:
+        for sensor in device.sensors:
+            for p in sensor.get_stream_profiles():
+                if p.stream_type() in fps and p.format() in (rs.format.z16, rs.format.bgr8):
+                    video = p.as_video_stream_profile()
+                    if (video.width(), video.height()) == (width, height):
+                        fps[p.stream_type()].add(p.fps())
+    both = sorted(fps[rs.stream.depth] & fps[rs.stream.color])
+    return (f"at {width}x{height} it offers {both} fps for both" if both
+            else f"it offers no {width}x{height} profile for both streams")
 
 
 def capture_frame(settings: CameraSettings) -> Capture:

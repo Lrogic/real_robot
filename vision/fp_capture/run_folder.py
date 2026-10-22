@@ -8,6 +8,7 @@
     <run>/obj1/<mesh_folder>/...   only if a mesh was selected
     <run>/tracking.mp4             written by track_objects.py --save-video
     <run>/pose_variation.txt       written by track_objects.py --log-variation
+    <run>/recovery_log.jsonl       appended by track_objects.py --recovery (one JSON event per line)
 """
 
 import json
@@ -30,8 +31,17 @@ MASK_FILE = "mask.png"
 OVERLAY_FILE = "mask_overlay.png"
 VIDEO_FILE = "tracking.mp4"
 POSE_VARIATION_FILE = "pose_variation.txt"
+RECOVERY_LOG_FILE = "recovery_log.jsonl"
 MESH_SUFFIXES = (".obj", ".stl", ".ply")
 _OBJ_DIR = re.compile(r"obj(\d+)")
+
+
+def sam_object_id(name: str) -> int:
+    """SAM session object ID for a saved object: i for obj{i}, stable however many are tracked."""
+    match = _OBJ_DIR.fullmatch(name)
+    if match is None:
+        raise ValueError(f"{name!r} is not an obj{{i}} folder name")
+    return int(match.group(1))
 
 
 @dataclass(frozen=True)

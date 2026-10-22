@@ -77,9 +77,10 @@ class Prompts:
 
 class SegmentationApp:
     def __init__(self, rgb: np.ndarray, predict: PredictFn, save: SaveFn,
-                 mesh_dirs: Sequence[Path]):
+                 mesh_dirs: Sequence[Path], score_label: str = "Mask score"):
         self.rgb = rgb
         self.predict = predict
+        self.score_label = score_label
         self.save = save
         self.mesh_dirs = list(mesh_dirs)
         self.height, self.width = rgb.shape[:2]
@@ -246,7 +247,7 @@ class SegmentationApp:
         y += 10
         lines = list(help_lines)
         if self.screen == "segment" and self.score is not None:
-            lines.append(f"Mask score: {self.score:.3f}")
+            lines.append(f"{self.score_label}: {self.score:.3f}")
         if self.status:
             lines.append(self.status)
         for line in lines:

@@ -10,6 +10,11 @@ live frame. Objects without a mesh are skipped. Run in the fp_robot env.
     python track_objects.py --save-path foundationpose_runs/run1 --manipulation [--manipulation-dry-run]
     python track_objects.py --save-path foundationpose_runs/run1 --manipulation --reset
     python track_objects.py --save-path foundationpose_runs/run1 --log-variation
+    python track_objects.py --save-path foundationpose_runs/run1 --recovery [--sam-model sam2-small]
+
+--recovery (vision env) also tracks every object with an HF SAM video tracker, started from
+the saved frame and masks, and re-registers an object from its SAM mask after consecutive
+SAM-vs-FP silhouette mismatches; see fp_capture/recovery.py and fp_capture/recovery.yaml.
 
 --manipulation adds the arm follow test (see real_robot/manipulation/session.py for keys);
 it needs real_robot/ on PYTHONPATH, which run.sh sets.
@@ -29,7 +34,9 @@ import numpy as np
 from fp_capture.camera import RealSenseStream
 from fp_capture.cli import camera_settings, parse_pipeline_args, pipeline_parser
 from fp_capture.pose_variation import PoseVariationLog
-from fp_capture.run_folder import POSE_VARIATION_FILE, VIDEO_FILE, load_run
+from fp_capture.recovery import LiveFrame
+from fp_capture.run_folder import (POSE_VARIATION_FILE, RECOVERY_LOG_FILE, RGB_FILE, VIDEO_FILE,
+                                   load_run)
 
 WINDOW = "FoundationPose multi-object (q or Esc to quit)"
 
@@ -107,7 +114,13 @@ def write_video(frames, output_path, elapsed_seconds):
     print(f"Saved {len(frames)} buffered frames to {output_path} at {playback_fps:.2f} fps")
 
 
-def track_live(args, tracker, stream, hooks=None):
+def show_now(vis):
+    """Display an RGB frame immediately (used while recovery blocks the loop)."""
+    cv2.imshow(WINDOW, cv2.cvtColor(vis, cv2.COLOR_RGB2BGR))
+    cv2.waitKey(1)
+
+
+def track_live(args, tracker, stream, hooks=None, recovery=None):
     cv2.namedWindow(WINDOW, cv2.WINDOW_NORMAL)
     if hooks is not None:
         cv2.setMouseCallback(WINDOW, hooks.on_mouse)
@@ -119,17 +132,25 @@ def track_live(args, tracker, stream, hooks=None):
     started_at = time.monotonic()
     last_report_at = started_at
     deadline = started_at + args.num_seconds if args.num_seconds else None
+    if recovery is not None:
+        recovery.start_loop()
     try:
         while deadline is None or time.monotonic() < deadline:
             loop_started = time.perf_counter()
             rgb, depth, timing = stream.read()
+            frame = LiveFrame(rgb, depth, stream.K, timing.frame_number,
+                              timing.camera_timestamp_ms, time.monotonic())
             fp_per_object = tracker.track(rgb, depth, stream.K, args.track_refine_iter)
             if pose_log is not None:
                 pose_log.record(time.monotonic() - started_at, tracker)
+            if recovery is not None:
+                recovery.after_fp(frame, show_now)
             vis = tracker.draw(rgb, stream.K)
             if hooks is not None:
                 hooks.update(tracker, stream.K, timing)
                 vis = hooks.draw(vis)
+            if recovery is not None:
+                vis = recovery.draw(vis, frame)
             display_frame = cv2.cvtColor(vis, cv2.COLOR_RGB2BGR)
             cv2.imshow(WINDOW, display_frame)
             if video_frames is not None:
@@ -149,6 +170,8 @@ def track_live(args, tracker, stream, hooks=None):
             now = time.monotonic()
             if now - last_report_at >= args.stats_every:
                 print_stats("recent", window_samples, now - last_report_at, args.fps)
+                if recovery is not None:
+                    recovery.report(now - last_report_at)
                 window_samples.clear()
                 last_report_at = now
             quit_requested = hooks.on_key(key) if hooks is not None else key in (ord("q"), 27)
@@ -160,6 +183,8 @@ def track_live(args, tracker, stream, hooks=None):
         elapsed_seconds = time.monotonic() - started_at
         cv2.destroyAllWindows()
         print_stats("overall", all_samples, elapsed_seconds, args.fps)
+        if recovery is not None:
+            recovery.summary([s["fp_s"] for s in all_samples], elapsed_seconds)
         if video_frames is not None:
             write_video(video_frames, args.save_path / VIDEO_FILE, elapsed_seconds)
         if pose_log is not None:
@@ -190,16 +215,30 @@ def main():
                                      batched=args.fp_mode == "batched",
                                      batched_render=args.fp_mode == "batched-render")
         print(f"FoundationPose tracking mode: {args.fp_mode}")
+        registered_at = time.perf_counter()
         tracker.register(objects, run.capture.rgb, run.capture.depth, run.capture.K,
                          args.est_refine_iter)
-        with RealSenseStream(camera_settings(args)) as stream:
-            check_live_camera(run.capture.K, run.capture.depth.shape, run.capture.undistorted, stream)
-            if args.manipulation:
-                from manipulation.session import manipulation_session
-                with manipulation_session(args) as session:
-                    track_live(args, tracker, stream, hooks=session)
-            else:
-                track_live(args, tracker, stream)
+        fp_register_s = time.perf_counter() - registered_at
+        recovery = None
+        if args.recovery:
+            from fp_capture.cli import resolved_recovery_settings
+            from fp_capture.recovery import SamRecovery
+            recovery = SamRecovery(args.recovery_cfg, tracker, objects, args.est_refine_iter,
+                                   args.save_path / RECOVERY_LOG_FILE, resolved_recovery_settings(args))
+            recovery.init_timing["fp_initial_registration_s"] = fp_register_s
+            recovery.initialize(run.capture.rgb, objects, f"saved frame {args.save_path / RGB_FILE}")
+        try:
+            with RealSenseStream(camera_settings(args)) as stream:
+                check_live_camera(run.capture.K, run.capture.depth.shape, run.capture.undistorted, stream)
+                if args.manipulation:
+                    from manipulation.session import manipulation_session
+                    with manipulation_session(args) as session:
+                        track_live(args, tracker, stream, hooks=session, recovery=recovery)
+                else:
+                    track_live(args, tracker, stream, recovery=recovery)
+        finally:
+            if recovery is not None:
+                recovery.close()
     return 0
 
 

@@ -35,6 +35,10 @@ def _import_foundationpose(fp_dir: Path):
     return estimater, dr, Utils
 
 
+class RegistrationError(RuntimeError):
+    pass
+
+
 @dataclass
 class TrackedObject:
     name: str
@@ -83,6 +87,46 @@ class MultiObjectTracker:
             pose = tracked.estimator.register(K=K, rgb=rgb, depth=depth,
                                               ob_mask=saved.mask, iteration=iterations)
             tracked.center_pose = pose @ np.linalg.inv(tracked.to_origin)
+
+    def register_one(self, index: int, rgb, depth, K, mask: np.ndarray, iterations: int) -> None:
+        """Re-register object `index` from a bool mask on this RGB-D frame; others are untouched.
+
+        Raises RegistrationError (state unchanged) if FoundationPose could not register.
+        """
+        tracked = self.objects[index]
+        estimator = tracked.estimator
+        previous = (estimator.pose_last, tracked.center_pose)
+        try:
+            pose = estimator.register(K=K, rgb=rgb, depth=depth, ob_mask=mask, iteration=iterations)
+        except Exception as error:
+            estimator.pose_last, tracked.center_pose = previous
+            raise RegistrationError(f"{tracked.name}: FoundationPose register failed: {error!r}") from error
+        # With fewer than 4 valid depth pixels left after filtering, register returns a
+        # translation-only guess and leaves pose_last alone; that is not a registration.
+        if estimator.pose_last is previous[0]:
+            raise RegistrationError(f"{tracked.name}: too little filtered depth inside the mask")
+        tracked.center_pose = pose @ np.linalg.inv(tracked.to_origin)
+
+    def render_silhouettes(self, indices: Sequence[int], K, height: int, width: int) -> np.ndarray:
+        """(len(indices), H, W) bool mesh silhouettes at each object's current tracked pose.
+
+        Renders FoundationPose's centred mesh at pose_last (its pose of that centred mesh),
+        the same pair its refiner renders; center_pose is the oriented-bounds frame and does
+        not belong to either mesh. Pinhole projection with K, like FoundationPose itself.
+        """
+        import torch
+
+        if not indices:
+            return np.zeros((0, height, width), dtype=bool)
+        silhouettes = []
+        with torch.no_grad():
+            for index in indices:
+                estimator = self.objects[index].estimator
+                _, depth, _ = self._utils.nvdiffrast_render(
+                    K=K, H=height, W=width, ob_in_cams=estimator.pose_last.reshape(1, 4, 4).float(),
+                    glctx=estimator.glctx, mesh_tensors=estimator.mesh_tensors)
+                silhouettes.append(depth[0] > 0)
+            return torch.stack(silhouettes).cpu().numpy()
 
     def track(self, rgb, depth, K, iterations: int) -> Dict[str, float]:
         """Update every object's pose on one frame; return FP seconds per object."""

@@ -29,6 +29,15 @@ MODELS = {
     "sam2-base": ModelSpec("sam2-base", "facebook/sam2.1-hiera-base-plus", "SAM 2.1 Hiera Base+", "sam2"),
     "sam3": ModelSpec("sam3", "facebook/sam3", "SAM 3 tracker", "sam3"),
 }
+# Alternative names accepted by load_model (the FoundationPose recovery config uses these).
+MODEL_ALIASES = {"sam2-base-plus": "sam2-base"}
+
+
+def resolve_model_key(key: str) -> str:
+    key = MODEL_ALIASES.get(key, key)
+    if key not in MODELS:
+        raise ValueError(f"Unknown model {key!r}; expected one of {sorted([*MODELS, *MODEL_ALIASES])}")
+    return key
 
 
 @dataclass
@@ -56,20 +65,19 @@ class LoadedModel:
         }
 
 
-def cached_revision(repo_id: str) -> str:
+def cached_revision(repo_id: str, cache_dir: Path = HF_CACHE) -> str:
     """Commit hash that refs/main points to in the local HF cache."""
-    ref = HF_CACHE / f"models--{repo_id.replace('/', '--')}" / "refs" / "main"
+    ref = cache_dir / f"models--{repo_id.replace('/', '--')}" / "refs" / "main"
     if not ref.is_file():
-        raise FileNotFoundError(f"{repo_id} is not in the HF cache {HF_CACHE} (missing {ref})")
+        raise FileNotFoundError(f"{repo_id} is not in the HF cache {cache_dir} (missing {ref})")
     return ref.read_text().strip()
 
 
-def load_model(key: str, device: str = "cuda") -> LoadedModel:
+def load_model(key: str, device: str = "cuda", cache_dir: Path = HF_CACHE) -> LoadedModel:
     from transformers import (Sam2VideoModel, Sam2VideoProcessor,
                               Sam3TrackerVideoModel, Sam3TrackerVideoProcessor)
 
-    if key not in MODELS:
-        raise ValueError(f"Unknown model {key!r}; expected one of {sorted(MODELS)}")
+    key = resolve_model_key(key)
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is required")
     if not torch.cuda.is_bf16_supported():
@@ -79,9 +87,9 @@ def load_model(key: str, device: str = "cuda") -> LoadedModel:
         "sam2": (Sam2VideoModel, Sam2VideoProcessor),
         "sam3": (Sam3TrackerVideoModel, Sam3TrackerVideoProcessor),
     }[spec.family]
-    revision = cached_revision(spec.repo_id)
+    revision = cached_revision(spec.repo_id, cache_dir)
     started = time.perf_counter()
-    common = dict(cache_dir=HF_CACHE, revision=revision, local_files_only=True)
+    common = dict(cache_dir=cache_dir, revision=revision, local_files_only=True)
     model = model_cls.from_pretrained(spec.repo_id, dtype=WEIGHT_DTYPE, **common)
     model = model.to(device).eval()
     processor = processor_cls.from_pretrained(spec.repo_id, **common)

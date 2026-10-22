@@ -43,9 +43,18 @@ def target_center(i: int):
     return int(x), int(240 + 60 * np.sin(i / 25))
 
 
+DISTRACTOR = ((60, 340), (160, 440))
+
+
+def distractor_mask() -> np.ndarray:
+    mask = np.zeros((H, W), np.uint8)
+    cv2.rectangle(mask, *DISTRACTOR, 1, -1)
+    return mask > 0
+
+
 def synthetic_frame(i: int, background: np.ndarray):
     frame = background.copy()
-    cv2.rectangle(frame, (60, 340), (160, 440), (40, 80, 220), -1)        # static distractor
+    cv2.rectangle(frame, *DISTRACTOR, (40, 80, 220), -1)                  # static distractor
     mask = np.zeros((H, W), np.uint8)
     cv2.circle(mask, target_center(i), RADIUS, 1, -1)
     stripes = np.zeros_like(frame)
@@ -105,9 +114,51 @@ def check_pruning(video: Path, mask: np.ndarray, frames: int) -> dict:
             "pruned_final_storage": p[2][-1],
         }
         print(f"[pruning] {key}: {results[key]}", flush=True)
+        results[f"{key}_multi_object"] = check_pruning_multi(loaded, video, mask, frames, a[0])
+        print(f"[pruning] {key} multi-object: {results[f'{key}_multi_object']}", flush=True)
         del loaded
         torch.cuda.empty_cache()
     return results
+
+
+def check_pruning_multi(loaded, video: Path, target_mask: np.ndarray, frames: int,
+                        single_target_masks: np.ndarray) -> dict:
+    """Two objects (moving target id 3, static distractor id 7) in one shared session."""
+    from .tracker import HfVideoTracker
+
+    init = {3: target_mask, 7: distractor_mask()}
+    runs = {}
+    for name, prune in (("unpruned_a", False), ("unpruned_b", False), ("pruned", True)):
+        tracker = HfVideoTracker(loaded.spec.key, prune=prune, loaded=loaded)
+        masks, logits, stored, ids = [], [], [], set()
+        for idx, rgb in iter_frames(video):
+            if idx >= frames:
+                break
+            result = tracker.start_objects(rgb, init) if idx == 0 else tracker.step_objects(rgb)
+            ids.add(result.obj_ids)
+            masks.append(result.masks)
+            logits.append(result.presence_logits)
+            stored.append(tracker.storage_counts())
+        tracker.close()
+        runs[name] = (np.stack(masks), np.stack(logits), stored, ids)
+    a, b, p = runs["unpruned_a"], runs["unpruned_b"], runs["pruned"]
+    target = a[0][:, 0]
+    union = np.logical_or(target, single_target_masks).sum(axis=(1, 2))
+    inter = np.logical_and(target, single_target_masks).sum(axis=(1, 2))
+    iou_vs_single = np.where(union > 0, inter / np.maximum(union, 1), 1.0)
+    return {
+        "frames": frames,
+        "object_ids_stable": a[3] == p[3] == {(3, 7)},
+        "unpruned_runs_identical": bool(np.array_equal(a[0], b[0]) and np.array_equal(a[1], b[1])),
+        "pruned_masks_identical": bool(np.array_equal(a[0], p[0])),
+        "pruned_logits_identical": bool(np.array_equal(a[1], p[1])),
+        "max_abs_logit_diff": float(np.abs(a[1] - p[1]).max()),
+        "unpruned_final_storage": a[2][-1],
+        "pruned_final_storage": p[2][-1],
+        # Informational: the shared session batches memory encoding, so the target's masks need
+        # not be bit-identical to its one-object session, only close.
+        "target_min_iou_vs_single_object_session": float(iou_vs_single.min()),
+    }
 
 
 def check_mismatch(tmp: Path, good_video: Path) -> dict:
