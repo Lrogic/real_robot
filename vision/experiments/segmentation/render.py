@@ -4,9 +4,7 @@ from typing import List, Optional
 
 import numpy as np
 
-from fp_capture.drawing import overlay_mask
-
-from .prompt_ui import draw_text_strip
+from pipeline.drawing import draw_text_strip, overlay_mask
 
 HEADER_LINES = 2
 

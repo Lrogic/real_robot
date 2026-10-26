@@ -18,12 +18,12 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from fp_capture.camera import CameraSettings, RealSenseStream
+from pipeline.camera import CameraSettings, RealSenseStream
+from pipeline.drawing import draw_text_strip
+from pipeline.segmentation.sam_model_specs import MODELS
 
 from .init_mask import create_init_mask
-from .metrics import write_json
-from .models import MODELS
-from .prompt_ui import draw_text_strip
+from .run_log import write_json
 from .video_io import SOURCE_FOURCC, array_sha256, iter_frames, open_writer
 
 RECORDINGS_DIR = Path(__file__).resolve().parent / "recordings"

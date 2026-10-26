@@ -20,12 +20,13 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from pipeline.segmentation.sam_model_specs import MODELS
+
 from .init_mask import InitMaskError, create_init_mask, load_init_mask, mask_paths
-from .metrics import MEMORY_DEFINITION, TIMING_DEFINITION, write_json
-from .models import MODELS
 from .render import annotate, side_by_side
+from .replay_worker import PREDICTIONS_FILE, SUMMARY_FILE, worker_entry
+from .run_log import MEMORY_DEFINITION, TIMING_DEFINITION, write_json
 from .video_io import ANNOTATED_FOURCC, FrameSelector, iter_frames, open_writer, video_info
-from .worker import PREDICTIONS_FILE, SUMMARY_FILE, worker_entry
 
 RUNS_DIR = Path(__file__).resolve().parent / "runs"
 PLAYBACK_POLICIES = {

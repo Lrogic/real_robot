@@ -16,13 +16,13 @@ VISION_DIR = Path(__file__).resolve().parents[1]
 if str(VISION_DIR) not in sys.path:
     sys.path.insert(0, str(VISION_DIR))
 
-from experiments.segmentation.tracker import MultiTrackResult  # noqa: E402
-from fp_capture.cli import DEFAULT_SAM3_CHECKPOINT, parse_pipeline_args, pipeline_parser  # noqa: E402
-from fp_capture.recovery import LiveFrame, SamRecovery  # noqa: E402
-from fp_capture.recovery_config import load_recovery_config  # noqa: E402
-from fp_capture.recovery_state import ObjectRecoveryState, RateSchedule, Verdict, mask_iou  # noqa: E402
-from fp_capture.run_folder import SavedObject, sam_object_id  # noqa: E402
-from fp_capture.tracking import RegistrationError  # noqa: E402
+from pipeline.foundationpose.multi_object_fp_tracker import RegistrationError  # noqa: E402
+from pipeline.pipeline_args import parse_pipeline_args, pipeline_parser  # noqa: E402
+from pipeline.recovery.recovery_config import load_recovery_config  # noqa: E402
+from pipeline.recovery.recovery_state import ObjectRecoveryState, RateSchedule, Verdict, mask_iou  # noqa: E402
+from pipeline.recovery.sam_recovery import LiveFrame, SamRecovery  # noqa: E402
+from pipeline.run_folder import SavedObject, sam_object_id  # noqa: E402
+from pipeline.segmentation.sam_video_tracker import MultiTrackResult  # noqa: E402
 
 H, W = 48, 64
 
@@ -53,10 +53,10 @@ class CliTest(unittest.TestCase):
         args = parse()
         self.assertEqual((args.width, args.height, args.fps), (640, 480, 30))
         self.assertFalse(args.undistort)
-        self.assertEqual(args.checkpoint, DEFAULT_SAM3_CHECKPOINT)
         self.assertEqual(args.fp_mode, "sequential")
         self.assertEqual((args.est_refine_iter, args.track_refine_iter), (5, 2))
         self.assertIsNone(args.recovery_cfg)
+        self.assertIsNone(args.manipulation)
 
     def test_recovery_defaults(self):
         args = parse("--recovery")
@@ -93,9 +93,17 @@ class CliTest(unittest.TestCase):
                       ["--failure-limit", "2"], ["--recovery-config", "x.yaml"]):
             self.assertIn("requires --recovery", parse_error(*flags))
 
-    def test_setup_checkpoint_not_hf_model(self):
-        self.assertIn("--checkpoint", parse_error("--recovery", "--checkpoint", "/tmp/sam3.pt"))
-        self.assertEqual(parse("--checkpoint", "/tmp/sam3.pt").checkpoint, Path("/tmp/sam3.pt"))
+    def test_sam_model_aliases(self):
+        self.assertEqual(parse("--recovery", "--sam-model", "sam2-base").recovery_cfg.sam_model, "sam2-base")
+        self.assertIn("unrecognized arguments", parse_error("--checkpoint", "/tmp/sam3.pt"))
+
+    def test_manipulation_mode(self):
+        args = parse("--manipulation", "basic", "--manipulation-dry-run")
+        self.assertEqual(args.manipulation, "basic")
+        self.assertTrue(args.manipulation_dry_run)
+        self.assertIn("invalid choice", parse_error("--manipulation", "policy"))
+        self.assertIn("argument --manipulation", parse_error("--manipulation"))
+        self.assertIn("requires --manipulation", parse_error("--manipulation-dry-run"))
 
     def test_invalid_values(self):
         self.assertIn("exceed camera fps", parse_error("--recovery", "--fps", "30", "--sam-fps", "31"))
@@ -106,8 +114,9 @@ class CliTest(unittest.TestCase):
     def test_shared_forwarded_arguments(self):
         # run.sh forwards one flat list (setup, tracking, manipulation flags) to every stage.
         args = parse("--recovery", "--meshes-dir", "/tmp", "--num-seconds", "10", "--save-video",
-                     "--fp-mode", "batched", "--reset", "--manipulation", "--manipulation-dry-run")
-        self.assertTrue(args.recovery and args.reset and args.manipulation)
+                     "--fp-mode", "batched", "--reset", "--manipulation", "basic", "--manipulation-dry-run")
+        self.assertTrue(args.recovery and args.reset)
+        self.assertEqual(args.manipulation, "basic")
         self.assertEqual(args.fp_mode, "batched")
 
     def test_bundled_config_loads(self):
@@ -268,7 +277,7 @@ class RecoveryLoopTest(unittest.TestCase):
     """SamRecovery.after_fp with fake FP/SAM trackers and a controlled monotonic clock."""
 
     def make(self, script, names=("obj1", "obj3"), limit=3, sam_fps=2.0):
-        from fp_capture import recovery as recovery_module
+        from pipeline.recovery import sam_recovery as recovery_module
 
         self.clock = Clock()
         self._real_monotonic = recovery_module.time.monotonic

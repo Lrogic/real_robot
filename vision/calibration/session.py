@@ -8,12 +8,24 @@
 import json
 import shutil
 from pathlib import Path
+from typing import Optional
 
 import cv2
 import numpy as np
 
 SAMPLES = "samples"
 REJECTED = "rejected"
+CALIBRATION_SESSIONS = Path(__file__).resolve().parent / "data" / "sessions"
+
+
+def find_calibration(path: Optional[Path]) -> Path:
+    """path if given, else the newest session's T_base_camera.json."""
+    if path is not None:
+        return path
+    found = sorted(CALIBRATION_SESSIONS.glob("*/T_base_camera.json"))
+    if not found:
+        raise FileNotFoundError(f"No T_base_camera.json under {CALIBRATION_SESSIONS}; pass --calibration")
+    return found[-1]
 
 
 def write_json(path, data):

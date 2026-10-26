@@ -16,10 +16,10 @@ from typing import Optional, Tuple
 import cv2
 import numpy as np
 
-from fp_capture.drawing import overlay_mask
-from fp_capture.run_folder import format_foundationpose_mask
+from pipeline.drawing import overlay_mask
+from pipeline.run_folder import format_foundationpose_mask
 
-from .prompt_ui import InitMaskUI
+from .init_mask_ui import InitMaskUI
 from .video_io import array_sha256, file_sha256, first_frame, video_info
 
 FORMAT_VERSION = 1
@@ -113,7 +113,7 @@ def load_init_mask(video: Path) -> Tuple[np.ndarray, dict]:
 
 def create_init_mask(video: Path, mask_model_key: str) -> bool:
     """Interactive: prompt on the first decoded frame with mask_model_key; save on confirm."""
-    from .tracker import HfVideoTracker
+    from pipeline.segmentation.sam_video_tracker import HfVideoTracker
 
     first = first_frame(video)
     tracker = HfVideoTracker(mask_model_key)

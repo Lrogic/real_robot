@@ -1,1 +1,1 @@
-"""Move the manipulator to objects tracked by FoundationPose (track_objects.py --manipulation)."""
+"""Manipulator control driven by the vision loop (track_stage.py --manipulation MODE)."""

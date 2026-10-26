@@ -21,8 +21,9 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from pipeline.segmentation.sam_model_specs import MODELS
+
 from .init_mask import InitMaskError, load_init_mask, mask_paths, save_init_mask
-from .models import MODELS
 from .video_io import SOURCE_FOURCC, first_frame, iter_frames, open_writer
 
 RUNS_DIR = Path(__file__).resolve().parent / "runs"
@@ -81,8 +82,8 @@ def write_video(path: Path, frames: int, seed: int = 0) -> np.ndarray:
 
 def check_pruning(video: Path, mask: np.ndarray, frames: int) -> dict:
     import torch
-    from .models import load_model
-    from .tracker import HfVideoTracker
+    from pipeline.segmentation.sam_model_loader import load_model
+    from pipeline.segmentation.sam_video_tracker import HfVideoTracker
 
     results = {}
     for key in MODELS:
@@ -124,7 +125,7 @@ def check_pruning(video: Path, mask: np.ndarray, frames: int) -> dict:
 def check_pruning_multi(loaded, video: Path, target_mask: np.ndarray, frames: int,
                         single_target_masks: np.ndarray) -> dict:
     """Two objects (moving target id 3, static distractor id 7) in one shared session."""
-    from .tracker import HfVideoTracker
+    from pipeline.segmentation.sam_video_tracker import HfVideoTracker
 
     init = {3: target_mask, 7: distractor_mask()}
     runs = {}

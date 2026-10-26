@@ -18,9 +18,13 @@ CUDA bfloat16 autocast, `torch.inference_mode()`, and float32 session frames.
 ## Environment
 
 ```bash
-conda activate sam-video-hf
+conda activate vision
 cd /home/luka/research/real_robot/vision     # all commands below run from here
 ```
+
+The tracker (`HfVideoTracker`), model loading, and memory sampling are shared with the main
+vision loop and live in `pipeline/segmentation/` (`sam_video_tracker.py`, `sam_model_loader.py`,
+`sam_model_specs.py`, `memory_usage.py`); this folder holds the comparison tools around them.
 
 ## Live tracking
 
@@ -40,7 +44,7 @@ python -m experiments.segmentation.live --model sam3 --tracking-fps 5 --view cam
    the model name, and the presence score. `q` or Esc quits; `--num-seconds` stops automatically.
 
 RGB is used as delivered by the camera, without undistortion, just like the recording
-helper. The camera runs through `fp_capture.camera.RealSenseStream` (color plus aligned depth;
+helper. The camera runs through `pipeline.camera.RealSenseStream` (color plus aligned depth;
 depth is unused) on a background thread that keeps only the newest frame.
 
 ## Recording a video and creating its init mask
@@ -186,7 +190,7 @@ and logits. Storage counts are logged per request: steady state is 1 frame and 1
 per object.
 
 **Several objects.** `HfVideoTracker.start_objects` / `step_objects` track several caller-chosen
-object IDs in one session (used by FoundationPose recovery, `track_objects.py --recovery`). The
+object IDs in one session (used by FoundationPose recovery, `track_stage.py --recovery`). The
 image is encoded once per frame; each object keeps its own mask prompt, memories, and object
 pointers, and HF applies no cross-object constraint. `start` / `step` are the one-object case.
 `validate.py` repeats the pruning check with two objects (IDs 3 and 7): pruned and unpruned

@@ -15,17 +15,18 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from fp_capture.camera import CameraSettings, RealSenseStream
-from fp_capture.drawing import overlay_mask
-from fp_capture.run_folder import format_foundationpose_mask
+from pipeline.camera import CameraSettings, RealSenseStream
+from pipeline.drawing import draw_text_strip, overlay_mask
+from pipeline.run_folder import format_foundationpose_mask
+from pipeline.segmentation.memory_usage import reset_peak_memory
+from pipeline.segmentation.sam_model_specs import MODELS
+from pipeline.segmentation.sam_video_tracker import HfVideoTracker
 
-from .camera_thread import LatestFrameReader
-from .metrics import (MEMORY_DEFINITION, TIMING_DEFINITION, RunLog, reset_peak_memory,
-                      software_versions, write_json)
-from .models import MODELS
-from .prompt_ui import InitMaskUI, draw_text_strip
+from .init_mask_ui import InitMaskUI
+from .latest_frame_reader import LatestFrameReader
 from .render import annotate
-from .tracker import HfVideoTracker
+from .run_log import (MEMORY_DEFINITION, TIMING_DEFINITION, RunLog,
+                      software_versions, write_json)
 
 RUNS_DIR = Path(__file__).resolve().parent / "runs"
 WINDOW = "HF SAM live tracking"
@@ -102,7 +103,7 @@ def main() -> int:
     meta = {"mode": "live", "model_info": tracker.loaded.describe(),
             "camera": {"width": args.width, "height": args.height, "fps": args.camera_fps,
                        "settle_frames": args.settle_frames, "undistort": False,
-                       "stream": "fp_capture RealSenseStream (color + aligned depth; depth unused)"},
+                       "stream": "pipeline RealSenseStream (color + aligned depth; depth unused)"},
             "tracking_fps": args.tracking_fps,
             "view": args.view,
             "frame_policy": "each request takes the newest camera frame not yet processed, at most "
