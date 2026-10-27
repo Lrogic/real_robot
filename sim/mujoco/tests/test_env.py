@@ -118,9 +118,10 @@ def test_observation_layout(ee_env):
     actor[:, 34:37], torch.tensor([0.0, 0.0, 0.03], device=DEVICE).expand(NUM_ENVS, 3),
     atol=1e-4, rtol=0,
   )
-  # Closure at the ready pose (carriages at 0.026 of 0.044); nothing grasped.
+  # Closure at the ready pose (carriages at 0.026); nothing grasped.
+  open_pos = get_embodiment("menagerie_wxai").gripper_open
   torch.testing.assert_close(
-    actor[:, 23], torch.full((NUM_ENVS,), 1 - 0.026 / 0.044, device=DEVICE), atol=1e-3, rtol=0
+    actor[:, 23], torch.full((NUM_ENVS,), 1 - 0.026 / open_pos, device=DEVICE), atol=1e-3, rtol=0
   )
   torch.testing.assert_close(obs["critic"][:, :37], actor)
   assert (obs["critic"][:, 37] == 0).all()
@@ -498,11 +499,12 @@ def test_delta_gripper_action(tmp_path_factory, action_space):
     torch.testing.assert_close(gripper._target, q0 - 0.005, atol=1e-6, rtol=0)
     # Target follows the measured position, and is clamped to the open limit.
     action[:, 6] = 5.0
+    open_pos = gripper.cfg.open_pos
     for _ in range(8):
       q = carriage()
       env.step(action)
-      torch.testing.assert_close(gripper._target, (q + 0.01).clamp(max=0.044), atol=1e-6, rtol=0)
-    assert (gripper._target == 0.044).all()
+      torch.testing.assert_close(gripper._target, (q + 0.01).clamp(max=open_pos), atol=1e-6, rtol=0)
+    assert (gripper._target == open_pos).all()
     assert (carriage() > 0.035).all()
   finally:
     env.close()

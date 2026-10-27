@@ -12,7 +12,7 @@ import argparse
 import math
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 import mujoco
@@ -180,6 +180,25 @@ def _install_stats_viewers() -> None:
   play_mod.ViserPlayViewer = _StatsViserViewer
 
 
+def _disable_obs_normalization() -> None:
+  """Make play build the policy without observation normalizers.
+
+  Needed for checkpoints trained with ``--agent.actor.obs-normalization False``
+  (and the matching critic flag), whose state_dict has no ``obs_normalizer`` keys.
+  """
+  orig_load_rl_cfg = play_mod.load_rl_cfg
+
+  def _load_rl_cfg_no_obsnorm(task_id: str):
+    cfg = orig_load_rl_cfg(task_id)
+    return replace(
+      cfg,
+      actor=replace(cfg.actor, obs_normalization=False),
+      critic=replace(cfg.critic, obs_normalization=False),
+    )
+
+  play_mod.load_rl_cfg = _load_rl_cfg_no_obsnorm
+
+
 def main() -> None:
   global _LOGGER, _VISUAL_SPACING
 
@@ -208,6 +227,11 @@ def main() -> None:
     help="native viewer only: metres between envs drawn around the selected one "
     "(does not change the simulation; default: 1.5)",
   )
+  parser.add_argument(
+    "--no-obs-normalization",
+    action="store_true",
+    help="load a checkpoint trained with observation normalization disabled",
+  )
   ours, rest = parser.parse_known_args()
   if "-h" in rest or "--help" in rest:
     parser.print_help()
@@ -223,6 +247,8 @@ def main() -> None:
     env_index=ours.log_env,
   )
   _install_stats_viewers()
+  if ours.no_obs_normalization:
+    _disable_obs_normalization()
 
   task_id = register_play_task(ours.scene, ours.task, ours.action_space)
   args = tyro.cli(PlayConfig, args=rest, prog=sys.argv[0], config=mjlab.TYRO_FLAGS)

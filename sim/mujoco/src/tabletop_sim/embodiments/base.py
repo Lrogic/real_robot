@@ -83,7 +83,9 @@ class EmbodimentCfg:
   """(left, right) bodies that move with each finger and whose collidable geoms
   are that finger's object contact surfaces (explicit friction pairs). Empty
   means the finger's ``finger_bodies`` entry alone."""
-  gripper_open: float = 0.044
+  gripper_open: float = 0.040
+  """Open carriage position in metres. The real gripper's ``position_max``; both
+  carriages there give the measured 80 mm inside-tip gap."""
   gripper_closed: float = 0.0
   strip_bodies: tuple[str, ...] = ()
   gravity_compensation: bool = True
