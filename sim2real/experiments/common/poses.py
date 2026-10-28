@@ -46,7 +46,8 @@ def rotation_angle_deg(rotation) -> float:
 
 
 def quaternion_wxyz(rotation) -> np.ndarray:
-    """Unit quaternion, wxyz, with non-negative w. Matches the training EE pose."""
+    """Unit quaternion, wxyz, with non-negative w: the sign rule of every training
+    pose observation (``task_state.root_relative_pose``)."""
     R = np.asarray(rotation, dtype=np.float64).reshape(3, 3)
     trace = float(np.trace(R))
     if trace > 0.0:

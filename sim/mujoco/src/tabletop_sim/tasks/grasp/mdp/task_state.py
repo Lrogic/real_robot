@@ -19,6 +19,7 @@ from mjlab.managers.scene_entity_config import SceneEntityCfg
 from mjlab.utils.lab_api.math import (
   quat_apply,
   quat_apply_inverse,
+  quat_unique,
   subtract_frame_transforms,
 )
 from tabletop_sim.tasks.grasp.mdp.commands import GraspGoalCommand
@@ -80,10 +81,12 @@ def object_pose_w(
 def root_relative_pose(
   env: ManagerBasedRlEnv, robot_name: str, pos_w: torch.Tensor, quat_w: torch.Tensor
 ) -> torch.Tensor:
-  """World pose -> [x, y, z, qw, qx, qy, qz] in the robot root frame."""
+  """World pose -> [x, y, z, qw, qx, qy, qz] in the robot root frame, with
+  qw >= 0. q and -q are the same rotation; the policy sees the four numbers, so
+  observations built outside the simulator must apply the same sign rule."""
   root = env.scene[robot_name].data.root_link_pose_w
   pos_b, quat_b = subtract_frame_transforms(root[:, :3], root[:, 3:7], pos_w, quat_w)
-  return torch.cat((pos_b, quat_b), dim=-1)
+  return torch.cat((pos_b, quat_unique(quat_b)), dim=-1)
 
 
 def root_relative_vec(env: ManagerBasedRlEnv, robot_name: str, vec_w: torch.Tensor) -> torch.Tensor:
