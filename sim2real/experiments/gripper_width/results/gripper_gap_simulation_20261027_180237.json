@@ -52,12 +52,13 @@
         }
       }
     },
+    "hardware_results": "/home/luka/research/real_robot/sim2real/experiments/gripper_width/results/gripper_gap_hardware_20261027_122748.json",
     "commands_m": {
       "fully_closed": 0.0,
-      "half_open": 0.0225,
-      "fully_open": 0.045
+      "half_open": 0.019999999552965164,
+      "fully_open": 0.03999999910593033
     },
-    "command_definition": "fully_open is the minimum of the actuated carriage joint upper limit and the gripper position-actuator ctrlrange upper limit. fully_closed is the embodiment closed position. half_open is their midpoint. These metres are the simulated carriage coordinate, not the hardware driver coordinate.",
+    "command_definition": "Each carriage command is the gripper position commanded on the real robot: driver position_max, its midpoint, and position_min. The value is sent to the simulated gripper position actuator; the other carriage follows by equality.",
     "sim_dt_s": 0.002,
     "integrator": "euler",
     "impratio": 10.0,
@@ -110,69 +111,69 @@
   "samples": [
     {
       "setting": "fully_open",
-      "commanded_gripper_position": 0.045,
+      "commanded_gripper_position": 0.03999999910593033,
       "actual_gripper_position": null,
-      "actual_left_carriage_position": 0.04486510084232721,
-      "actual_right_carriage_position": 0.0448662240106494,
-      "inside_tip_gap_mm": 89.83844956915887,
-      "inside_tip_gap_minus_carriage_sum_mm": 0.1071247161822555,
+      "actual_left_carriage_position": 0.0402279140871033,
+      "actual_right_carriage_position": 0.040226222900932904,
+      "inside_tip_gap_mm": 80.56146126054776,
+      "inside_tip_gap_minus_carriage_sum_mm": 0.10732427251156196,
       "left_inside_tip_world_m": [
-        0.21342447416032048,
-        0.04491870240666633,
-        0.08560157801012898
+        0.21342446905344226,
+        0.04028158544711739,
+        0.0856015696022148
       ],
       "right_inside_tip_world_m": [
-        0.2134244820860685,
-        -0.0449197471624904,
-        0.0856015601140578
+        0.21342448647528284,
+        -0.04027987581342847,
+        0.08560156806265753
       ],
       "inside_tip_gap_source": "simulated_visual_mesh_inside_fingertips",
       "settled": true,
-      "timestamp": "2026-10-27T12:36:49.101583-07:00"
+      "timestamp": "2026-10-27T18:02:37.245989-07:00"
     },
     {
       "setting": "half_open",
-      "commanded_gripper_position": 0.0225,
+      "commanded_gripper_position": 0.019999999552965164,
       "actual_gripper_position": null,
-      "actual_left_carriage_position": 0.022791374527552304,
-      "actual_right_carriage_position": 0.022789301590484583,
-      "inside_tip_gap_mm": 45.68803264009294,
-      "inside_tip_gap_minus_carriage_sum_mm": 0.10735652205605817,
+      "actual_left_carriage_position": 0.020281330100337835,
+      "actual_right_carriage_position": 0.020279651686847797,
+      "inside_tip_gap_mm": 40.66832517715365,
+      "inside_tip_gap_minus_carriage_sum_mm": 0.1073433899680154,
       "left_inside_tip_world_m": [
-        0.21342447514104915,
-        0.022845070847102966,
-        0.08560157024516357
+        0.213424491299494,
+        0.020335042640393246,
+        0.08560157273722051
       ],
       "right_inside_tip_world_m": [
-        0.2134244800821666,
-        -0.022842961792989624,
-        0.08560156753902086
+        0.21342446370487572,
+        -0.02033328253675027,
+        0.08560156484604102
       ],
       "inside_tip_gap_source": "simulated_visual_mesh_inside_fingertips",
       "settled": true,
-      "timestamp": "2026-10-27T12:36:49.109331-07:00"
+      "timestamp": "2026-10-27T18:02:37.253259-07:00"
     },
     {
       "setting": "fully_closed",
       "commanded_gripper_position": 0.0,
       "actual_gripper_position": null,
-      "actual_left_carriage_position": 0.00032050490620152175,
-      "actual_right_carriage_position": 0.00027819087354924546,
-      "inside_tip_gap_mm": 0.7058943598215854,
-      "inside_tip_gap_minus_carriage_sum_mm": 0.10719858007081817,
+      "actual_left_carriage_position": 0.00032070509168365477,
+      "actual_right_carriage_position": 0.0002779789143496632,
+      "inside_tip_gap_mm": 0.7058825251480628,
+      "inside_tip_gap_minus_carriage_sum_mm": 0.10719851911474487,
       "left_inside_tip_world_m": [
-        0.213424478027313,
-        0.00037400503446654784,
-        0.08560156875187222
+        0.2134244778496531,
+        0.00037422775198172817,
+        0.08560156866549755
       ],
       "right_inside_tip_world_m": [
-        0.2134244780137498,
-        -0.00033188932535484217,
-        0.08560156927704672
+        0.21342447784301563,
+        -0.0003316547731661845,
+        0.08560156912588852
       ],
       "inside_tip_gap_source": "simulated_visual_mesh_inside_fingertips",
       "settled": true,
-      "timestamp": "2026-10-27T12:36:49.115384-07:00"
+      "timestamp": "2026-10-27T18:02:37.259603-07:00"
     }
   ]
 }

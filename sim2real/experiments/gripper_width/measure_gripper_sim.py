@@ -23,15 +23,19 @@ Launch from the wxai_mjlab environment, from ``real_robot/sim/mujoco`` or any
 directory (the package is installed in that environment):
 
   conda activate wxai_mjlab
-  python real_robot/sim2real/experiments/measure_gripper_sim.py
+  python real_robot/sim2real/experiments/gripper_width/measure_gripper_sim.py
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import sys
 from datetime import datetime
 from pathlib import Path
+
+EXPERIMENTS = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(EXPERIMENTS))
 
 import mujoco
 import numpy as np
@@ -39,6 +43,9 @@ from tabletop_sim.embodiments import get_embodiment
 from tabletop_sim.embodiments.base import EmbodimentCfg, load_spec
 from tabletop_sim.scene import load_scene_config, load_task_config
 from tabletop_sim.tasks.grasp.env_cfg import DEFAULT_SCENE, DEFAULT_TASK
+
+from common.io import write_json
+from common.sim import apply_training_solver, joint_addresses
 
 EXPERIMENT = "gripper_inside_tip_gap"
 SETTINGS = ("fully_open", "half_open", "fully_closed")
@@ -49,14 +56,6 @@ VELOCITY_TOL_M_S = 1e-4
 DWELL_S = 0.25
 TIMEOUT_S = 5.0
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
-INTEGRATORS = {
-    "euler": mujoco.mjtIntegrator.mjINT_EULER,
-    "implicitfast": mujoco.mjtIntegrator.mjINT_IMPLICITFAST,
-}
-CONES = {
-    "pyramidal": mujoco.mjtCone.mjCONE_PYRAMIDAL,
-    "elliptic": mujoco.mjtCone.mjCONE_ELLIPTIC,
-}
 
 
 def _carriage_limits(model: mujoco.MjModel, emb: EmbodimentCfg, actuator_id: int) -> dict:
@@ -100,6 +99,15 @@ def _carriage_limits(model: mujoco.MjModel, emb: EmbodimentCfg, actuator_id: int
     }
 
 
+def _hardware_commands(path: Path) -> dict[str, float]:
+    """Carriage targets equal to the gripper positions commanded on the real robot."""
+    commands = json.loads(path.read_text())["configuration"]["commands_m"]
+    missing = [name for name in SETTINGS if name not in commands]
+    if missing:
+        raise ValueError(f"{path} has no commands_m entries for {missing}")
+    return {name: float(commands[name]) for name in ("fully_closed", "half_open", "fully_open")}
+
+
 def _commands(model: mujoco.MjModel, emb: EmbodimentCfg, actuator_id: int) -> dict[str, float]:
     """Fully open is the position-actuator upper limit, matching a driver position_max command."""
     joint_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, emb.gripper_actuator_joint)
@@ -112,21 +120,6 @@ def _commands(model: mujoco.MjModel, emb: EmbodimentCfg, actuator_id: int) -> di
         "half_open": 0.5 * (closed + open_),
         "fully_open": open_,
     }
-
-
-def _apply_training_solver(model: mujoco.MjModel, emb: EmbodimentCfg, timestep: float) -> None:
-    """``load_spec`` clears the solver; training puts the embodiment values back."""
-    model.opt.timestep = timestep
-    model.opt.integrator = INTEGRATORS[emb.integrator]
-    model.opt.impratio = emb.impratio
-    model.opt.cone = CONES[emb.cone]
-
-
-def _joint_addresses(model: mujoco.MjModel, name: str) -> tuple[int, int]:
-    joint_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, name)
-    if joint_id < 0:
-        raise ValueError(f"joint {name!r} not in the model")
-    return int(model.jnt_qposadr[joint_id]), int(model.jnt_dofadr[joint_id])
 
 
 def _visual_vertices(model: mujoco.MjModel, body_name: str) -> np.ndarray:
@@ -212,7 +205,7 @@ def _world_point(data: mujoco.MjData, body_id: int, local: np.ndarray) -> np.nda
 
 def _set_ready(model: mujoco.MjModel, data: mujoco.MjData, emb: EmbodimentCfg) -> None:
     for name, position in emb.ready_joint_pos.items():
-        address, _ = _joint_addresses(model, name)
+        address, _ = joint_addresses(model, name)
         data.qpos[address] = position
     for actuator_id in range(model.nu):
         name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_ACTUATOR, actuator_id)
@@ -255,24 +248,33 @@ def _settle(
     return False
 
 
-def _write(path: Path, payload: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(payload, indent=2) + "\n")
-    temporary.replace(path)
-
-
 def run(args: argparse.Namespace) -> None:
     scene = load_scene_config(args.scene)
     task = load_task_config(args.task)
     emb = get_embodiment(scene.robot.embodiment)
     model = load_spec(emb).compile()
-    _apply_training_solver(model, emb, task.timing.sim_dt)
+    apply_training_solver(model, emb, task.timing.sim_dt)
     data = mujoco.MjData(model)
     points = _measurement_points(model, emb)
-    addresses = [_joint_addresses(model, name) for name in emb.gripper_joint_names]
+    addresses = [joint_addresses(model, name) for name in emb.gripper_joint_names]
     actuator_id = _gripper_actuator(model, emb)
-    commands = _commands(model, emb, actuator_id)
+    if args.hardware_results:
+        commands = _hardware_commands(args.hardware_results)
+        command_definition = (
+            "Each carriage command is the gripper position commanded on the real "
+            "robot: driver position_max, its midpoint, and position_min. The value "
+            "is sent to the simulated gripper position actuator; the other carriage "
+            "follows by equality."
+        )
+    else:
+        commands = _commands(model, emb, actuator_id)
+        command_definition = (
+            "fully_open is the minimum of the actuated carriage joint upper "
+            "limit and the gripper position-actuator ctrlrange upper limit. "
+            "fully_closed is the embodiment closed position. half_open is "
+            "their midpoint. These metres are the simulated carriage coordinate, "
+            "not the hardware driver coordinate."
+        )
     carriage_limits = _carriage_limits(model, emb, actuator_id)
     _set_ready(model, data, emb)
 
@@ -297,14 +299,9 @@ def run(args: argparse.Namespace) -> None:
             "gripper_actuator_joint": emb.gripper_actuator_joint,
             "gripper_closed_m": emb.gripper_closed,
             "carriage_limits": carriage_limits,
+            "hardware_results": None if args.hardware_results is None else str(args.hardware_results),
             "commands_m": commands,
-            "command_definition": (
-                "fully_open is the minimum of the actuated carriage joint upper "
-                "limit and the gripper position-actuator ctrlrange upper limit. "
-                "fully_closed is the embodiment closed position. half_open is "
-                "their midpoint. These metres are the simulated carriage coordinate, "
-                "not the hardware driver coordinate."
-            ),
+            "command_definition": command_definition,
             "sim_dt_s": task.timing.sim_dt,
             "integrator": emb.integrator,
             "impratio": emb.impratio,
@@ -384,7 +381,7 @@ def run(args: argparse.Namespace) -> None:
             "timestamp": datetime.now().astimezone().isoformat(),
         }
         payload["samples"].append(sample)
-        _write(output, payload)
+        write_json(output, payload)
         print(
             f"{name}: command {command:.6f} m, "
             f"left {left:.6f} m, right {right:.6f} m, "
@@ -421,10 +418,14 @@ def main() -> None:
     parser.add_argument("--scene", type=Path, default=DEFAULT_SCENE)
     parser.add_argument("--task", type=Path, default=DEFAULT_TASK)
     parser.add_argument("--timeout-s", type=float, default=TIMEOUT_S)
+    parser.add_argument("--hardware-results", type=Path, default=None,
+                        help="use configuration.commands_m from a hardware results JSON")
     parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args()
     if args.timeout_s <= 0:
         raise SystemExit("--timeout-s must be positive")
+    if args.hardware_results is not None and not args.hardware_results.is_file():
+        raise SystemExit(f"hardware results not found: {args.hardware_results}")
     run(args)
 
 

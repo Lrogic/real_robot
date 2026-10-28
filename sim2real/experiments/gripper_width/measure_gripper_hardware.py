@@ -15,26 +15,35 @@ is the API default of 2 s.
 Launch from the fp_robot environment:
 
   conda activate fp_robot
-  python real_robot/sim2real/experiments/measure_gripper_hardware.py
+  python real_robot/sim2real/experiments/gripper_width/measure_gripper_hardware.py
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 import time
 from datetime import datetime
 from pathlib import Path
 
-REAL_ROBOT = Path(__file__).resolve().parents[2]
+REAL_ROBOT = Path(__file__).resolve().parents[3]
+EXPERIMENTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REAL_ROBOT))
 sys.path.insert(0, str(REAL_ROBOT / "vision"))
+sys.path.insert(0, str(EXPERIMENTS))
 
 import trossen_arm  # noqa: E402
 
 from calibration.board import DEFAULT_CONFIG as CALIBRATION_CONFIG  # noqa: E402
 from calibration.board import load_config as load_calibration_config  # noqa: E402
+from common.hardware import (  # noqa: E402
+    end_effector_record,
+    hold_arm_with_gravity_compensation,
+    release_to_idle,
+    robot_identity,
+)
+from common.io import write_json  # noqa: E402
+from common.prompts import Quit, ask  # noqa: E402
 
 EXPERIMENT = "gripper_inside_tip_gap"
 SETTINGS = ("fully_open", "half_open", "fully_closed")
@@ -42,23 +51,6 @@ GRIPPER_GOAL_TIME_S = 2.0  # set_gripper_position default
 SETTLE_VELOCITY_M_S = 0.002
 SETTLE_TIMEOUT_S = 2.0
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
-
-
-class Quit(Exception):
-    """The operator stopped the sequence."""
-
-
-def _robot_identity(calibration: dict) -> dict:
-    robot = calibration.get("robot") or {}
-    identity = {}
-    for key in ("ip", "model", "end_effector"):
-        value = robot.get(key)
-        if not value:
-            raise ValueError(
-                f"robot.{key} is empty in the calibration config; set it before measuring"
-            )
-        identity[key] = value
-    return identity
 
 
 def _commands(limits) -> dict[str, float]:
@@ -73,41 +65,13 @@ def _commands(limits) -> dict[str, float]:
     }
 
 
-def _end_effector(ee) -> dict:
-    return {
-        "offset_finger_left_m": float(ee.offset_finger_left),
-        "offset_finger_right_m": float(ee.offset_finger_right),
-        "pitch_circle_radius_m": float(ee.pitch_circle_radius),
-        "t_flange_tool_m_rotvec_rad": [float(v) for v in ee.t_flange_tool],
-        "finger_offset_meaning": (
-            "offset_finger_left/right are the palm-centre to carriage-centre "
-            "offsets with the fingers at the closed configuration, in metres. "
-            "They are not the gripper joint coordinate."
-        ),
-    }
-
-
-def _write(path: Path, payload: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(payload, indent=2) + "\n")
-    temporary.replace(path)
-
-
-def _ask(prompt: str) -> str:
-    try:
-        return input(prompt)
-    except EOFError:
-        raise Quit() from None
-
-
 def _prompt_gap_mm() -> float:
     print(
         "Measure the gap from the inside tip of one finger to the inside tip "
         "of the other, in millimetres."
     )
     while True:
-        text = _ask("Gap in mm (q to quit): ").strip()
+        text = ask("Gap in mm (q to quit): ").strip()
         if text.lower() in {"q", "quit"}:
             raise Quit()
         value = text.lower().removesuffix("mm").strip()
@@ -124,7 +88,7 @@ def _prompt_gap_mm() -> float:
 
 def _prompt_continue() -> None:
     while True:
-        text = _ask("Press Enter for the next setting (q to quit): ")
+        text = ask("Press Enter for the next setting (q to quit): ")
         if text.strip() == "":
             return
         if text.strip().lower() in {"q", "quit"}:
@@ -148,19 +112,9 @@ def _wait_until_slow(driver) -> bool:
         time.sleep(0.05)
 
 
-def _cleanup(driver) -> None:
-    if driver is None:
-        return
-    try:
-        input("\nThe manipulator will go idle. SUPPORT THE ARM, then press Enter... ")
-    except (EOFError, KeyboardInterrupt):
-        pass
-    driver.cleanup()
-
-
 def run(args: argparse.Namespace) -> None:
     calibration = load_calibration_config(args.calibration_config)
-    identity = _robot_identity(calibration)
+    identity = robot_identity(calibration)
     driver = trossen_arm.TrossenArmDriver()
     payload = None
     try:
@@ -172,21 +126,19 @@ def run(args: argparse.Namespace) -> None:
         )
         limits = driver.get_joint_limits()[-1]
         commands = _commands(limits)
-        n_arm = driver.get_num_joints() - 1
         print(
             f"Connected to {identity['model']} at {identity['ip']} ({identity['end_effector']}).\n"
             "Support the arm. The next step puts the arm in gravity compensation. "
             "Only the gripper will be position-commanded."
         )
         while True:
-            text = _ask("Press Enter to start (q to quit): ")
+            text = ask("Press Enter to start (q to quit): ")
             if text.strip() == "":
                 break
             if text.strip().lower() in {"q", "quit"}:
                 raise Quit()
             print("Press Enter to start, or q to quit.")
-        driver.set_arm_modes(trossen_arm.Mode.external_effort)
-        driver.set_arm_external_efforts([0.0] * n_arm, 0.0, False)
+        hold_arm_with_gravity_compensation(driver)
         output = args.output or (
             RESULTS_DIR / f"gripper_gap_hardware_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         )
@@ -217,11 +169,11 @@ def run(args: argparse.Namespace) -> None:
                     "joint position in metres, not jaw width."
                 ),
                 "arm_control": "external_effort 0 (gravity compensation); no arm position commands",
-                "end_effector": _end_effector(driver.get_end_effector()),
+                "end_effector": end_effector_record(driver.get_end_effector()),
             },
             "samples": [],
         }
-        _write(output, payload)
+        write_json(output, payload)
         print(
             "The arm is in gravity compensation. Keep supporting it.\n"
             f"Commands (m): open {commands['fully_open']:.6f}, "
@@ -254,7 +206,7 @@ def run(args: argparse.Namespace) -> None:
                 "timestamp": datetime.now().astimezone().isoformat(),
             }
             payload["samples"].append(sample)
-            _write(output, payload)
+            write_json(output, payload)
             print("Saved sample:")
             print(f"  setting: {name}")
             print(f"  commanded gripper position: {command:.6f} m")
@@ -268,7 +220,7 @@ def run(args: argparse.Namespace) -> None:
         saved = 0 if payload is None else len(payload["samples"])
         print(f"\nStopped. {saved} sample(s) saved.")
     finally:
-        _cleanup(driver)
+        release_to_idle(driver)
 
 
 def main() -> None:
