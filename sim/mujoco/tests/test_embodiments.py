@@ -63,6 +63,9 @@ def test_stiffness_damping_targets_match_model(name):
 def test_embodiment_damping_sources():
   assert get_embodiment("menagerie_wxai").stiffness_damping.damping_source == "joint"
   assert get_embodiment("trossen_wxai_base").stiffness_damping.damping_source == "actuator"
+  real = get_embodiment("trossen_wxai_base_real")
+  assert real.stiffness_damping.damping_source == "actuator"
+  assert real.xml_path.name == "wxai_base_real_robot.xml"
 
 
 @pytest.mark.parametrize(

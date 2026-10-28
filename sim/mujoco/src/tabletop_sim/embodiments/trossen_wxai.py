@@ -1,5 +1,7 @@
 """Trossen WidowX AI base arm from TrossenRobotics/trossen_arm_mujoco."""
 
+from dataclasses import replace
+
 from tabletop_sim import ASSETS_DIR
 from tabletop_sim.embodiments.base import EmbodimentCfg, StiffnessDampingTargets
 from tabletop_sim.embodiments.menagerie_wxai import ARM_JOINTS, GRIPPER_JOINTS, MENAGERIE_WXAI
@@ -24,4 +26,12 @@ TROSSEN_WXAI_BASE = EmbodimentCfg(
     damping_actuators=ACTUATORS,
   ),
   integrator="implicitfast",
+)
+
+# Same geometry as the base arm, with position-mode gains and effort limits
+# matched to the measured controller.
+TROSSEN_WXAI_BASE_REAL = replace(
+  TROSSEN_WXAI_BASE,
+  name="trossen_wxai_base_real",
+  xml_path=ASSETS_DIR / "robots" / "trossen_wxai_base" / "wxai" / "wxai_base_real_robot.xml",
 )
