@@ -7,6 +7,7 @@
 #   ./run.sh --track       --save-path foundationpose_runs/run1 --fp-mode batched
 #   ./run.sh --setup-track --save-path foundationpose_runs/run1 --reset   # park camera arm, then mask + track
 #   ./run.sh --track       --save-path foundationpose_runs/run1 --manipulation basic [--manipulation-dry-run]
+#   ./run.sh --track       --save-path foundationpose_runs/run1 --recovery --manipulation policy [--manipulation-logging] [--manipulation-dry-run]
 #   ./run.sh --track       --save-path foundationpose_runs/run1 --log-variation
 #   ./run.sh --setup-track --save-path foundationpose_runs/run1 --recovery [--sam-model sam2-small]
 #   ./run.sh --track       --save-path foundationpose_runs/run1 --recovery [--sam-fps 2 --iou-threshold 0.4 --failure-limit 3]
@@ -18,6 +19,9 @@
 # --fp-mode batched refines every object in one network pass per iteration;
 # --fp-mode batched-render also renders every object's crop in one call.
 # --manipulation basic adds the click-to-follow arm test (manipulation/basic_manipulation).
+# --manipulation policy builds the sim policy's observations from the arm (gravity compensation,
+# never commanded) and the tracked object at the policy rate; s starts/ends an episode
+# (manipulation/policy). --manipulation-logging writes save-path/policy_log.jsonl.
 # --log-variation keeps every tracked pose and, when the window closes or
 # --num-seconds expires, writes save-path/pose_variation.txt (mean, std,
 # percentiles, and a pose about once per second).
@@ -31,7 +35,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV="vision"
 
 usage() {
-    sed -n '2,27p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,31p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 2
 }
 

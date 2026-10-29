@@ -1,0 +1,38 @@
+# Real-robot deployment of the MuJoCo jenga grasp/lift/hold policy.
+# Relative paths are relative to this file. Lengths in metres.
+
+sim:
+  # The scene and task the policy was trained on. Read for: robot base pose, the jenga
+  # mesh and its training reset pose (symmetry reference), target_lift_height (goal),
+  # control_hz (observation rate) and episode_steps.
+  scene: ../../../sim/mujoco/configs/scenes/tabletop_jenga_wxai.json
+  task: ../../../sim/mujoco/configs/tasks/grasp_curriculum_size_variants_friction_wxai.json
+
+object:
+  # Tracked object to build observations for. null finds the one whose saved mesh is the
+  # scene's manipulated-object mesh; otherwise a vision run object folder name (obj0, ...).
+  tracked_name: null
+  # 180 deg turns about the mesh's local axes leave the block unchanged. The jenga mesh
+  # origin is its box centre and its axes are the box axes (object_frame experiment).
+  symmetry: box
+  box_center: [0.0, 0.0, 0.0]
+
+embodiment:
+  # EmbodimentCfg.gripper_open / gripper_closed of the scene's embodiment
+  # (trossen_wxai_base_real); tests/test_obs_parity.py checks them.
+  gripper_open: 0.040
+  gripper_closed: 0.0
+
+calibration:
+  # T_base_camera.json; null = newest calibration session that has one.
+  T_base_camera: null
+
+robot:
+  # null = the calibration session's robot, then vision/calibration/config.yaml.
+  ip: null
+  model: null
+  end_effector: null
+
+episode:
+  # Toggles: arm/start an episode, then end it. Not bound by the tracking loop otherwise.
+  key: s
