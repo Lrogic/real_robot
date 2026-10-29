@@ -32,9 +32,9 @@ import cv2
 import numpy as np
 
 from calibration.session import find_calibration
-from calibration.transforms import inv_T, load_T_base_camera, transform_points
-from pipeline.drawing import project_point
+from calibration.transforms import inv_T, load_T_base_camera
 
+from ..common.drawing import box_hull, draw_label, draw_tool, fmt_vec
 from .controller import HOLD, KILLED, FollowController
 from .grasp_goals import ENCLOSE, HOVER, ManipulationConfig, joint_limit_margins
 
@@ -43,7 +43,6 @@ PICK_TOLERANCE_PX = 25
 PENDING_COLOR, SELECTED_COLOR = (255, 220, 0), (0, 220, 255)
 GOAL_COLOR, COMMAND_COLOR, MEASURED_COLOR = (255, 0, 255), (255, 255, 255), (0, 255, 0)
 KILL_COLOR = (255, 40, 40)
-FONT = cv2.FONT_HERSHEY_SIMPLEX
 HELP = "click select | y confirm | n cancel | g enclose | o open | c close | b back | h hold | s step | SPACE KILL | q quit"
 
 
@@ -59,29 +58,6 @@ def robot_config(calibration_json: dict, cfg: ManipulationConfig) -> dict:
         print(f"WARNING: end effector {robot['end_effector']} differs from the calibration's "
               f"{session_robot.get('end_effector')}")
     return robot
-
-
-def _box_hull(obj, K: np.ndarray) -> Optional[np.ndarray]:
-    if obj.center_pose is None:
-        return None
-    lo, hi = obj.bbox
-    corners = np.array([[x, y, z] for x in (lo[0], hi[0]) for y in (lo[1], hi[1]) for z in (lo[2], hi[2])])
-    cam = transform_points(obj.center_pose, corners)
-    if np.any(cam[:, 2] <= 0):
-        return None
-    uv = (cam @ K.T)[:, :2] / cam[:, 2:3]
-    return cv2.convexHull(np.round(uv).astype(np.int32))
-
-
-def _text(img, text, org, color=(235, 235, 235), scale=0.55, thickness=1):
-    (w, h), base = cv2.getTextSize(text, FONT, scale, thickness)
-    x, y = org
-    cv2.rectangle(img, (x - 4, y - h - 4), (x + w + 4, y + base + 2), (0, 0, 0), -1)
-    cv2.putText(img, text, (x, y), FONT, scale, color, thickness, cv2.LINE_AA)
-
-
-def _fmt(p) -> str:
-    return "-" if p is None else "(" + ", ".join(f"{v:+.3f}" for v in p) + ")"
 
 
 class ManipulationSession:
@@ -146,7 +122,7 @@ class ManipulationSession:
             return
         best = None
         for index, obj in enumerate(self._objects):
-            hull = _box_hull(obj, self._K)
+            hull = box_hull(obj, self._K)
             if hull is None:
                 continue
             distance = cv2.pointPolygonTest(hull, (float(x), float(y)), True)
@@ -238,18 +214,18 @@ class ManipulationSession:
         for index, color, thickness in ((self.selected, SELECTED_COLOR, 3), (self.pending, PENDING_COLOR, 4)):
             if index is None or K is None:
                 continue
-            hull = _box_hull(self._objects[index], K)
+            hull = box_hull(self._objects[index], K)
             if hull is not None:
                 cv2.polylines(vis, [hull], True, color, thickness, cv2.LINE_AA)
         if K is not None:
             for T, color in ((snap.goal, GOAL_COLOR), (snap.commanded, COMMAND_COLOR), (snap.measured, MEASURED_COLOR)):
-                self._draw_tool(vis, T, color, K)
+                draw_tool(vis, self.X_inv, T, color, K)
 
         name = "-" if self.selected is None else self._objects[self.selected].name
         source = "MEASURED" if self.controller.step_from_measured else "COMMAND"
         lines = [(f"MANIPULATION {snap.mode.upper()}  object {name}  step from {source}", (255, 255, 255)),
                  (snap.status, KILL_COLOR if snap.mode == KILLED else (235, 235, 235)),
-                 (f"target base {_fmt(snap.target)} m", (235, 235, 235))]
+                 (f"target base {fmt_vec(snap.target)} m", (235, 235, 235))]
         if snap.goal is not None and snap.measured is not None:
             gap = np.linalg.norm(snap.goal[:3, 3] - snap.measured[:3, 3]) * 100
             lines.append((f"tool to goal {gap:.1f} cm  (goal magenta, cmd white, measured green)", (235, 235, 235)))
@@ -262,28 +238,16 @@ class ManipulationSession:
             lines.append((self.message, PENDING_COLOR))
         y = 24
         for text, color in lines:
-            _text(vis, text, (10, y), color)
+            draw_label(vis, text, (10, y), color)
             y += 24
         if self.pending is not None:
-            _text(vis, f"Move arm to {self._objects[self.pending].name}?  y = confirm, n = cancel",
-                  (10, vis.shape[0] - 44), PENDING_COLOR, 0.7, 2)
+            draw_label(vis, f"Move arm to {self._objects[self.pending].name}?  y = confirm, n = cancel",
+                       (10, vis.shape[0] - 44), PENDING_COLOR, 0.7, 2)
         if snap.mode == KILLED:
-            _text(vis, "KILLED - gravity compensation. Guide the arm to park, q to quit.",
-                  (10, vis.shape[0] // 2), KILL_COLOR, 0.75, 2)
-        _text(vis, HELP, (10, vis.shape[0] - 12), (200, 200, 200), 0.45)
+            draw_label(vis, "KILLED - gravity compensation. Guide the arm to park, q to quit.",
+                       (10, vis.shape[0] // 2), KILL_COLOR, 0.75, 2)
+        draw_label(vis, HELP, (10, vis.shape[0] - 12), (200, 200, 200), 0.45)
         return vis
-
-    def _draw_tool(self, vis, T_base_tool, color, K) -> None:
-        if T_base_tool is None:
-            return
-        T_cam_tool = self.X_inv @ T_base_tool
-        origin = project_point(T_cam_tool[:3, 3], K)
-        tip = project_point(T_cam_tool[:3, 3] - T_cam_tool[:3, 0] * 0.05, K)
-        if origin is None:
-            return
-        cv2.circle(vis, origin, 6, color, 2, cv2.LINE_AA)
-        if tip is not None:
-            cv2.line(vis, origin, tip, color, 2, cv2.LINE_AA)
 
     def _write_log(self, record: dict) -> None:
         if not self._log.closed:
