@@ -234,7 +234,7 @@ class SamRecovery:
             except RegistrationError as error:
                 problem = str(error)
         elapsed_ms = (time.perf_counter() - started) * 1000
-        state.registered(problem is None)
+        state.registered(problem is None, frame.frame_number)
         self.registrations.append({"name": state.name, "frame_number": frame.frame_number,
                                    "ok": problem is None, "ms": elapsed_ms})
         if problem is None:
