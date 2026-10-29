@@ -17,6 +17,7 @@ DEFAULT_FOUNDATIONPOSE_DIR = RESEARCH_DIR / "FoundationPose"
 # Camera defaults without --recovery; --recovery takes them from the recovery config.
 DEFAULT_WIDTH, DEFAULT_HEIGHT, DEFAULT_FPS = 640, 480, 30
 MANIPULATION_MODES = ("basic", "policy")
+POLICY_CONTROL_MODES = ("shadow", "step", "slow", "full")
 RECOVERY_ONLY_FLAGS = {"sam_model": "--sam-model", "sam_fps": "--sam-fps",
                        "iou_threshold": "--iou-threshold", "failure_limit": "--failure-limit",
                        "sam_hf_cache": "--sam-hf-cache", "recovery_config": "--recovery-config"}
@@ -107,6 +108,10 @@ def pipeline_parser(description: str) -> argparse.ArgumentParser:
                             "policy/jenga/config.yaml for policy, under real_robot/manipulation)")
     manip.add_argument("--manipulation-logging", action="store_true",
                        help="With --manipulation policy: write save-path/policy_log.jsonl")
+    manip.add_argument("--policy-control", choices=POLICY_CONTROL_MODES, default=None,
+                       help="With --manipulation policy: override control.mode of the policy config "
+                            "(shadow: never command the arm; step: one step per key; slow: time-dilated; "
+                            "full: training rate)")
     return parser
 
 
@@ -141,6 +146,8 @@ def parse_pipeline_args(parser: argparse.ArgumentParser, argv=None) -> argparse.
         parser.error("--manipulation-dry-run requires --manipulation")
     if args.manipulation_logging and args.manipulation != "policy":
         parser.error("--manipulation-logging requires --manipulation policy")
+    if args.policy_control and args.manipulation != "policy":
+        parser.error("--policy-control requires --manipulation policy")
     if args.manipulation == "policy" and not args.recovery:
         parser.error("--manipulation policy requires --recovery: pose trust comes from the SAM verdicts")
     if args.follower_reset_move_time <= 0:

@@ -89,10 +89,10 @@ def write_video(frames, output_path, elapsed_seconds):
     print(f"Saved {len(frames)} buffered frames to {output_path} at {playback_fps:.2f} fps")
 
 
-def show_now(vis):
-    """Display an RGB frame immediately (used while recovery blocks the loop)."""
+def show_now(vis) -> int:
+    """Display an RGB frame immediately (used while recovery blocks the loop); returns the key."""
     cv2.imshow(WINDOW, cv2.cvtColor(vis, cv2.COLOR_RGB2BGR))
-    cv2.waitKey(1)
+    return cv2.waitKey(1) & 0xFF
 
 
 def track_live(args, tracker, stream, hooks=None, recovery=None):
@@ -107,6 +107,15 @@ def track_live(args, tracker, stream, hooks=None, recovery=None):
     started_at = time.monotonic()
     last_report_at = started_at
     deadline = started_at + args.num_seconds if args.num_seconds else None
+    quit_pending = False
+
+    def show_during_recovery(vis):
+        # A key pressed here (e.g. kill) is not seen by the loop's own waitKey.
+        nonlocal quit_pending
+        key = show_now(vis)
+        if key != 0xFF:
+            quit_pending |= hooks.on_key(key) if hooks is not None else key in (ord("q"), 27)
+
     if recovery is not None:
         recovery.start_loop()
     try:
@@ -119,13 +128,15 @@ def track_live(args, tracker, stream, hooks=None, recovery=None):
             if pose_log is not None:
                 pose_log.record(time.monotonic() - started_at, tracker)
             if recovery is not None:
-                recovery.after_fp(frame, show_now)
+                recovery.after_fp(frame, show_during_recovery)
             vis = tracker.draw(rgb, stream.K)
             if hooks is not None:
                 hooks.update(tracker, stream.K, timing)
                 vis = hooks.draw(vis)
             if recovery is not None:
                 vis = recovery.draw(vis, frame)
+            if hooks is not None and hasattr(hooks, "draw_strip"):
+                vis = np.vstack([vis, hooks.draw_strip(vis.shape[1])])
             display_frame = cv2.cvtColor(vis, cv2.COLOR_RGB2BGR)
             cv2.imshow(WINDOW, display_frame)
             if video_frames is not None:
@@ -149,7 +160,7 @@ def track_live(args, tracker, stream, hooks=None, recovery=None):
                     recovery.report(now - last_report_at)
                 window_samples.clear()
                 last_report_at = now
-            quit_requested = hooks.on_key(key) if hooks is not None else key in (ord("q"), 27)
+            quit_requested = quit_pending or (hooks.on_key(key) if hooks is not None else key in (ord("q"), 27))
             if quit_requested or cv2.getWindowProperty(WINDOW, cv2.WND_PROP_VISIBLE) < 1:
                 break
     finally:

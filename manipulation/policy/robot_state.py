@@ -1,8 +1,9 @@
 """Measured state of the manipulator, read from the Trossen driver without commanding it.
 
 The arm and gripper are put in gravity compensation (external effort 0), so they can be
-guided by hand while the observations are watched. Each RobotState comes from one
-get_robot_output() call: joints, gripper and the driver's tool pose share a timestamp.
+guided by hand while the observations are watched (arm.PolicyArm adds the commands). Each
+RobotState comes from one get_robot_output() call: joints, gripper and the driver's tool
+pose share a timestamp.
 The driver tool pose is the training TCP site (sim2real/experiments/TCP_alignment).
 """
 
@@ -67,35 +68,46 @@ def resolve_robot_identity(override: dict, calibration_json: dict,
 class RobotStateReader:
     """Context manager: connect, gravity compensation on entry; support prompt and idle on exit."""
 
+    MODE_NOTE = "gravity compensation: arm and gripper external_effort 0, never commanded"
+    STARTUP_NOTE = "It is never commanded; guide it by hand."
+
     def __init__(self, identity: dict):
         self.identity = dict(identity)
         self.driver = None
         self.info: dict = {}
 
-    def __enter__(self) -> "RobotStateReader":
+    def _connect(self, clear_error: bool = False) -> None:
         import trossen_arm
 
         c = self.identity
         self.driver = trossen_arm.TrossenArmDriver()
         self.driver.configure(getattr(trossen_arm.Model, c["model"]),
-                              getattr(trossen_arm.StandardEndEffector, c["end_effector"]), c["ip"], False)
+                              getattr(trossen_arm.StandardEndEffector, c["end_effector"]), c["ip"], clear_error)
+
+    def _gravity_compensation(self) -> None:
+        import trossen_arm
+
+        n_arm = self.driver.get_num_joints() - 1
+        self.driver.set_arm_modes(trossen_arm.Mode.external_effort)
+        self.driver.set_arm_external_efforts([0.0] * n_arm, 0.0, False)
+        self.driver.set_gripper_mode(trossen_arm.Mode.external_effort)
+        self.driver.set_gripper_external_effort(0.0, 0.0, False)
+
+    def __enter__(self) -> "RobotStateReader":
+        c = self.identity
+        self._connect()
         try:
             n_arm = self.driver.get_num_joints() - 1
             if n_arm != 6:
                 raise RuntimeError(f"expected 6 arm joints, the driver reports {n_arm}")
-            self.driver.set_arm_modes(trossen_arm.Mode.external_effort)
-            self.driver.set_arm_external_efforts([0.0] * n_arm, 0.0, False)
-            self.driver.set_gripper_mode(trossen_arm.Mode.external_effort)
-            self.driver.set_gripper_external_effort(0.0, 0.0, False)
+            self._gravity_compensation()
         except Exception:
             self.driver.cleanup()
             self.driver = None
             raise
         self.info = {**c, "driver_version": self.driver.get_driver_version(),
-                     "controller_version": self.driver.get_controller_version(),
-                     "mode": "gravity compensation: arm and gripper external_effort 0, never commanded"}
-        print(f"Manipulator {c['ip']}: gravity compensation on (arm and gripper). It is never commanded; "
-              "guide it by hand.")
+                     "controller_version": self.driver.get_controller_version(), "mode": self.MODE_NOTE}
+        print(f"Manipulator {c['ip']}: gravity compensation on (arm and gripper). {self.STARTUP_NOTE}")
         return self
 
     def read(self) -> RobotState:

@@ -46,6 +46,8 @@ def test_config_matches_embodiment(cfg):
     assert cfg.gripper_closed == emb.gripper_closed
     assert emb.arm_joint_names == tuple(f"joint_{i}" for i in range(6))
     assert emb.gripper_joint_names == ("left_carriage_joint", "right_carriage_joint")
+    assert cfg.ready_joint_pos.tolist() == [emb.ready_joint_pos[n] for n in emb.arm_joint_names]
+    assert all(cfg.ready_gripper == emb.ready_joint_pos[n] for n in emb.gripper_joint_names)
 
 
 def test_actor_observation_parity(cfg, tmp_path):
