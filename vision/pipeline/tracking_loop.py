@@ -69,11 +69,27 @@ def print_stats(label, samples, elapsed_s, camera_fps):
     print(f"  Mean FP per object: {per_object}")
 
 
+def _even(n):
+    """MPEG-4 frame sizes must be multiples of two."""
+    return n + (n & 1)
+
+
+def _fit_frame(frame, height, width):
+    """Place frame on a fixed-size canvas. Status strips grow (the episode key adds a line),
+    and VideoWriter drops every frame whose size differs from the one it was opened with."""
+    if frame.shape[0] == height and frame.shape[1] == width:
+        return frame
+    canvas = np.full((height, width, frame.shape[2]), 20, dtype=np.uint8)
+    canvas[:frame.shape[0], :frame.shape[1]] = frame
+    return canvas
+
+
 def write_video(frames, output_path, elapsed_seconds):
     if not frames:
         print("No frames were displayed; video was not saved")
         return
-    height, width = frames[0].shape[:2]
+    height = _even(max(frame.shape[0] for frame in frames))
+    width = _even(max(frame.shape[1] for frame in frames))
     # FP may process substantially fewer frames than the camera's configured FPS.
     # This average makes playback approximately match the time spent tracking.
     playback_fps = len(frames) / max(elapsed_seconds, 1e-6)
@@ -81,12 +97,19 @@ def write_video(frames, output_path, elapsed_seconds):
                              playback_fps, (width, height))
     if not writer.isOpened():
         raise RuntimeError(f"Could not open video writer for {output_path}")
+    failed = 0
     try:
         for frame in frames:
-            writer.write(frame)
+            if writer.write(_fit_frame(frame, height, width)) is False:
+                failed += 1
     finally:
         writer.release()
-    print(f"Saved {len(frames)} buffered frames to {output_path} at {playback_fps:.2f} fps")
+    written = len(frames) - failed
+    padded = sum(frame.shape[0] != height or frame.shape[1] != width for frame in frames)
+    note = f", {padded} padded to {width}x{height}" if padded else ""
+    print(f"Saved {written} buffered frames to {output_path} at {playback_fps:.2f} fps{note}")
+    if failed:
+        print(f"Video writer dropped {failed} of {len(frames)} frames")
 
 
 def show_now(vis) -> int:
