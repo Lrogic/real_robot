@@ -1,0 +1,179 @@
+{
+  "experiment": "gripper_inside_tip_gap",
+  "source": "simulation",
+  "coordinate_units": {
+    "commanded_gripper_position": "m",
+    "actual_gripper_position": "m",
+    "carriage_position": "m",
+    "inside_tip_gap": "mm"
+  },
+  "configuration": {
+    "scene": "/home/luka/research/real_robot/sim/mujoco/configs/scenes/tabletop_cube_wxai.json",
+    "task": "/home/luka/research/real_robot/sim/mujoco/configs/tasks/grasp_standard_wxai.json",
+    "embodiment": "menagerie_wxai",
+    "xml_path": "/home/luka/research/real_robot/sim/mujoco/assets/robots/trossen_wxai/wxai_follower.xml",
+    "gripper_joint_names": [
+      "left_carriage_joint",
+      "right_carriage_joint"
+    ],
+    "gripper_actuator_joint": "right_carriage_joint",
+    "gripper_closed_m": 0.0,
+    "carriage_limits": {
+      "unit": "m",
+      "soft_joint_pos_limit_factor": 0.85,
+      "joint_range": "MuJoCo jnt_range, the joint's position limits in the model.",
+      "soft_joint_limit": "mjlab soft limit: the center of jnt_range plus or minus half the span times soft_joint_pos_limit_factor. Used by the joint-limit penalty. The gripper is not penalized.",
+      "controller_joint_limit": "Position-actuator ctrlrange, which clips the gripper command. The carriage without an actuator has none; the equality makes it follow the actuated carriage.",
+      "carriages": {
+        "left_carriage_joint": {
+          "joint_range_m": [
+            -0.01,
+            0.045
+          ],
+          "soft_joint_limit_m": [
+            -0.005875000000000002,
+            0.040874999999999995
+          ],
+          "controller_joint_limit_m": null
+        },
+        "right_carriage_joint": {
+          "joint_range_m": [
+            -0.01,
+            0.045
+          ],
+          "soft_joint_limit_m": [
+            -0.005875000000000002,
+            0.040874999999999995
+          ],
+          "controller_joint_limit_m": [
+            -0.002,
+            0.045
+          ]
+        }
+      }
+    },
+    "hardware_results": "/home/luka/research/real_robot/sim2real/experiments/gripper_width/results/gripper_gap_hardware_20261027_122748.json",
+    "commands_m": {
+      "fully_closed": 0.0,
+      "half_open": 0.019999999552965164,
+      "fully_open": 0.03999999910593033
+    },
+    "command_definition": "Each carriage command is the gripper position commanded on the real robot: driver position_max, its midpoint, and position_min. The value is sent to the simulated gripper position actuator; the other carriage follows by equality.",
+    "sim_dt_s": 0.002,
+    "integrator": "euler",
+    "impratio": 10.0,
+    "cone": "elliptic",
+    "settle_timeout_s": 5.0,
+    "inside_tip_measurement": {
+      "gap": "Euclidean distance between the left and right inside-tip points after the carriage bodies move. This is the separation a caliper would read between those surfaces.",
+      "mesh_selection": "On each finger visual mesh, vertices within 1 mm of the maximum body-frame x (the tip). Of those, the ones within 0.05 mm of the minimum projection onto the embodiment finger_outward_axis. Their mean is the inside-tip point.",
+      "pad_check": "gripper_left_pad and gripper_right_pad are the flat inner contact boxes. The distal midpoint of each box face that faces into the jaw is compared with the mesh point along finger_outward_axis. The saved gap uses the mesh points.",
+      "fingers": {
+        "left": {
+          "body": "gripper_left",
+          "outward_axis_body": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "mesh_point_m": [
+            0.06888010173824502,
+            -0.022946399639575087,
+            -0.0001338999713264617
+          ],
+          "pad_inner_distal_point_m": [
+            0.0695,
+            -0.023,
+            0.0
+          ]
+        },
+        "right": {
+          "body": "gripper_right",
+          "outward_axis_body": [
+            0.0,
+            -1.0,
+            0.0
+          ],
+          "mesh_point_m": [
+            0.06888010162514938,
+            0.022946399603078822,
+            -0.00013389985923158775
+          ],
+          "pad_inner_distal_point_m": [
+            0.0695,
+            0.023,
+            0.0
+          ]
+        }
+      }
+    }
+  },
+  "samples": [
+    {
+      "setting": "fully_open",
+      "commanded_gripper_position": 0.03999999910593033,
+      "actual_gripper_position": null,
+      "actual_left_carriage_position": 0.0402279140871033,
+      "actual_right_carriage_position": 0.040226222900932904,
+      "inside_tip_gap_mm": 80.56146126054776,
+      "inside_tip_gap_minus_carriage_sum_mm": 0.10732427251156196,
+      "left_inside_tip_world_m": [
+        0.21342446905344226,
+        0.04028158544711739,
+        0.0856015696022148
+      ],
+      "right_inside_tip_world_m": [
+        0.21342448647528284,
+        -0.04027987581342847,
+        0.08560156806265753
+      ],
+      "inside_tip_gap_source": "simulated_visual_mesh_inside_fingertips",
+      "settled": true,
+      "timestamp": "2026-10-27T18:02:37.245989-07:00"
+    },
+    {
+      "setting": "half_open",
+      "commanded_gripper_position": 0.019999999552965164,
+      "actual_gripper_position": null,
+      "actual_left_carriage_position": 0.020281330100337835,
+      "actual_right_carriage_position": 0.020279651686847797,
+      "inside_tip_gap_mm": 40.66832517715365,
+      "inside_tip_gap_minus_carriage_sum_mm": 0.1073433899680154,
+      "left_inside_tip_world_m": [
+        0.213424491299494,
+        0.020335042640393246,
+        0.08560157273722051
+      ],
+      "right_inside_tip_world_m": [
+        0.21342446370487572,
+        -0.02033328253675027,
+        0.08560156484604102
+      ],
+      "inside_tip_gap_source": "simulated_visual_mesh_inside_fingertips",
+      "settled": true,
+      "timestamp": "2026-10-27T18:02:37.253259-07:00"
+    },
+    {
+      "setting": "fully_closed",
+      "commanded_gripper_position": 0.0,
+      "actual_gripper_position": null,
+      "actual_left_carriage_position": 0.00032070509168365477,
+      "actual_right_carriage_position": 0.0002779789143496632,
+      "inside_tip_gap_mm": 0.7058825251480628,
+      "inside_tip_gap_minus_carriage_sum_mm": 0.10719851911474487,
+      "left_inside_tip_world_m": [
+        0.2134244778496531,
+        0.00037422775198172817,
+        0.08560156866549755
+      ],
+      "right_inside_tip_world_m": [
+        0.21342447784301563,
+        -0.0003316547731661845,
+        0.08560156912588852
+      ],
+      "inside_tip_gap_source": "simulated_visual_mesh_inside_fingertips",
+      "settled": true,
+      "timestamp": "2026-10-27T18:02:37.259603-07:00"
+    }
+  ]
+}

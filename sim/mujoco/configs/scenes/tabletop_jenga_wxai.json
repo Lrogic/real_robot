@@ -1,7 +1,7 @@
 {
   "scene_name": "wxai_tabletop_jenga",
   "robot": {
-    "embodiment": "menagerie_wxai",
+    "embodiment": "trossen_wxai_base_real",
     "action_space": "ee_delta_pose_binary_gripper",
     "base_pose": [-0.615, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
   },

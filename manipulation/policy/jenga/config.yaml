@@ -1,0 +1,81 @@
+# Real-robot deployment of the MuJoCo jenga grasp/lift/hold policy.
+# Relative paths are relative to this file. Lengths in metres.
+
+sim:
+  # The scene and task the policy was trained on. Read for: robot base pose, the action
+  # space (only ee_delta_pose_binary_gripper is supported), the jenga mesh and its training
+  # reset pose (symmetry reference), target_lift_height (goal), control_hz (observation
+  # rate), episode_steps and the action scales (ee_pos_scale, ee_rot_scale).
+  scene: ../../../sim/mujoco/configs/scenes/tabletop_jenga_wxai.json
+  task: ../../../sim/mujoco/configs/tasks/grasp_curriculum_size_variants_friction_wxai.json
+
+policy:
+  # rsl_rl checkpoint (actor weights and observation normalizer). The run's params/env.yaml
+  # and params/agent.yaml are checked against the scene, the task and this file at startup.
+  checkpoint: ../../../sim/mujoco/logs/rsl_rl/grasp_jenga_DR_adjusted_gripper_width_with_grav_comp_real_robot_parameters_higher_gain_adjusted_quat/2026-10-28_14-55-03/model_999.pt
+
+object:
+  # Tracked object to build observations for. null finds the one whose saved mesh is the
+  # scene's manipulated-object mesh; otherwise a vision run object folder name (obj0, ...).
+  tracked_name: null
+  # 180 deg turns about the mesh's local axes leave the block unchanged. The jenga mesh
+  # origin is its box centre and its axes are the box axes (object_frame experiment).
+  symmetry: box
+  box_center: [0.0, 0.0, 0.0]
+
+embodiment:
+  # EmbodimentCfg.gripper_open / gripper_closed / ready_joint_pos of the scene's embodiment
+  # (trossen_wxai_base_real); tests/test_obs_parity.py checks them.
+  gripper_open: 0.040
+  gripper_closed: 0.0
+  ready_joint_pos: [0.0, 1.38, 1.04, -1.26, 0.0, 0.0]
+  ready_gripper: 0.026
+
+calibration:
+  # T_base_camera.json; null = newest calibration session that has one.
+  T_base_camera: null
+
+robot:
+  # null = the calibration session's robot, then vision/calibration/config.yaml.
+  ip: null
+  model: null
+  end_effector: null
+
+episode:
+  # Moves the arm to the ready pose and arms an episode; while commanding, stops and holds.
+  key: s
+
+control:
+  # shadow  arm and gripper stay in gravity compensation; actions are drawn and logged only
+  # step    one policy step per step_key press, sent over step_goal_time_s
+  # slow    policy at control_hz / slow_time_dilation, each step sent over that many periods
+  # full    policy at control_hz, each step sent over one period (as in training)
+  # --policy-control overrides it.
+  mode: shadow
+  ready_key: r      # start (or resume after a tracking hold) sending commands
+  kill_key: k       # arm and gripper to gravity compensation until restart
+  step_key: n
+  slow_time_dilation: 4
+  step_goal_time_s: 1.0
+  # Multiplies the scaled TCP delta; 1 is the training step size.
+  action_scale: 1.0
+  # Commands wait while the observed frame is older than this at the tick, or was captured
+  # more than max_frame_gap_s after the previous frame; they resume on their own.
+  max_frame_age_s: 0.030
+  max_frame_gap_s: 0.030
+  # Gripper open/close duration. Over 0.2 s the driver uses a quintic; shorter linear moves
+  # overshoot the target, and past the driver's position_max the controller faults to idle.
+  gripper_goal_time_s: 0.5
+  # Gripper goals are kept this far inside the driver's gripper position limits.
+  gripper_limit_margin_m: 0.002
+  ready_move_time_s: 4.0
+  ready_tolerance_rad: 0.02
+  ready_gripper_tolerance: 0.003
+  # Joint-space goal time used to stop at the measured pose when the episode key stops control.
+  stop_goal_time_s: 0.2
+
+safety:
+  # Commanded TCP positions outside this box (robot base frame) stop control until the ready
+  # key. The table top is base z = 0.
+  workspace_min: [0.10, -0.35, 0.005]
+  workspace_max: [0.60, 0.35, 0.45]

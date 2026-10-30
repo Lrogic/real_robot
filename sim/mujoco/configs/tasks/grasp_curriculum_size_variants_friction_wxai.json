@@ -49,10 +49,10 @@
       "torsional_scale_range": [0.7, 1.3],
       "rolling_scale_range": [0.7, 1.3]
     },
-    "object_pose_noise": { // TODO: This is not used in the real world
+    "object_pose_noise": {
       "persistent_bias": {
         "enabled": true,
-        "translation_std_m": [0.0005, 0.0005, 0.0005], // TODO: Double check these values
+        "translation_std_m": [0.0005, 0.0005, 0.0005],
         "rotation_std_deg": [0.1, 0.1, 0.1],
         "translation_clip_sigma": 2.0,
         "rotation_clip_sigma": 2.0

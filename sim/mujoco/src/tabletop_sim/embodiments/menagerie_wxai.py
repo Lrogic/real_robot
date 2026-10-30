@@ -3,6 +3,8 @@
 The follower's D405 camera mount and camera are stripped to get the base arm.
 """
 
+from dataclasses import replace
+
 from tabletop_sim import ASSETS_DIR
 from tabletop_sim.embodiments.base import EmbodimentCfg, StiffnessDampingTargets
 
@@ -42,4 +44,12 @@ MENAGERIE_WXAI = EmbodimentCfg(
   integrator="euler",
   impratio=10.0,
   cone="elliptic",
+)
+
+# Same follower geometry and joint damping, with position-mode gains and effort
+# limits matched to the measured controller. The camera mount is still stripped.
+MENAGERIE_WXAI_REAL = replace(
+  MENAGERIE_WXAI,
+  name="menagerie_wxai_real",
+  xml_path=ASSETS_DIR / "robots" / "trossen_wxai" / "wxai_follower_real_robot.xml",
 )

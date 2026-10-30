@@ -52,7 +52,10 @@ def test_stiffness_damping_targets_match_model(name):
     assert set(emb.gripper_joint_names) <= set(t.damping_joints)
     assert {dof(n) for n in t.damping_joints} == arm_and_gripper
     assert all(model.dof_damping[dof(n)] > 0 for n in t.damping_joints)
-    assert (model.actuator_biasprm[:, 2] == 0).all()
+    # The system-identified follower is kp-only. The real-robot copy also has
+    # actuator kv; domain randomization still scales the joint damping.
+    if name == "menagerie_wxai":
+      assert (model.actuator_biasprm[:, 2] == 0).all()
   else:
     assert t.damping_source == "actuator"
     assert sorted(actuator(n) for n in t.damping_actuators) == list(range(model.nu))
@@ -63,6 +66,13 @@ def test_stiffness_damping_targets_match_model(name):
 def test_embodiment_damping_sources():
   assert get_embodiment("menagerie_wxai").stiffness_damping.damping_source == "joint"
   assert get_embodiment("trossen_wxai_base").stiffness_damping.damping_source == "actuator"
+  real = get_embodiment("trossen_wxai_base_real")
+  assert real.stiffness_damping.damping_source == "actuator"
+  assert real.xml_path.name == "wxai_base_real_robot.xml"
+  follower = get_embodiment("menagerie_wxai_real")
+  assert follower.stiffness_damping.damping_source == "joint"
+  assert follower.xml_path.name == "wxai_follower_real_robot.xml"
+  assert follower.strip_bodies == ("camera_mount_d405",)
 
 
 @pytest.mark.parametrize(

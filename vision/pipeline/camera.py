@@ -38,6 +38,7 @@ class FrameTiming:
     camera_timestamp_ms: float
     wait_s: float     # blocked in wait_for_frames
     prepare_s: float  # align + undistort + color/depth conversion
+    captured_at: float = 0.0  # time.monotonic() when the converted frame was ready
 
 
 class RealSenseStream:
@@ -114,7 +115,8 @@ class RealSenseStream:
         timing = FrameTiming(frame_number=color_frame.get_frame_number(),
                              camera_timestamp_ms=color_frame.get_timestamp(),
                              wait_s=after_wait - started,
-                             prepare_s=time.perf_counter() - after_wait)
+                             prepare_s=time.perf_counter() - after_wait,
+                             captured_at=time.monotonic())
         return rgb, depth, timing
 
 

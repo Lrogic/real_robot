@@ -1,0 +1,76 @@
+{
+  "experiment": "gripper_inside_tip_gap",
+  "source": "hardware",
+  "coordinate_units": {
+    "commanded_gripper_position": "m",
+    "actual_gripper_position": "m",
+    "carriage_position": "m",
+    "inside_tip_gap": "mm"
+  },
+  "configuration": {
+    "ip": "192.168.1.2",
+    "model": "wxai_v0",
+    "end_effector": {
+      "offset_finger_left_m": 0.02449817955493927,
+      "offset_finger_right_m": -0.024501819163560867,
+      "pitch_circle_radius_m": 0.008750000037252903,
+      "t_flange_tool_m_rotvec_rad": [
+        0.156062,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "finger_offset_meaning": "offset_finger_left/right are the palm-centre to carriage-centre offsets with the fingers at the closed configuration, in metres. They are not the gripper joint coordinate."
+    },
+    "driver_version": "1.11.0",
+    "controller_version": "1.11.1",
+    "calibration_config": "/home/luka/research/real_robot/vision/calibration/config.yaml",
+    "gripper_joint_limit_min_m": 0.0,
+    "gripper_joint_limit_max_m": 0.03999999910593033,
+    "gripper_move_time_s": 2.0,
+    "commands_m": {
+      "fully_closed": 0.0,
+      "half_open": 0.019999999552965164,
+      "fully_open": 0.03999999910593033
+    },
+    "command_definition": "fully_open is the driver gripper position_max and fully_closed is position_min, sent with set_gripper_position. half_open is their midpoint. The coordinate is the driver's single gripper joint position in metres, not jaw width.",
+    "arm_control": "external_effort 0 (gravity compensation); no arm position commands"
+  },
+  "samples": [
+    {
+      "setting": "fully_open",
+      "commanded_gripper_position": 0.03999999910593033,
+      "actual_gripper_position": 0.03994368016719818,
+      "actual_left_carriage_position": null,
+      "actual_right_carriage_position": null,
+      "inside_tip_gap_mm": 80.0,
+      "inside_tip_gap_source": "manual_inside_fingertip_measurement",
+      "settled": true,
+      "timestamp": "2026-10-27T12:28:16.147806-07:00"
+    },
+    {
+      "setting": "half_open",
+      "commanded_gripper_position": 0.019999999552965164,
+      "actual_gripper_position": 0.020036377012729645,
+      "actual_left_carriage_position": null,
+      "actual_right_carriage_position": null,
+      "inside_tip_gap_mm": 40.0,
+      "inside_tip_gap_source": "manual_inside_fingertip_measurement",
+      "settled": true,
+      "timestamp": "2026-10-27T12:29:04.284587-07:00"
+    },
+    {
+      "setting": "fully_closed",
+      "commanded_gripper_position": 0.0,
+      "actual_gripper_position": 0.00019583292305469513,
+      "actual_left_carriage_position": null,
+      "actual_right_carriage_position": null,
+      "inside_tip_gap_mm": 0.0,
+      "inside_tip_gap_source": "manual_inside_fingertip_measurement",
+      "settled": true,
+      "timestamp": "2026-10-27T12:29:18.292573-07:00"
+    }
+  ]
+}

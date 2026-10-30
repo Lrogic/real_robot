@@ -8,3 +8,9 @@ vision/calibration/data/sessions/**
 vision/calibration/data/sessions/20261009_combined/**
 !vision/calibration/data/sessions/20261009_combined/session.json
 vision/foundationpose_runs/
+# Object-frame test: keep scripts and result JSONs; renders, videos and FP debug output are regenerated.
+sim2real/experiments/object_frame/results/*/frames/
+sim2real/experiments/object_frame/results/*/fp_debug/
+sim2real/experiments/object_frame/results/*/*.mp4
+sim2real/experiments/object_frame/results/*/*.png
+sim2real/experiments/object_frame/tmp_*/

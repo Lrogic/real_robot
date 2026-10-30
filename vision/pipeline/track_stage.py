@@ -75,7 +75,7 @@ def main():
                 check_live_camera(run.capture.K, run.capture.depth.shape, run.capture.undistorted, stream)
                 if args.manipulation:
                     from .robot_arm.manipulation_hooks import manipulation_hooks
-                    with manipulation_hooks(args) as session:
+                    with manipulation_hooks(args, recovery) as session:
                         track_live(args, tracker, stream, hooks=session, recovery=recovery)
                 else:
                     track_live(args, tracker, stream, recovery=recovery)

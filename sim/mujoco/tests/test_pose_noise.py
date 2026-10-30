@@ -4,6 +4,7 @@ noise) and the actor goal built from it."""
 import json
 import math
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import torch
@@ -160,6 +161,21 @@ def test_quat_from_rotvec():
   angle = torch.linalg.norm(v, dim=-1)
   ref = quat_from_angle_axis(angle[1:], v[1:] / angle[1:, None])
   torch.testing.assert_close(q[1:], ref, atol=1e-6, rtol=0)
+
+
+def test_root_relative_pose_quaternion_has_nonnegative_w():
+  torch.manual_seed(0)
+  n = 64
+  base_q = quat_from_euler_xyz(torch.full((n,), 0.2), torch.full((n,), -0.1), torch.linspace(-3, 3, n))
+  root = torch.cat((torch.randn(n, 3), base_q), dim=-1)
+  env = SimpleNamespace(scene={"robot": SimpleNamespace(data=SimpleNamespace(root_link_pose_w=root))})
+  quat_w = torch.nn.functional.normalize(torch.randn(n, 4), dim=-1)
+  pose = task_state.root_relative_pose(env, "robot", torch.randn(n, 3), quat_w)
+  q_b = pose[:, 3:]
+  assert (q_b[:, 0] >= 0).all()
+  _same_rotation(q_b, quat_mul(quat_inv(base_q), quat_w))
+  # Either sign of the same world rotation gives the same observation.
+  torch.testing.assert_close(task_state.root_relative_pose(env, "robot", torch.zeros(n, 3), -quat_w)[:, 3:], q_b)
 
 
 def test_clipped_gaussian():

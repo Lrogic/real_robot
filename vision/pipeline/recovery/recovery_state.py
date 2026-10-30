@@ -39,6 +39,9 @@ class ObjectRecoveryState:
     last_presence: Optional[float] = None
     last_frame_number: Optional[int] = None
     last_observed_at: Optional[float] = None
+    last_verdict: Optional[Verdict] = None
+    last_registration_frame: Optional[int] = None
+    last_registration_ok: Optional[bool] = None
     registrations: int = 0
     failed_registrations: int = 0
     observations: int = 0
@@ -48,6 +51,10 @@ class ObjectRecoveryState:
     def observe(self, sam_mask: np.ndarray, fp_silhouette: Optional[np.ndarray], presence: Optional[float],
                 frame_number: int, observed_at: float) -> Verdict:
         """Update from one SAM mask and the same-frame FP silhouette (needed unless SAM is empty)."""
+        self.last_verdict = self._observe(sam_mask, fp_silhouette, presence, frame_number, observed_at)
+        return self.last_verdict
+
+    def _observe(self, sam_mask, fp_silhouette, presence, frame_number, observed_at) -> Verdict:
         self.observations += 1
         self.last_presence = presence
         self.last_frame_number = frame_number
@@ -69,9 +76,11 @@ class ObjectRecoveryState:
         self.mismatch_count += 1
         return Verdict.TRIGGER if self.mismatch_count >= self.failure_limit else Verdict.MISMATCH
 
-    def registered(self, succeeded: bool) -> None:
+    def registered(self, succeeded: bool, frame_number: Optional[int] = None) -> None:
         """Clear the counter after a re-registration attempt; count the outcome."""
         self.mismatch_count = 0
+        self.last_registration_frame = frame_number
+        self.last_registration_ok = succeeded
         if succeeded:
             self.registrations += 1
         else:

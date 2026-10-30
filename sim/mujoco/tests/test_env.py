@@ -1,6 +1,7 @@
 """Simulation tests (need a CUDA device for MuJoCo Warp)."""
 
 import json
+import math
 
 import mujoco
 import pytest
@@ -8,6 +9,7 @@ import torch
 
 from mjlab.envs import ManagerBasedRlEnv
 from mjlab.managers.event_manager import EventTermCfg
+from mjlab.utils.lab_api.math import quat_inv, quat_mul, quat_unique
 from tabletop_sim.embodiments import get_embodiment
 from tabletop_sim.tasks.grasp.env_cfg import DEFAULT_SCENE, DEFAULT_TASK, make_grasp_env_cfg
 from tabletop_sim.tasks.grasp.mdp import GraspGoalCommand, curriculum, task_state
@@ -118,9 +120,10 @@ def test_observation_layout(ee_env):
     actor[:, 34:37], torch.tensor([0.0, 0.0, 0.03], device=DEVICE).expand(NUM_ENVS, 3),
     atol=1e-4, rtol=0,
   )
-  # Closure at the ready pose (carriages at 0.026 of 0.044); nothing grasped.
+  # Closure at the ready pose (carriages at 0.026); nothing grasped.
+  open_pos = get_embodiment("menagerie_wxai").gripper_open
   torch.testing.assert_close(
-    actor[:, 23], torch.full((NUM_ENVS,), 1 - 0.026 / 0.044, device=DEVICE), atol=1e-3, rtol=0
+    actor[:, 23], torch.full((NUM_ENVS,), 1 - 0.026 / open_pos, device=DEVICE), atol=1e-3, rtol=0
   )
   torch.testing.assert_close(obs["critic"][:, :37], actor)
   assert (obs["critic"][:, 37] == 0).all()
@@ -131,19 +134,24 @@ def test_manipulated_object_resets_in_xy_disk(ee_env):
   nominal = entity.data.default_root_state[:, :7] + torch.cat(
     (ee_env.scene.env_origins, torch.zeros(NUM_ENVS, 4, device=DEVICE)), dim=-1
   )
-  moved = False
+  yaw_range = math.radians(ee_env.event_manager.get_term_cfg("reset_cube_xy").params["yaw_range_deg"])
+  moved = yawed = False
   for _ in range(8):
     ee_env.reset()
     pos, quat = task_state.object_pose_w(ee_env, _tracker(ee_env).object_cfg)
     delta = pos - nominal[:, :3]
     assert (torch.linalg.norm(delta[:, :2], dim=-1) <= 0.05 + 1e-5).all()
     torch.testing.assert_close(delta[:, 2], torch.zeros(NUM_ENVS, device=DEVICE), atol=1e-4, rtol=0)
-    alignment = (quat * nominal[:, 3:7]).sum(dim=-1).abs()
-    torch.testing.assert_close(alignment, torch.ones(NUM_ENVS, device=DEVICE), atol=1e-4, rtol=0)
+    # The reset left-multiplies the default orientation by a world-z yaw.
+    rel = quat_unique(quat_mul(quat, quat_inv(nominal[:, 3:7])))
+    torch.testing.assert_close(rel[:, 1:3], torch.zeros(NUM_ENVS, 2, device=DEVICE), atol=1e-4, rtol=0)
+    yaw = 2.0 * torch.atan2(rel[:, 3].abs(), rel[:, 0])
+    assert (yaw <= yaw_range + 1e-4).all()
     torch.testing.assert_close(entity.data.root_link_vel_w, torch.zeros_like(entity.data.root_link_vel_w))
     torch.testing.assert_close(_tracker(ee_env).initial_object_pos, pos, atol=1e-4, rtol=0)
     moved = moved or bool((torch.linalg.norm(delta[:, :2], dim=-1) > 1e-3).any())
-  assert moved
+    yawed = yawed or bool((yaw > math.radians(1.0)).any())
+  assert moved and yawed
 
 
 def test_reward_matches_formula(ee_env):
@@ -498,11 +506,12 @@ def test_delta_gripper_action(tmp_path_factory, action_space):
     torch.testing.assert_close(gripper._target, q0 - 0.005, atol=1e-6, rtol=0)
     # Target follows the measured position, and is clamped to the open limit.
     action[:, 6] = 5.0
+    open_pos = gripper.cfg.open_pos
     for _ in range(8):
       q = carriage()
       env.step(action)
-      torch.testing.assert_close(gripper._target, (q + 0.01).clamp(max=0.044), atol=1e-6, rtol=0)
-    assert (gripper._target == 0.044).all()
+      torch.testing.assert_close(gripper._target, (q + 0.01).clamp(max=open_pos), atol=1e-6, rtol=0)
+    assert (gripper._target == open_pos).all()
     assert (carriage() > 0.035).all()
   finally:
     env.close()
