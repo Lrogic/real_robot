@@ -58,6 +58,8 @@ class Controller:
     max_frame_age_s: float
     max_frame_gap_s: float
     keys: dict
+    # full / slow Cartesian goal time override (control.driver_goal_time_s); None = one tick.
+    driver_goal_time_s: Optional[float] = None
     state: str = GRAVITY
     hold_reason: Optional[str] = None
     step_pending: bool = False
@@ -68,7 +70,8 @@ class Controller:
         c = cfg.control
         return cls(mode=c.mode, control_period_s=cfg.control_period_s, slow_time_dilation=c.slow_time_dilation,
                    step_goal_time_s=c.step_goal_time_s, max_frame_age_s=c.max_frame_age_s,
-                   max_frame_gap_s=c.max_frame_gap_s, keys={"episode": cfg.episode_key, **c.keys()})
+                   max_frame_gap_s=c.max_frame_gap_s, keys={"episode": cfg.episode_key, **c.keys()},
+                   driver_goal_time_s=c.driver_goal_time_s)
 
     # ----- timing -----------------------------------------------------------------------
 
@@ -86,6 +89,8 @@ class Controller:
         """Duration over which the driver interpolates one Cartesian goal."""
         if self.mode == "step":
             return self.step_goal_time_s
+        if self.driver_goal_time_s is not None:
+            return self.driver_goal_time_s
         return self.tick_period_s
 
     # ----- keys -------------------------------------------------------------------------
