@@ -1,0 +1,2 @@
+condition,stop,pos_disc_mean_mm,pos_disc_max_mm,ori_disc_mean_deg,ori_disc_max_deg,hw_50ms,sim_50ms,hw_overshoot,sim_overshoot,hw_settle_s,sim_settle_s,hw_peak_qd,sim_peak_qd,hw_goal_err_mm,outer_hz
+ik_500hz_gt0,completed,0.47261045595350737,2.619495181433886,0.10166851240407654,0.5558492680667362,0.0060749982550210024,0.005027677442433348,0.0,0.0,,,1.257069481811246,0.8529703617095947,,20.000000000000238

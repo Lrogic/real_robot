@@ -1,0 +1,174 @@
+{
+  "kind": "hardware_control_diagnostic",
+  "settings": {
+    "training": {
+      "scene": "/home/luka/research/real_robot/sim/mujoco/configs/scenes/tabletop_jenga_wxai.json",
+      "task": "/home/luka/research/real_robot/sim/mujoco/configs/tasks/grasp_curriculum_size_variants_friction_wxai.json"
+    },
+    "motion": {
+      "translation_m": 0.01,
+      "rotation_rad": 0.05
+    },
+    "timing": {
+      "outer_hz": 20.0
+    },
+    "single": {
+      "observe_s": 1.5
+    },
+    "scheduled": {
+      "out_steps": 4,
+      "back_steps": 4,
+      "hold_steps": 10,
+      "post_observe_s": 1.0
+    },
+    "relative": {
+      "goal_translation_m": 0.04,
+      "goal_rotation_rad": 0.2,
+      "step_limit": "per_axis",
+      "max_translation_step_m": 0.01,
+      "max_rotation_step_rad": 0.05,
+      "position_tolerance_m": 0.001,
+      "orientation_tolerance_rad": 0.01,
+      "timeout_s": 4.0,
+      "post_goal_observe_s": 1.0
+    },
+    "sim": {
+      "device": "cuda:0",
+      "settle_s": 1.0,
+      "settle_joint_tolerance_rad": 0.002,
+      "settle_velocity_tolerance_rad_s": 0.002
+    },
+    "hardware": {
+      "calibration_config": "/home/luka/research/real_robot/vision/calibration/config.yaml",
+      "gripper_limit_margin_m": 0.002,
+      "cartesian": {
+        "poll_hz": 1000.0,
+        "goal_times_s": [
+          0.0,
+          0.05,
+          0.1,
+          0.2,
+          0.5
+        ],
+        "interpolation_spaces": [
+          "joint",
+          "cartesian"
+        ]
+      },
+      "external_ik": {
+        "ik_hz": 500.0,
+        "ik_hz_list": [
+          500.0,
+          250.0,
+          100.0
+        ],
+        "goal_time_s": 0.0,
+        "device": "cuda:0"
+      },
+      "reset": {
+        "min_move_time_s": 4.0,
+        "max_reset_speed_rad_s": 0.3,
+        "max_auto_start_distance_rad": 1.0,
+        "settle_timeout_s": 6.0,
+        "settle_hold_s": 0.5,
+        "joint_tolerance_rad": 0.01,
+        "velocity_tolerance_rad_s": 0.02,
+        "stop_goal_time_s": 0.2
+      },
+      "safety": {
+        "workspace_min_m": [
+          0.14,
+          -0.1,
+          0.04
+        ],
+        "workspace_max_m": [
+          0.3,
+          0.1,
+          0.2
+        ],
+        "max_target_offset_m": 0.06,
+        "max_target_rotation_rad": 0.35,
+        "measured_workspace_slack_m": 0.01,
+        "max_tracking_error_m": 0.03,
+        "max_tracking_error_rad": 0.3,
+        "max_joint_speed_rad_s": 2.0,
+        "joint_limit_margin_rad": 0.05,
+        "max_joint_step_rad": 0.15,
+        "stale_state_s": 0.05,
+        "max_trial_s": 15.0
+      }
+    },
+    "diagnostic": {
+      "duration_s": 5.0,
+      "poll_hz": 2000.0,
+      "ik_samples": 2000
+    },
+    "config_file": "/home/luka/research/real_robot/sim2real/experiments/hardware_control/config.yaml"
+  },
+  "ik": {
+    "device": "cuda:0",
+    "self_check": {
+      "action": [
+        0.4,
+        -0.3,
+        0.5,
+        0.2,
+        -0.6,
+        0.3
+      ],
+      "q_arm_rad": [
+        0.0,
+        1.3799999952316284,
+        1.0399999618530273,
+        -1.2599999904632568,
+        0.0,
+        0.0
+      ],
+      "desired_position_diff_m": 0.0,
+      "desired_rotation_diff_rad": 0.0,
+      "joint_target_diff_rad": 1.2293457984924316e-07,
+      "joint_target_action_path_rad": [
+        -0.018912555649876595,
+        1.3642271757125854,
+        1.0480670928955078,
+        -1.2538756132125854,
+        -0.00887196883559227,
+        -0.03410467877984047
+      ],
+      "joint_target_adapter_path_rad": [
+        -0.018912499770522118,
+        1.364227056503296,
+        1.0480669736862183,
+        -1.253875494003296,
+        -0.008871917612850666,
+        -0.03410480171442032
+      ]
+    },
+    "solve_s": {
+      "count": 1950,
+      "median": 0.0007111264994819066,
+      "p95": 0.0008163866493759997,
+      "max": 0.005617040000288398,
+      "mean": 0.0007260917051280558
+    },
+    "fk_s": {
+      "count": 2000,
+      "median": 2.6056499791593524e-05,
+      "p95": 2.7747199874283977e-05,
+      "max": 4.165900008956669e-05,
+      "mean": 2.636431649170845e-05
+    },
+    "note": "solve = write measured q, sim.forward(), ClippedDifferentialIKAction.apply_actions(), read target"
+  },
+  "environment": {
+    "python": "3.12.14",
+    "platform": "Linux-6.8.0-147-generic-x86_64-with-glibc2.39",
+    "numpy": "2.5.3",
+    "mujoco": "3.11.0",
+    "mjlab": "unknown",
+    "torch": "2.11.0+cu128"
+  },
+  "recommendation": {
+    "note": "needs both hardware and IK timing"
+  }
+}
