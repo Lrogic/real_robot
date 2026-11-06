@@ -51,12 +51,22 @@ control:
   # slow    policy at control_hz / slow_time_dilation, each step sent over that many periods
   # full    policy at control_hz, each step sent over one period (as in training)
   # --policy-control overrides it.
-  mode: shadow
+  mode: full
+  # How each TCP goal reaches the arm (step / slow / full):
+  # driver  set_cartesian_positions; the driver's own IK, interpolated over the goal time
+  # sim     the training IK (sim_ik below) re-solved from the measured joints at
+  #         sim_ik.inner_hz toward the held goal, sent as joint positions (as in training)
+  ik_solver: sim
   ready_key: r      # start (or resume after a tracking hold) sending commands
   kill_key: k       # arm and gripper to gravity compensation until restart
   step_key: n
   slow_time_dilation: 4
   step_goal_time_s: 1.0
+  # ik_solver driver, slow / full: set_cartesian_positions goal time. null = one policy tick
+  # (full: 1 / control_hz, slow: slow_time_dilation / control_hz). The driver applies 0
+  # immediately, interpolates linearly up to 0.2 s and with a quintic above. Step mode uses
+  # step_goal_time_s; ik_solver sim uses sim_ik.goal_time_s.
+  driver_goal_time_s: 0
   # Multiplies the scaled TCP delta; 1 is the training step size.
   action_scale: 1.0
   # Commands wait while the observed frame is older than this at the tick, or was captured
@@ -74,8 +84,29 @@ control:
   # Joint-space goal time used to stop at the measured pose when the episode key stops control.
   stop_goal_time_s: 0.2
 
+sim_ik:
+  # control.ik_solver = sim. The robot model the IK solves on: only its kinematics, joint
+  # ranges and actuator ctrlranges are used, which wxai_base.xml shares with the training
+  # model wxai_base_real_robot.xml.
+  model: ../../../sim/mujoco/assets/robots/trossen_wxai_base/wxai/wxai_base.xml
+  site: ee_site
+  # IK solves (and joint commands) per second; training solves once per 2 ms physics step.
+  inner_hz: 500.0
+  # set_arm_positions goal time of each solve; 0 applies the target immediately.
+  goal_time_s: 0.0
+  # The training DifferentialIKActionCfg (tabletop_sim IkDefaults) and the entity's soft
+  # joint limit factor; tests/test_ik_parity.py checks them against the embodiment.
+  damping: 0.05
+  max_dq: 0.5
+  position_weight: 1.0
+  orientation_weight: 1.0
+  joint_limit_weight: 1.0
+  posture_weight: 0.0
+  soft_joint_pos_limit_factor: 0.85
+
 safety:
   # Commanded TCP positions outside this box (robot base frame) stop control until the ready
   # key. The table top is base z = 0.
   workspace_min: [0.10, -0.35, 0.005]
   workspace_max: [0.60, 0.35, 0.45]
+  

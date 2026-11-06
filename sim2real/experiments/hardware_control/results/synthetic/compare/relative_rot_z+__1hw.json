@@ -1,0 +1,174 @@
+{
+  "plan": "relative_rot_z+",
+  "plan_sha256": "069224473d393fa44438e6a2846f79b1f8deeb095f72293ec2d2ea28d1e67dee",
+  "sim_file": "/home/luka/research/real_robot/sim2real/experiments/hardware_control/results/sim/relative_rot_z+__sim__20261103_133314_144.json",
+  "pairs": [
+    {
+      "hardware_file": "results/synthetic/relative_rot_z+__synthetic_lag.json",
+      "condition": {
+        "backend": "external_training_ik",
+        "ik_hz": 500.0,
+        "goal_time_s": 0.0,
+        "driver_interpolation": "immediate",
+        "blocking": false,
+        "command": "set_arm_positions(all six joint targets)",
+        "tag": "ik_500hz_gt0"
+      },
+      "overlap_s": [
+        0.0,
+        1.25
+      ],
+      "grid_points": 626,
+      "axis_kind": "rotation",
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "position_discrepancy_m": {
+        "mean": 6.027416388377685e-05,
+        "max": 0.00013261609447588274,
+        "at_end": 3.268490823867858e-05
+      },
+      "orientation_discrepancy_rad": {
+        "mean": 0.006821178078071085,
+        "max": 0.043587496626869816,
+        "at_end": 5.5037265206354444e-05
+      },
+      "sim": {
+        "duration_s": 1.25,
+        "peak_joint_speed_rad_s": 1.479060173034668,
+        "peak_tcp_linear_speed_m_s": 0.004004637823359873,
+        "peak_tcp_angular_speed_rad_s": 1.498559951946662,
+        "displacement_after_50ms": 0.04268287011788924,
+        "displacement_after_50ms_norm": 0.04269235164495697,
+        "peak_commanded": 0.2000000000009891,
+        "peak_reached": 0.1999466124776973,
+        "overshoot": 0.0,
+        "overshoot_fraction": 0.0,
+        "final_error_to_last_target_m": 3.26846304521615e-05,
+        "final_error_to_last_target_rad": 5.501842804109062e-05,
+        "final_error_to_goal_m": 3.26846304521615e-05,
+        "final_error_to_goal_rad": 5.501842804109062e-05,
+        "goal_tolerance_reached_t_s": 0.25,
+        "relative_targets_sent": 5,
+        "stop_reason": "goal_reached"
+      },
+      "hardware": {
+        "duration_s": 1.3500500000000102,
+        "peak_joint_speed_rad_s": 1.1291701043955982,
+        "peak_tcp_linear_speed_m_s": 0.01191534448082724,
+        "peak_tcp_angular_speed_rad_s": 1.215991973547346,
+        "displacement_after_50ms": 0.03176085438926636,
+        "displacement_after_50ms_norm": 0.03176088496072517,
+        "peak_commanded": 0.2,
+        "peak_reached": 0.20000004008182642,
+        "overshoot": 4.0081826413462807e-08,
+        "overshoot_fraction": 2.0040913206731403e-07,
+        "final_error_to_last_target_m": 5.721447045692205e-09,
+        "final_error_to_last_target_rad": 3.6501557560968467e-08,
+        "final_error_to_goal_m": 5.721447045692205e-09,
+        "final_error_to_goal_rad": 3.6501557560968467e-08,
+        "goal_tolerance_reached_t_s": 0.35000000000002274,
+        "relative_targets_sent": 7,
+        "stop_reason": "goal_reached"
+      },
+      "hardware_timing": {
+        "duration_s": 1.3500500000000102,
+        "loop": {
+          "requested_hz": 500.0,
+          "ticks": 676,
+          "achieved_hz": 500.72219547423794,
+          "lateness_s": {
+            "count": 676,
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "late_ticks_over_half_period": 0,
+          "skipped_slots": 0
+        },
+        "outer": {
+          "requested_hz": 20.0,
+          "updates": 27,
+          "achieved_hz": 20.0000000000007,
+          "lateness_s": {
+            "count": 27,
+            "median": 0.0,
+            "p95": 4.5446979513030786e-14,
+            "max": 4.546363285840016e-14,
+            "mean": -1.7244436331562037e-15
+          },
+          "skipped_indices": 0,
+          "new_targets": 7
+        },
+        "state": {
+          "fresh_reads": 676,
+          "repeated_reads": 1,
+          "skipped_message_ids": 675,
+          "out_of_order_ids": 0,
+          "header_interval_s": {
+            "count": 675,
+            "median": 0.002,
+            "p95": 0.002,
+            "max": 0.002,
+            "mean": 0.0020000000000000005
+          },
+          "host_first_seen_interval_s": {
+            "count": 675,
+            "median": 0.0019999999999527063,
+            "p95": 0.002000000000066393,
+            "max": 0.0020499999999401552,
+            "mean": 0.002000074074074089
+          },
+          "fresh_rate_hz": 500.72219547423794
+        },
+        "backend": {
+          "ik_updates": 675,
+          "commands_sent": 675,
+          "target_updates": 7,
+          "reused_state_updates": 0,
+          "max_dq_clamped_updates": 0,
+          "ik_compute_s": {
+            "count": 675,
+            "median": 0.0007009860000835033,
+            "p95": 0.000853276100133371,
+            "max": 0.0012104750003345544,
+            "mean": 0.0007194748533597535
+          },
+          "send_call_duration_s": {
+            "count": 675,
+            "median": 9.999999997489795e-05,
+            "p95": 9.999999997489795e-05,
+            "max": 9.999999997489795e-05,
+            "mean": 9.999999997489795e-05
+          },
+          "achieved_command_hz": 500.0000000000162
+        }
+      },
+      "hardware_driver_tcp_vs_fk": {
+        "position_m": {
+          "count": 676,
+          "median": 0.22982752492998665,
+          "p95": 0.22982849532800115,
+          "max": 0.22982859687520604,
+          "mean": 0.22982768628676076
+        },
+        "rotation_rad": {
+          "count": 676,
+          "median": 1.6096811798808441,
+          "p95": 1.609681360416453,
+          "max": 1.6096813621704378,
+          "mean": 1.6081841175453144
+        }
+      },
+      "start_offset_hw_minus_sim_m": [
+        8.097381792859792e-09,
+        3.233639729136134e-11,
+        8.440305732104747e-09
+      ],
+      "start_rotation_hw_vs_sim_rad": 2.384250012242133e-08
+    }
+  ]
+}

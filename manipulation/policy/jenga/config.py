@@ -10,11 +10,13 @@ from typing import Optional
 import numpy as np
 import yaml
 
+from ..ik import IkParams
 from ..observations import make_T, quat_wxyz_to_matrix
 
 DEFAULT_CONFIG = Path(__file__).resolve().parent / "config.yaml"
 ACTION_SPACE = "ee_delta_pose_binary_gripper"
 CONTROL_MODES = ("shadow", "step", "slow", "full")
+IK_SOLVERS = ("driver", "sim")
 
 
 def _path(base: Path, value) -> Optional[Path]:
@@ -27,6 +29,7 @@ def _path(base: Path, value) -> Optional[Path]:
 @dataclass(frozen=True)
 class ControlConfig:
     mode: str
+    ik_solver: str
     ready_key: str
     kill_key: str
     step_key: str
@@ -41,11 +44,14 @@ class ControlConfig:
     ready_tolerance_rad: float
     ready_gripper_tolerance: float
     stop_goal_time_s: float
+    driver_goal_time_s: Optional[float] = None
 
     @classmethod
     def from_raw(cls, raw: dict) -> "ControlConfig":
+        driver_goal_time = raw.get("driver_goal_time_s")
         c = cls(
             mode=str(raw.get("mode", "shadow")),
+            ik_solver=str(raw.get("ik_solver", "driver")),
             ready_key=str(raw.get("ready_key", "r")),
             kill_key=str(raw.get("kill_key", "k")),
             step_key=str(raw.get("step_key", "n")),
@@ -60,6 +66,7 @@ class ControlConfig:
             ready_tolerance_rad=float(raw.get("ready_tolerance_rad", 0.02)),
             ready_gripper_tolerance=float(raw.get("ready_gripper_tolerance", 0.003)),
             stop_goal_time_s=float(raw.get("stop_goal_time_s", 0.2)),
+            driver_goal_time_s=None if driver_goal_time is None else float(driver_goal_time),
         )
         c.validate()
         return c
@@ -67,10 +74,14 @@ class ControlConfig:
     def validate(self) -> None:
         if self.mode not in CONTROL_MODES:
             raise ValueError(f"control.mode must be one of {CONTROL_MODES}, got {self.mode!r}")
+        if self.ik_solver not in IK_SOLVERS:
+            raise ValueError(f"control.ik_solver must be one of {IK_SOLVERS}, got {self.ik_solver!r}")
         if self.slow_time_dilation < 1:
             raise ValueError("control.slow_time_dilation must be >= 1")
         if not 0.0 < self.action_scale <= 1.0:
             raise ValueError("control.action_scale must be in (0, 1]")
+        if self.driver_goal_time_s is not None and self.driver_goal_time_s < 0:
+            raise ValueError("control.driver_goal_time_s must be >= 0 or null")
         if self.gripper_limit_margin_m < 0:
             raise ValueError("control.gripper_limit_margin_m must be >= 0")
         for name in ("step_goal_time_s", "max_frame_age_s", "max_frame_gap_s", "gripper_goal_time_s",
@@ -80,6 +91,33 @@ class ControlConfig:
 
     def keys(self) -> dict:
         return {"ready": self.ready_key, "kill": self.kill_key, "step": self.step_key}
+
+
+@dataclass(frozen=True)
+class SimIkConfig:
+    """control.ik_solver = sim: the robot model and loop of ik.DifferentialIK / ik_arm.SimIkPolicyArm."""
+    model: Path
+    site: str
+    inner_hz: float
+    goal_time_s: float
+    params: IkParams
+
+    @classmethod
+    def from_raw(cls, raw: dict, base: Path) -> "SimIkConfig":
+        c = cls(
+            model=_path(base, raw["model"]),
+            site=str(raw.get("site", "ee_site")),
+            inner_hz=float(raw.get("inner_hz", 500.0)),
+            goal_time_s=float(raw.get("goal_time_s", 0.0)),
+            params=IkParams(**{k: float(raw[k]) for k in IkParams.__dataclass_fields__}),
+        )
+        if not c.model.is_file():
+            raise ValueError(f"sim_ik.model {c.model} does not exist")
+        if not 0 < c.inner_hz <= 1000:
+            raise ValueError("sim_ik.inner_hz must be in (0, 1000]")
+        if c.goal_time_s < 0:
+            raise ValueError("sim_ik.goal_time_s must be >= 0")
+        return c
 
 
 @dataclass(frozen=True)
@@ -95,6 +133,7 @@ class JengaPolicyConfig:
     T_base_initial: np.ndarray    # training reset pose (no yaw/xy randomization), base frame
     target_lift_height: float
     control_hz: float
+    sim_dt: float                 # physics step; the sim's IK runs once per step
     episode_steps: int
     gripper_open: float
     gripper_closed: float
@@ -108,6 +147,7 @@ class JengaPolicyConfig:
     robot: dict
     episode_key: str
     control: ControlConfig
+    sim_ik: SimIkConfig
     workspace_min: np.ndarray     # commanded TCP position box, base frame
     workspace_max: np.ndarray
 
@@ -181,6 +221,8 @@ class JengaPolicyConfig:
             T_base_initial=np.linalg.inv(T_world_base) @ T_world_obj,
             target_lift_height=float(task["target_lift_height"]),
             control_hz=float(timing["control_hz"]),
+            # TimingConfig default when the task leaves it out.
+            sim_dt=float(timing.get("sim_dt", 0.002)),
             episode_steps=int(timing["episode_steps"]),
             gripper_open=float(emb_raw["gripper_open"]),
             gripper_closed=float(emb_raw["gripper_closed"]),
@@ -195,6 +237,7 @@ class JengaPolicyConfig:
             robot={k: v for k, v in (raw.get("robot") or {}).items() if v},
             episode_key=episode_key,
             control=control,
+            sim_ik=SimIkConfig.from_raw(raw["sim_ik"], base),
             workspace_min=workspace_min,
             workspace_max=workspace_max,
         )
@@ -204,10 +247,11 @@ class JengaPolicyConfig:
                 "embodiment": self.embodiment, "object": self.object_name, "mesh": str(self.mesh_path),
                 "tracked_name": self.tracked_name, "box_center": self.box_center.tolist(),
                 "T_base_initial": self.T_base_initial.tolist(), "target_lift_height": self.target_lift_height,
-                "control_hz": self.control_hz, "episode_steps": self.episode_steps,
+                "control_hz": self.control_hz, "sim_dt": self.sim_dt, "episode_steps": self.episode_steps,
                 "gripper_open": self.gripper_open, "gripper_closed": self.gripper_closed,
                 "ready_joint_pos": self.ready_joint_pos.tolist(), "ready_gripper": self.ready_gripper,
                 "action_space": self.action_space, "ee_pos_scale": self.ee_pos_scale,
                 "ee_rot_scale": self.ee_rot_scale, "checkpoint": str(self.checkpoint),
                 "episode_key": self.episode_key, "control": asdict(self.control),
+                "sim_ik": {**asdict(self.sim_ik), "model": str(self.sim_ik.model)},
                 "workspace_min": self.workspace_min.tolist(), "workspace_max": self.workspace_max.tolist()}

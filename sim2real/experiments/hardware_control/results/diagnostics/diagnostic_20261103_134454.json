@@ -1,0 +1,956 @@
+{
+  "kind": "hardware_control_diagnostic",
+  "settings": {
+    "training": {
+      "scene": "/home/luka/research/real_robot/sim/mujoco/configs/scenes/tabletop_jenga_wxai.json",
+      "task": "/home/luka/research/real_robot/sim/mujoco/configs/tasks/grasp_curriculum_size_variants_friction_wxai.json"
+    },
+    "motion": {
+      "translation_m": 0.01,
+      "rotation_rad": 0.05
+    },
+    "timing": {
+      "outer_hz": 20.0
+    },
+    "single": {
+      "observe_s": 1.5
+    },
+    "scheduled": {
+      "out_steps": 4,
+      "back_steps": 4,
+      "hold_steps": 10,
+      "post_observe_s": 1.0
+    },
+    "relative": {
+      "goal_translation_m": 0.04,
+      "goal_rotation_rad": 0.2,
+      "step_limit": "per_axis",
+      "max_translation_step_m": 0.01,
+      "max_rotation_step_rad": 0.05,
+      "position_tolerance_m": 0.001,
+      "orientation_tolerance_rad": 0.01,
+      "timeout_s": 4.0,
+      "post_goal_observe_s": 1.0
+    },
+    "sim": {
+      "device": "cuda:0",
+      "settle_s": 1.0,
+      "settle_joint_tolerance_rad": 0.002,
+      "settle_velocity_tolerance_rad_s": 0.002
+    },
+    "hardware": {
+      "calibration_config": "/home/luka/research/real_robot/vision/calibration/config.yaml",
+      "gripper_limit_margin_m": 0.002,
+      "cartesian": {
+        "poll_hz": 1000.0,
+        "goal_times_s": [
+          0.0,
+          0.05,
+          0.1,
+          0.2,
+          0.5
+        ],
+        "interpolation_spaces": [
+          "joint",
+          "cartesian"
+        ]
+      },
+      "external_ik": {
+        "ik_hz": 500.0,
+        "ik_hz_list": [
+          500.0,
+          250.0,
+          100.0
+        ],
+        "goal_time_s": 0.0,
+        "device": "cuda:0"
+      },
+      "reset": {
+        "min_move_time_s": 4.0,
+        "max_reset_speed_rad_s": 0.3,
+        "max_auto_start_distance_rad": 1.0,
+        "settle_timeout_s": 6.0,
+        "settle_hold_s": 0.5,
+        "joint_tolerance_rad": 0.01,
+        "velocity_tolerance_rad_s": 0.02,
+        "stop_goal_time_s": 0.2
+      },
+      "safety": {
+        "workspace_min_m": [
+          0.14,
+          -0.1,
+          0.04
+        ],
+        "workspace_max_m": [
+          0.3,
+          0.1,
+          0.2
+        ],
+        "max_target_offset_m": 0.06,
+        "max_target_rotation_rad": 0.35,
+        "measured_workspace_slack_m": 0.01,
+        "max_tracking_error_m": 0.03,
+        "max_tracking_error_rad": 0.3,
+        "max_joint_speed_rad_s": 2.0,
+        "joint_limit_margin_rad": 0.05,
+        "max_joint_step_rad": 0.15,
+        "stale_state_s": 0.05,
+        "max_trial_s": 15.0
+      }
+    },
+    "diagnostic": {
+      "duration_s": 5.0,
+      "poll_hz": 2000.0,
+      "ik_samples": 2000
+    },
+    "config_file": "/home/luka/research/real_robot/sim2real/experiments/hardware_control/config.yaml"
+  },
+  "hardware": {
+    "identity": {
+      "ip": "192.168.1.2",
+      "model": "wxai_v0",
+      "end_effector": "wxai_v0_base"
+    },
+    "hardware_configuration": {
+      "driver_version": "1.11.0",
+      "controller_version": "1.11.1",
+      "num_joints": 7,
+      "modes": [
+        "external_effort",
+        "external_effort",
+        "external_effort",
+        "external_effort",
+        "external_effort",
+        "external_effort",
+        "external_effort"
+      ],
+      "joint_limits": [
+        {
+          "position_min": -3.1415927410125732,
+          "position_max": 3.1415927410125732,
+          "position_tolerance": 0.20000000298023224,
+          "velocity_max": 6.2831854820251465,
+          "velocity_tolerance": 0.0,
+          "effort_max": 27.0,
+          "effort_tolerance": 5.400000095367432
+        },
+        {
+          "position_min": 0.0,
+          "position_max": 3.1415927410125732,
+          "position_tolerance": 0.20000000298023224,
+          "velocity_max": 6.2831854820251465,
+          "velocity_tolerance": 0.0,
+          "effort_max": 27.0,
+          "effort_tolerance": 5.400000095367432
+        },
+        {
+          "position_min": 0.0,
+          "position_max": 2.356194496154785,
+          "position_tolerance": 0.20000000298023224,
+          "velocity_max": 6.2831854820251465,
+          "velocity_tolerance": 0.0,
+          "effort_max": 27.0,
+          "effort_tolerance": 5.400000095367432
+        },
+        {
+          "position_min": -1.5707963705062866,
+          "position_max": 1.5707963705062866,
+          "position_tolerance": 0.4000000059604645,
+          "velocity_max": 9.42477798461914,
+          "velocity_tolerance": 0.0,
+          "effort_max": 7.0,
+          "effort_tolerance": 1.399999976158142
+        },
+        {
+          "position_min": -1.5707963705062866,
+          "position_max": 1.5707963705062866,
+          "position_tolerance": 0.4000000059604645,
+          "velocity_max": 9.42477798461914,
+          "velocity_tolerance": 0.0,
+          "effort_max": 7.0,
+          "effort_tolerance": 1.399999976158142
+        },
+        {
+          "position_min": -3.1415927410125732,
+          "position_max": 3.1415927410125732,
+          "position_tolerance": 0.4000000059604645,
+          "velocity_max": 9.42477798461914,
+          "velocity_tolerance": 0.0,
+          "effort_max": 7.0,
+          "effort_tolerance": 1.399999976158142
+        },
+        {
+          "position_min": 0.0,
+          "position_max": 0.03999999910593033,
+          "position_tolerance": 0.004000000189989805,
+          "velocity_max": 0.25,
+          "velocity_tolerance": 0.0,
+          "effort_max": 100.0,
+          "effort_tolerance": 300.0
+        }
+      ],
+      "motor_parameters": [
+        {
+          "idle": {
+            "position": {
+              "kp": 0.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 8.0,
+              "ki": 0.03999999910593033,
+              "kd": 0.0,
+              "imax": 9.0
+            }
+          },
+          "position": {
+            "position": {
+              "kp": 16.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 8.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          },
+          "velocity": {
+            "position": {
+              "kp": 120.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 8.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          },
+          "external_effort": {
+            "position": {
+              "kp": 120.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 8.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          },
+          "effort": {
+            "position": {
+              "kp": 120.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 8.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          }
+        },
+        {
+          "idle": {
+            "position": {
+              "kp": 0.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 8.0,
+              "ki": 0.03999999910593033,
+              "kd": 0.0,
+              "imax": 27.0
+            }
+          },
+          "position": {
+            "position": {
+              "kp": 16.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 8.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          },
+          "velocity": {
+            "position": {
+              "kp": 120.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 8.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          },
+          "external_effort": {
+            "position": {
+              "kp": 120.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 8.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          },
+          "effort": {
+            "position": {
+              "kp": 120.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 8.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          }
+        },
+        {
+          "idle": {
+            "position": {
+              "kp": 0.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 8.0,
+              "ki": 0.03999999910593033,
+              "kd": 0.0,
+              "imax": 9.0
+            }
+          },
+          "position": {
+            "position": {
+              "kp": 16.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 8.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          },
+          "velocity": {
+            "position": {
+              "kp": 120.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 8.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          },
+          "external_effort": {
+            "position": {
+              "kp": 120.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 8.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          },
+          "effort": {
+            "position": {
+              "kp": 120.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 8.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          }
+        },
+        {
+          "idle": {
+            "position": {
+              "kp": 0.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 1.0,
+              "ki": 0.009999999776482582,
+              "kd": 0.0,
+              "imax": 3.0
+            }
+          },
+          "position": {
+            "position": {
+              "kp": 80.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 1.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          },
+          "velocity": {
+            "position": {
+              "kp": 80.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 1.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          },
+          "external_effort": {
+            "position": {
+              "kp": 80.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 1.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          },
+          "effort": {
+            "position": {
+              "kp": 80.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 1.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          }
+        },
+        {
+          "idle": {
+            "position": {
+              "kp": 0.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 1.0,
+              "ki": 0.009999999776482582,
+              "kd": 0.0,
+              "imax": 3.0
+            }
+          },
+          "position": {
+            "position": {
+              "kp": 40.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 1.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          },
+          "velocity": {
+            "position": {
+              "kp": 40.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 1.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          },
+          "external_effort": {
+            "position": {
+              "kp": 40.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 1.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          },
+          "effort": {
+            "position": {
+              "kp": 40.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 1.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          }
+        },
+        {
+          "idle": {
+            "position": {
+              "kp": 0.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 1.0,
+              "ki": 0.009999999776482582,
+              "kd": 0.0,
+              "imax": 3.0
+            }
+          },
+          "position": {
+            "position": {
+              "kp": 40.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 1.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          },
+          "velocity": {
+            "position": {
+              "kp": 40.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 1.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          },
+          "external_effort": {
+            "position": {
+              "kp": 40.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 1.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          },
+          "effort": {
+            "position": {
+              "kp": 40.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 1.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          }
+        },
+        {
+          "idle": {
+            "position": {
+              "kp": 0.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 0.05000000074505806,
+              "ki": 0.0005000000237487257,
+              "kd": 0.0,
+              "imax": 3.0
+            }
+          },
+          "position": {
+            "position": {
+              "kp": 20.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 1.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          },
+          "velocity": {
+            "position": {
+              "kp": 20.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 1.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          },
+          "external_effort": {
+            "position": {
+              "kp": 20.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 1.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          },
+          "effort": {
+            "position": {
+              "kp": 20.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            },
+            "velocity": {
+              "kp": 1.0,
+              "ki": 0.0,
+              "kd": 0.0,
+              "imax": 0.0
+            }
+          }
+        }
+      ],
+      "joint_characteristics": [
+        {
+          "effort_correction": 1.2000000476837158,
+          "friction_constant_term": 0.12999999523162842,
+          "friction_coulomb_coef": 0.0,
+          "friction_transition_velocity": 0.0,
+          "friction_viscous_coef": 0.0,
+          "position_offset": 0.0
+        },
+        {
+          "effort_correction": 1.1219820976257324,
+          "friction_constant_term": -0.2800000011920929,
+          "friction_coulomb_coef": 0.11546818166971207,
+          "friction_transition_velocity": 0.0,
+          "friction_viscous_coef": -0.05392245948314667,
+          "position_offset": 0.0
+        },
+        {
+          "effort_correction": 1.1713593006134033,
+          "friction_constant_term": 0.23999999463558197,
+          "friction_coulomb_coef": 0.14089082181453705,
+          "friction_transition_velocity": 0.0,
+          "friction_viscous_coef": -0.29886069893836975,
+          "position_offset": 0.0
+        },
+        {
+          "effort_correction": 1.0973777770996094,
+          "friction_constant_term": -0.11999999731779099,
+          "friction_coulomb_coef": 0.032083164900541306,
+          "friction_transition_velocity": 0.0,
+          "friction_viscous_coef": 0.020000476390123367,
+          "position_offset": 0.0
+        },
+        {
+          "effort_correction": 1.107961893081665,
+          "friction_constant_term": -0.05999999865889549,
+          "friction_coulomb_coef": 0.06065040081739426,
+          "friction_transition_velocity": 0.0,
+          "friction_viscous_coef": 0.01264506857842207,
+          "position_offset": 0.0
+        },
+        {
+          "effort_correction": 1.2000000476837158,
+          "friction_constant_term": 0.029999999329447746,
+          "friction_coulomb_coef": 0.0,
+          "friction_transition_velocity": 0.0,
+          "friction_viscous_coef": 0.01716070994734764,
+          "position_offset": 0.0
+        },
+        {
+          "effort_correction": 1.2000000476837158,
+          "friction_constant_term": 3.25,
+          "friction_coulomb_coef": 0.0,
+          "friction_transition_velocity": 0.0,
+          "friction_viscous_coef": 0.0,
+          "position_offset": 0.0
+        }
+      ],
+      "end_effector": {
+        "offset_finger_left_m": 0.02449817955493927,
+        "offset_finger_right_m": -0.024501819163560867,
+        "pitch_circle_radius_m": 0.008750000037252903,
+        "t_flange_tool_m_rotvec_rad": [
+          0.156062,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "finger_offset_meaning": "offset_finger_left/right are the palm-centre to carriage-centre offsets with the fingers at the closed configuration, in metres. They are not the gripper joint coordinate.",
+        "palm": {
+          "mass_kg": 0.5598414540290833,
+          "inertia": [
+            0.0008366000256501138,
+            -7.300000106624793e-07,
+            3.580000111469417e-06,
+            -7.300000106624793e-07,
+            0.000380940007744357,
+            -1.700000069604357e-07,
+            3.580000111469417e-06,
+            -1.700000069604357e-07,
+            0.0009712100145407021
+          ],
+          "origin_xyz_m": [
+            0.04530753940343857,
+            -4.230999911669642e-05,
+            0.00021127999934833497
+          ],
+          "origin_rpy_rad": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "finger_left": {
+          "mass_kg": 0.07283511012792587,
+          "inertia": [
+            2.513999970688019e-05,
+            4.86999988424941e-06,
+            -2.530000074330019e-06,
+            4.86999988424941e-06,
+            3.632999869296327e-05,
+            -1.4400000054592965e-06,
+            -2.530000074330019e-06,
+            -1.4400000054592965e-06,
+            4.148000152781606e-05
+          ],
+          "origin_xyz_m": [
+            0.003004679922014475,
+            -0.006998749915510416,
+            -0.0038340298924595118
+          ],
+          "origin_rpy_rad": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "finger_right": {
+          "mass_kg": 0.0728352963924408,
+          "inertia": [
+            2.5780000214581378e-05,
+            -4.86999988424941e-06,
+            4.9599998419580515e-06,
+            -4.86999988424941e-06,
+            3.696999920066446e-05,
+            -5.499999815583578e-07,
+            4.9599998419580515e-06,
+            -5.499999815583578e-07,
+            4.148000152781606e-05
+          ],
+          "origin_xyz_m": [
+            0.003004699945449829,
+            0.006998640019446611,
+            0.002443620003759861
+          ],
+          "origin_rpy_rad": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "algorithm_singularity_threshold": 0.01,
+      "factory_reset_flag": false,
+      "unreadable": {},
+      "note": "Read only; nothing is written. Motor PID gains are the controller's cascaded position/velocity loops in its own units; they are not MuJoCo kp/kv."
+    },
+    "poll_hz_requested": 2000.0,
+    "duration_s": 5.000000645,
+    "reads": 9903,
+    "poll_hz_achieved": 1980.599744502633,
+    "skipped_poll_slots": 97,
+    "read_call_s": {
+      "count": 9903,
+      "median": 9.65509998422931e-05,
+      "p95": 0.0002599556005407066,
+      "max": 0.003821562000666745,
+      "mean": 0.00011946628728774248
+    },
+    "state": {
+      "fresh_reads": 9489,
+      "repeated_reads": 414,
+      "skipped_message_ids": 13847,
+      "out_of_order_ids": 0,
+      "header_interval_s": {
+        "count": 9488,
+        "median": 0.000434,
+        "p95": 0.000855,
+        "max": 0.0059949999999999995,
+        "mean": 0.0005270087478920742
+      },
+      "host_first_seen_interval_s": {
+        "count": 9488,
+        "median": 0.0004870990001109021,
+        "p95": 0.0007807100997069933,
+        "max": 0.004182491000392474,
+        "mean": 0.0005266244598440356
+      },
+      "fresh_rate_hz": 1897.7997551838316
+    },
+    "mode": "gravity compensation (external_effort 0); no position commands"
+  },
+  "ik": {
+    "device": "cuda:0",
+    "self_check": {
+      "action": [
+        0.4,
+        -0.3,
+        0.5,
+        0.2,
+        -0.6,
+        0.3
+      ],
+      "q_arm_rad": [
+        0.0,
+        1.3799999952316284,
+        1.0399999618530273,
+        -1.2599999904632568,
+        0.0,
+        0.0
+      ],
+      "desired_position_diff_m": 0.0,
+      "desired_rotation_diff_rad": 0.0,
+      "joint_target_diff_rad": 1.2293457984924316e-07,
+      "joint_target_action_path_rad": [
+        -0.018912555649876595,
+        1.3642271757125854,
+        1.0480670928955078,
+        -1.2538756132125854,
+        -0.00887196883559227,
+        -0.03410467877984047
+      ],
+      "joint_target_adapter_path_rad": [
+        -0.018912499770522118,
+        1.364227056503296,
+        1.0480669736862183,
+        -1.253875494003296,
+        -0.008871917612850666,
+        -0.03410480171442032
+      ]
+    },
+    "solve_s": {
+      "count": 1950,
+      "median": 0.0006654005001109908,
+      "p95": 0.0008651435997307999,
+      "max": 0.0012773199996445328,
+      "mean": 0.0006957158266647103
+    },
+    "fk_s": {
+      "count": 2000,
+      "median": 2.525850004531094e-05,
+      "p95": 2.725230010582891e-05,
+      "max": 8.703700041223783e-05,
+      "mean": 2.5733970511737424e-05
+    },
+    "note": "solve = write measured q, sim.forward(), ClippedDifferentialIKAction.apply_actions(), read target"
+  },
+  "environment": {
+    "python": "3.12.14",
+    "platform": "Linux-6.8.0-147-generic-x86_64-with-glibc2.39",
+    "numpy": "2.5.3",
+    "mujoco": "3.11.0",
+    "mjlab": "unknown",
+    "torch": "2.11.0+cu128",
+    "trossen_arm": "unknown"
+  },
+  "recommendation": {
+    "estimated_tick_cost_s": 0.001412307100918042,
+    "sustainable_configured_rates_hz": [
+      250.0,
+      100.0
+    ],
+    "recommended_ik_hz": 250.0,
+    "fresh_state_rate_hz": 1897.7997551838316,
+    "note": "rates above the fresh state rate reuse state samples on some ticks"
+  }
+}

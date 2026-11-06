@@ -1,0 +1,89 @@
+# Hardware-control experiment: WidowX AI hardware vs the mjlab training controller.
+# Relative paths are relative to this file. Lengths in metres, angles in radians, times in
+# seconds. Poses are the TCP (training site ee_site / driver tool frame) in the robot base frame.
+
+training:
+  # The scene and task of the deployed policy (manipulation/policy/jenga/config.yaml).
+  # The robot model, ready pose, physics timestep, decimation, actuators, gravity
+  # compensation and IK settings all come from these through tabletop_sim.
+  scene: ../../../sim/mujoco/configs/scenes/tabletop_jenga_wxai.json
+  task: ../../../sim/mujoco/configs/tasks/grasp_curriculum_size_variants_friction_wxai.json
+
+motion:
+  translation_m: 0.01     # single-move and scheduled step size; training ee_pos_scale
+  rotation_rad: 0.05      # single-move and scheduled step size; training ee_rot_scale
+
+timing:
+  outer_hz: 20.0          # TCP-target update rate; fixed for this experiment
+
+single:
+  observe_s: 1.5          # target held this long after command onset
+
+scheduled:
+  out_steps: 4            # targets move one step further per update...
+  back_steps: 4           # ...then one step back per update...
+  hold_steps: 10          # ...then repeat the last target (still sent every update)
+  post_observe_s: 1.0     # observation after the last scheduled target
+
+relative:
+  goal_translation_m: 0.04   # single-axis goal distance from the reference pose
+  goal_rotation_rad: 0.20    # single-axis goal angle from the reference pose
+  # per_axis: clip each base-frame component (translation m, rotation-vector rad) to the
+  #           step limit; the training action convention (clip(a, -1, 1) * scale).
+  # euclidean: limit the translation norm and the rotation angle along the geodesic.
+  # Both are identical for single-axis motion.
+  step_limit: per_axis
+  max_translation_step_m: 0.01
+  max_rotation_step_rad: 0.05
+  position_tolerance_m: 0.001
+  orientation_tolerance_rad: 0.01
+  timeout_s: 4.0
+  post_goal_observe_s: 1.0
+
+sim:
+  device: cuda:0
+  settle_s: 1.0                  # joint-position hold at the ready pose before onset
+  settle_joint_tolerance_rad: 0.002
+  settle_velocity_tolerance_rad_s: 0.002
+
+hardware:
+  # Robot ip / model / end effector come from this file's robot: section.
+  calibration_config: ../../../vision/calibration/config.yaml
+  gripper_limit_margin_m: 0.002   # as in the policy deployment
+  cartesian:
+    poll_hz: 1000.0               # state-read loop rate between 20 Hz target updates
+    goal_times_s: [0.0, 0.05, 0.1, 0.2, 0.5]
+    interpolation_spaces: [joint, cartesian]
+  external_ik:
+    ik_hz: 500.0                  # simulation IK rate (every 2 ms physics substep)
+    ik_hz_list: [500.0, 250.0, 100.0]   # for later comparison; one value per trial
+    goal_time_s: 0.0              # set_arm_positions goal_time; immediate
+    device: cuda:0
+  reset:
+    min_move_time_s: 4.0
+    max_reset_speed_rad_s: 0.3    # longer reset moves get proportionally more time
+    max_auto_start_distance_rad: 1.0   # farther than this needs a typed confirmation
+    settle_timeout_s: 6.0
+    settle_hold_s: 0.5
+    joint_tolerance_rad: 0.02     # hardware holds ready with ~0.013 rad gravity sag on joints 1-2
+    velocity_tolerance_rad_s: 0.02
+    stop_goal_time_s: 0.2         # joint-space stop at the measured pose (deployment value)
+  safety:
+    # Base frame; the table top is base z = 0 and the TCP is at the fingertips.
+    workspace_min_m: [0.14, -0.10, 0.04]
+    workspace_max_m: [0.30, 0.10, 0.20]
+    max_target_offset_m: 0.06          # commanded TCP from the reference TCP
+    max_target_rotation_rad: 0.35      # commanded TCP from the reference orientation
+    measured_workspace_slack_m: 0.01   # measured TCP may leave the box by this much (overshoot)
+    max_tracking_error_m: 0.06         # measured TCP from the held target; scheduled targets lead by up to ~40 mm
+    max_tracking_error_rad: 0.3
+    max_joint_speed_rad_s: 2.0
+    joint_limit_margin_rad: 0.05       # inside the driver's joint limits
+    max_joint_step_rad: 0.15           # external IK: |q_target - q_measured| per command
+    stale_state_s: 0.05                # no new state message for this long stops the trial
+    max_trial_s: 15.0
+
+diagnostic:
+  duration_s: 5.0
+  poll_hz: 2000.0
+  ik_samples: 2000

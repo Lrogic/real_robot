@@ -1,0 +1,252 @@
+{
+ "kind": "hardware_control_plan",
+ "test": "single",
+ "frames": "Poses are the TCP in the robot base frame (training model: body carrying joint_0; hardware: driver base frame). Translations are base-frame vectors. Rotations are base-frame rotation vectors applied on the left about the TCP origin (R_target = exp(r) @ R), the training apply_delta_pose convention.",
+ "outer_period_s": 0.05,
+ "reference": {
+  "arm_joints_rad": [
+   0.0,
+   1.38,
+   1.04,
+   -1.26,
+   0.0,
+   0.0
+  ],
+  "gripper_m": 0.026,
+  "tcp": {
+   "position_m": [
+    0.2135402198347298,
+    0.0,
+    0.08497802488691597
+   ],
+   "quaternion_wxyz": [
+    0.6967067093471656,
+    0.0,
+    0.7173560908995226,
+    0.0
+   ],
+   "rotvec_rad": [
+    0.0,
+    1.5999999999999994,
+    0.0
+   ],
+   "rotation_matrix": [
+    [
+     -0.029199522301288194,
+     0.0,
+     0.9995736030415052
+    ],
+    [
+     0.0,
+     1.0,
+     0.0
+    ],
+    [
+     -0.9995736030415052,
+     0.0,
+     -0.029199522301288194
+    ]
+   ]
+  },
+  "source": "training-model FK of EmbodimentCfg.ready_joint_pos",
+  "model": {
+   "embodiment": "trossen_wxai_base_real",
+   "xml_path": "/home/luka/research/real_robot/sim/mujoco/assets/robots/trossen_wxai_base/wxai/wxai_base_real_robot.xml",
+   "tcp_site": "ee_site",
+   "tcp_site_local_pos_m": [
+    0.156,
+    0.0,
+    0.0
+   ],
+   "base_body": "base_link",
+   "arm_joint_names": [
+    "joint_0",
+    "joint_1",
+    "joint_2",
+    "joint_3",
+    "joint_4",
+    "joint_5"
+   ],
+   "mujoco_version": "3.11.0"
+  }
+ },
+ "targets": [
+  {
+   "index": 0,
+   "t_s": 0.0,
+   "step_multiple": 1,
+   "translation_m": [
+    0.0,
+    -0.01,
+    0.0
+   ],
+   "rotvec_rad": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "pose": {
+    "position_m": [
+     0.2135402198347298,
+     -0.01,
+     0.08497802488691597
+    ],
+    "quaternion_wxyz": [
+     0.6967067093471656,
+     0.0,
+     0.7173560908995226,
+     0.0
+    ],
+    "rotvec_rad": [
+     0.0,
+     1.5999999999999994,
+     0.0
+    ],
+    "rotation_matrix": [
+     [
+      -0.029199522301288194,
+      0.0,
+      0.9995736030415052
+     ],
+     [
+      0.0,
+      1.0,
+      0.0
+     ],
+     [
+      -0.9995736030415052,
+      0.0,
+      -0.029199522301288194
+     ]
+    ]
+   }
+  }
+ ],
+ "relative": null,
+ "single": {
+  "observe_s": 1.5
+ },
+ "scheduled": {
+  "out_steps": 4,
+  "back_steps": 4,
+  "hold_steps": 10,
+  "post_observe_s": 1.0
+ },
+ "settings": {
+  "training": {
+   "scene": "/home/luka/research/real_robot/sim/mujoco/configs/scenes/tabletop_jenga_wxai.json",
+   "task": "/home/luka/research/real_robot/sim/mujoco/configs/tasks/grasp_curriculum_size_variants_friction_wxai.json"
+  },
+  "motion": {
+   "translation_m": 0.01,
+   "rotation_rad": 0.05
+  },
+  "timing": {
+   "outer_hz": 20.0
+  },
+  "single": {
+   "observe_s": 1.5
+  },
+  "scheduled": {
+   "out_steps": 4,
+   "back_steps": 4,
+   "hold_steps": 10,
+   "post_observe_s": 1.0
+  },
+  "relative": {
+   "goal_translation_m": 0.04,
+   "goal_rotation_rad": 0.2,
+   "step_limit": "per_axis",
+   "max_translation_step_m": 0.01,
+   "max_rotation_step_rad": 0.05,
+   "position_tolerance_m": 0.001,
+   "orientation_tolerance_rad": 0.01,
+   "timeout_s": 4.0,
+   "post_goal_observe_s": 1.0
+  },
+  "sim": {
+   "device": "cuda:0",
+   "settle_s": 1.0,
+   "settle_joint_tolerance_rad": 0.002,
+   "settle_velocity_tolerance_rad_s": 0.002
+  },
+  "hardware": {
+   "calibration_config": "/home/luka/research/real_robot/vision/calibration/config.yaml",
+   "gripper_limit_margin_m": 0.002,
+   "cartesian": {
+    "poll_hz": 1000.0,
+    "goal_times_s": [
+     0.0,
+     0.05,
+     0.1,
+     0.2,
+     0.5
+    ],
+    "interpolation_spaces": [
+     "joint",
+     "cartesian"
+    ]
+   },
+   "external_ik": {
+    "ik_hz": 500.0,
+    "ik_hz_list": [
+     500.0,
+     250.0,
+     100.0
+    ],
+    "goal_time_s": 0.0,
+    "device": "cuda:0"
+   },
+   "reset": {
+    "min_move_time_s": 4.0,
+    "max_reset_speed_rad_s": 0.3,
+    "max_auto_start_distance_rad": 1.0,
+    "settle_timeout_s": 6.0,
+    "settle_hold_s": 0.5,
+    "joint_tolerance_rad": 0.01,
+    "velocity_tolerance_rad_s": 0.02,
+    "stop_goal_time_s": 0.2
+   },
+   "safety": {
+    "workspace_min_m": [
+     0.14,
+     -0.1,
+     0.04
+    ],
+    "workspace_max_m": [
+     0.3,
+     0.1,
+     0.2
+    ],
+    "max_target_offset_m": 0.06,
+    "max_target_rotation_rad": 0.35,
+    "max_tracking_error_m": 0.03,
+    "max_tracking_error_rad": 0.3,
+    "max_joint_speed_rad_s": 2.0,
+    "joint_limit_margin_rad": 0.05,
+    "max_joint_step_rad": 0.15,
+    "stale_state_s": 0.05,
+    "max_trial_s": 15.0
+   }
+  },
+  "diagnostic": {
+   "duration_s": 5.0,
+   "poll_hz": 2000.0,
+   "ik_samples": 2000
+  },
+  "config_file": "/home/luka/research/real_robot/sim2real/experiments/hardware_control/config.yaml"
+ },
+ "motion": {
+  "kind": "translation",
+  "axis": "y",
+  "sign": -1,
+  "step": 0.01,
+  "direction": [
+   0.0,
+   -1.0,
+   0.0
+  ]
+ },
+ "name": "single_tra_y-",
+ "sha256": "3431d86a064d548882b7cccfd49ab29680b3bf79d0d49018db1a13746857d034"
+}

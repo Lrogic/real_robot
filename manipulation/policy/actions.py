@@ -8,7 +8,8 @@ the TCP measured at the start of the step, both in the robot base frame:
     p_target = p + dp        R_target = R(dr) @ R
 
 The gripper value opens at a >= 0 and closes below (no clamp). The sim's 25 damped IK
-solves per step are replaced by the driver's own Cartesian IK on the target.
+solves per step are replaced by the driver's own Cartesian IK on the target, or, with
+control.ik_solver = sim, reproduced on the measured joints (ik.py, ik_arm.py).
 """
 
 from __future__ import annotations
