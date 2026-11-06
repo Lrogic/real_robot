@@ -101,7 +101,9 @@ class CliTest(unittest.TestCase):
         args = parse("--manipulation", "basic", "--manipulation-dry-run")
         self.assertEqual(args.manipulation, "basic")
         self.assertTrue(args.manipulation_dry_run)
-        self.assertIn("invalid choice", parse_error("--manipulation", "policy"))
+        self.assertEqual(parse("--recovery", "--manipulation", "policy").manipulation, "policy")
+        self.assertIn("requires --recovery", parse_error("--manipulation", "policy"))
+        self.assertIn("invalid choice", parse_error("--manipulation", "nope"))
         self.assertIn("argument --manipulation", parse_error("--manipulation"))
         self.assertIn("requires --manipulation", parse_error("--manipulation-dry-run"))
 
