@@ -5,7 +5,9 @@ At each policy tick one robot-state read and the tracked object's original-mesh 
 base frame, T_base_object = T_base_camera @ center_pose @ to_origin, build the observation;
 the actor turns it into a TCP goal (actions.ee_delta_target), and the controller decides
 whether the driver gets it (controller.py has the states). control.mode in the config, or
---policy-control, picks shadow / step / slow / full.
+--policy-control, picks shadow / step / slow / full. control.ik_solver picks how a goal is
+sent: the driver's Cartesian IK, or the training IK at sim_ik.inner_hz (ik_arm.py); with the
+latter the goal is composed on the robot model's TCP at the measured joints, as in the sim.
 
 In the tracking window:
     s        move to the ready pose and arm an episode (shadow: arm it in place);
@@ -37,6 +39,8 @@ from . import observations as obs
 from .actions import EeTarget, ee_delta_target, in_workspace
 from .actor import PolicyActor
 from .arm import DryRunPolicyArm, PolicyArm, ready_error
+from .ik import DifferentialIK
+from .ik_arm import SimIkPolicyArm
 from .jenga.config import JengaPolicyConfig
 from .jenga.observation_manager import ACTIVE, IDLE, JengaObservationManager
 from .policy_log import LOG_FILE, PolicyLog
@@ -87,10 +91,11 @@ def _pose7(T) -> Optional[list]:
 
 class PolicySession:
     def __init__(self, cfg: JengaPolicyConfig, T_base_camera: np.ndarray, arm, actor: PolicyActor, recovery,
-                 log: PolicyLog, save_path: Path, stats_every_s: float):
+                 log: PolicyLog, save_path: Path, stats_every_s: float, ik: Optional[DifferentialIK] = None):
         self.cfg = cfg
         self.X, self.X_inv = T_base_camera, inv_T(T_base_camera)
         self.arm, self.actor, self.recovery, self.log = arm, actor, recovery, log
+        self.ik = ik
         self.save_path = save_path
         self.stats_every_s = stats_every_s
         self.manager = JengaObservationManager(cfg)
@@ -123,11 +128,13 @@ class PolicySession:
     def start(self, info: dict) -> None:
         self.log.event("start", **info)
         print(__doc__)
-        c = self.cfg.control
+        c, k = self.cfg.control, self.cfg.sim_ik
+        goals = (f"goals tracked by the training IK at {k.inner_hz:g} Hz (training {1.0 / self.cfg.sim_dt:g} Hz), "
+                 f"joint goal time {1000 * k.goal_time_s:g} ms" if self.ik is not None
+                 else f"goals over {1000 * self.control.goal_time_s:.0f} ms")
         print(f"Policy {self.actor.info.get('experiment')} iteration {self.actor.info.get('iteration')}; "
               f"control mode {c.mode.upper()}, policy ticks at {1.0 / self.control.tick_period_s:g} Hz, "
-              f"goals over {1000 * self.control.goal_time_s:.0f} ms. Logging: "
-              f"{self.log.path if self.log.enabled else 'off (--manipulation-logging)'}")
+              f"{goals}. Logging: {self.log.path if self.log.enabled else 'off (--manipulation-logging)'}")
 
     def close(self) -> None:
         if self._closed:
@@ -176,6 +183,8 @@ class PolicySession:
             robot_read_s = None if robot is None else robot.read_at - tick_at
         except Exception as error:  # a failed read must not end the tracking loop
             self._robot_error(error, timing.frame_number)
+        if self.arm.killed and self.control.state != ctl.KILLED:  # the IK loop killed the arm
+            self._kill(self.arm.kill_reason)
         self._check_ready(robot)
         result = self.manager.tick(robot, T_raw, trust, timing.frame_number)
         for event in result.events:
@@ -234,8 +243,10 @@ class PolicySession:
             "action_clipped": None if target is None else target.clipped.tolist(),
             "target_tcp": _pose7(None if target is None else target.T_base_target),
             "gripper_target": None if target is None else target.gripper,
-            "goal_time_s": self.control.goal_time_s, "sent": sent, "gripper_sent": gripper_sent,
+            "goal_time_s": self.cfg.sim_ik.goal_time_s if self.ik is not None else self.control.goal_time_s,
+            "sent": sent, "gripper_sent": gripper_sent,
             "hold_reason": decision.reason, "send_error": send_error,
+            "sim_ik": self.arm.drain_stats() if isinstance(self.arm, SimIkPolicyArm) else None,
         }
         self.log.tick(record, tick_at, build_s, frame_age, overrun)
         if tick_at - self._last_print_at >= self.stats_every_s:
@@ -319,7 +330,8 @@ class PolicySession:
 
     def _target_for(self, robot, raw: np.ndarray) -> EeTarget:
         cfg = self.cfg
-        return ee_delta_target(robot.T_base_tcp, raw, pos_scale=cfg.ee_pos_scale, rot_scale=cfg.ee_rot_scale,
+        T_base_tcp = robot.T_base_tcp if self.ik is None else self.ik.fk(robot.arm_q)
+        return ee_delta_target(T_base_tcp, raw, pos_scale=cfg.ee_pos_scale, rot_scale=cfg.ee_rot_scale,
                                gripper_open=cfg.gripper_open, gripper_closed=cfg.gripper_closed,
                                action_scale=cfg.control.action_scale)
 
@@ -476,15 +488,23 @@ def policy_session(args, recovery):
     rms = cal.get("results", {}).get(cal.get("method"), {}).get("residuals", {}).get("corner_rms_mm")
     print(f"Calibration {cal_path} ({cal.get('method')}, corner RMS {rms} mm); camera at "
           f"{np.round(X[:3, 3], 3)} m in the base frame. The camera arm must be at its calibrated parked pose.")
+    ik = None
+    if cfg.control.ik_solver == "sim":
+        k = cfg.sim_ik
+        ik = DifferentialIK(k.model, k.site, k.params, cfg.ready_joint_pos)
+        print(f"Training IK on {k.model} ({k.site}), {k.inner_hz:g} Hz, joint goal time {k.goal_time_s:g} s.")
     if args.manipulation_dry_run:
         arm = DryRunPolicyArm()
+    elif ik is not None:
+        arm = SimIkPolicyArm(resolve_robot_identity(cfg.robot, cal, args.calibration_config),
+                             cfg.control.gripper_limit_margin_m, ik, cfg.sim_ik.inner_hz, cfg.sim_ik.goal_time_s)
     else:
         arm = PolicyArm(resolve_robot_identity(cfg.robot, cal, args.calibration_config),
                         cfg.control.gripper_limit_margin_m)
     log = PolicyLog(args.save_path / LOG_FILE if args.manipulation_logging else None)
     try:
         with arm:
-            session = PolicySession(cfg, X, arm, actor, recovery, log, args.save_path, args.stats_every)
+            session = PolicySession(cfg, X, arm, actor, recovery, log, args.save_path, args.stats_every, ik)
             session.start({"config": cfg.describe(), "calibration": str(cal_path), "T_base_camera": X.tolist(),
                            "robot": arm.info, "dry_run": bool(args.manipulation_dry_run),
                            "policy": actor.info, "obs_layout": [list(t) for t in obs.ACTOR_TERMS]})

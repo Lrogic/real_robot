@@ -34,6 +34,10 @@ def test_timing_per_mode():
     slow = _controller("slow")
     assert slow.tick_period_s == pytest.approx(0.2) and slow.goal_time_s == pytest.approx(0.2)
     assert _controller("step").goal_time_s == 1.0
+    for mode, expected in (("full", 0.1), ("slow", 0.1), ("step", 1.0)):
+        c = _controller(mode)
+        c.driver_goal_time_s = 0.1
+        assert c.goal_time_s == expected
 
 
 def test_episode_key_cycle():
