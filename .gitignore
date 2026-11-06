@@ -14,3 +14,5 @@ sim2real/experiments/object_frame/results/*/fp_debug/
 sim2real/experiments/object_frame/results/*/*.mp4
 sim2real/experiments/object_frame/results/*/*.png
 sim2real/experiments/object_frame/tmp_*/
+# Hardware-control experiment outputs are regenerated; do not commit.
+sim2real/experiments/hardware_control/results/
