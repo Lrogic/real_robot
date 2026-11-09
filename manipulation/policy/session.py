@@ -43,7 +43,7 @@ from .ik import DifferentialIK
 from .ik_arm import SimIkPolicyArm
 from .jenga.config import JengaPolicyConfig
 from .jenga.observation_manager import ACTIVE, IDLE, JengaObservationManager
-from .policy_log import LOG_FILE, PolicyLog
+from .policy_log import LOG_FILE, PolicyLog, format_summary
 from .robot_state import resolve_robot_identity
 from .symmetry import BOX_SYMMETRY_NAMES
 from .trust import Trust, TrustTracker
@@ -248,7 +248,10 @@ class PolicySession:
             "hold_reason": decision.reason, "send_error": send_error,
             "sim_ik": self.arm.drain_stats() if isinstance(self.arm, SimIkPolicyArm) else None,
         }
-        self.log.tick(record, tick_at, build_s, frame_age, overrun)
+        # Summaries start at the ready key and keep the holds, so stale frames stay in frame_age_s.
+        in_summary = result.phase == ACTIVE and self.control.state in ctl.CONTROL_STATES
+        reached_send = sent or (self.control.shadow and self.control.state == ctl.RUNNING)
+        self.log.tick(record, tick_at, build_s, frame_age, overrun, in_summary, reached_send)
         if tick_at - self._last_print_at >= self.stats_every_s:
             print(f"[policy recent] {self.log.stats_line()} | {result.phase}, trust {result.trust.value}, "
                   f"control {self.control.state}")
@@ -465,10 +468,15 @@ class PolicySession:
         data.update(extra)
         if event["event"] == "episode_start":
             self.message = ""
+        if event["event"] == "episode_end":
+            data["summary"] = self.log.end_episode()
         self.log.event(event["event"], **data)
         if event["event"] in PRINTED_EVENTS:
-            brief = {k: v for k, v in data.items() if not k.startswith("T_") and k != "symmetry_angles_deg"}
+            brief = {k: v for k, v in data.items()
+                     if not k.startswith("T_") and k not in ("symmetry_angles_deg", "summary")}
             print(f"[policy] {event['event']} {json.dumps(brief, default=str)}")
+        if "summary" in data:
+            print(f"[policy episode {data['episode']}] {format_summary(data['summary'])}")
 
 
 @contextmanager
@@ -501,7 +509,7 @@ def policy_session(args, recovery):
     else:
         arm = PolicyArm(resolve_robot_identity(cfg.robot, cal, args.calibration_config),
                         cfg.control.gripper_limit_margin_m)
-    log = PolicyLog(args.save_path / LOG_FILE if args.manipulation_logging else None)
+    log = PolicyLog(args.save_path / LOG_FILE if args.manipulation_logging else None, cfg.logging.summary_fields)
     try:
         with arm:
             session = PolicySession(cfg, X, arm, actor, recovery, log, args.save_path, args.stats_every, ik)

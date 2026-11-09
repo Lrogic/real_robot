@@ -5,13 +5,14 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 import numpy as np
 import yaml
 
 from ..ik import IkParams
 from ..observations import make_T, quat_wxyz_to_matrix
+from ..policy_log import DEFAULT_SUMMARY_FIELDS
 
 DEFAULT_CONFIG = Path(__file__).resolve().parent / "config.yaml"
 ACTION_SPACE = "ee_delta_pose_binary_gripper"
@@ -121,6 +122,18 @@ class SimIkConfig:
 
 
 @dataclass(frozen=True)
+class LoggingConfig:
+    summary_fields: Tuple[str, ...] = DEFAULT_SUMMARY_FIELDS
+
+    @classmethod
+    def from_raw(cls, raw: dict) -> "LoggingConfig":
+        fields = raw.get("summary_fields", DEFAULT_SUMMARY_FIELDS)
+        if not isinstance(fields, (list, tuple)) or not all(isinstance(f, str) for f in fields):
+            raise ValueError(f"logging.summary_fields must be a list of tick field names, got {fields!r}")
+        return cls(summary_fields=tuple(fields))
+
+
+@dataclass(frozen=True)
 class JengaPolicyConfig:
     path: Path
     scene_path: Path
@@ -150,6 +163,7 @@ class JengaPolicyConfig:
     sim_ik: SimIkConfig
     workspace_min: np.ndarray     # commanded TCP position box, base frame
     workspace_max: np.ndarray
+    logging: LoggingConfig = LoggingConfig()
 
     @property
     def control_period_s(self) -> float:
@@ -240,6 +254,7 @@ class JengaPolicyConfig:
             sim_ik=SimIkConfig.from_raw(raw["sim_ik"], base),
             workspace_min=workspace_min,
             workspace_max=workspace_max,
+            logging=LoggingConfig.from_raw(raw.get("logging") or {}),
         )
 
     def describe(self) -> dict:
@@ -254,4 +269,5 @@ class JengaPolicyConfig:
                 "ee_rot_scale": self.ee_rot_scale, "checkpoint": str(self.checkpoint),
                 "episode_key": self.episode_key, "control": asdict(self.control),
                 "sim_ik": {**asdict(self.sim_ik), "model": str(self.sim_ik.model)},
-                "workspace_min": self.workspace_min.tolist(), "workspace_max": self.workspace_max.tolist()}
+                "workspace_min": self.workspace_min.tolist(), "workspace_max": self.workspace_max.tolist(),
+                "logging": asdict(self.logging)}

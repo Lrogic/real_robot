@@ -104,6 +104,13 @@ sim_ik:
   posture_weight: 0.0
   soft_joint_pos_limit_factor: 0.85
 
+logging:
+  # Numeric policy_log tick fields to summarize at each episode end (n, mean, median, p95,
+  # worst), printed and written to the episode_end line. Ticks count from the ready key on,
+  # holds included. build_s counts only ticks that reached the send (shadow: would-be sends).
+  # The summary also always counts those ticks per state (running, hold_stale, hold_tracking).
+  summary_fields: [build_s, tick_interval_s, frame_age_s]
+
 safety:
   # Commanded TCP positions outside this box (robot base frame) stop control until the ready
   # key. The table top is base z = 0.
