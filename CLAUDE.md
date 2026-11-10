@@ -85,8 +85,9 @@ Everything runs in one process: `pipeline.track_stage` → `pipeline.tracking_lo
 
 1. Read the newest RealSense frameset.
 2. FoundationPose tracks every object (`multi_object_fp_tracker`: one estimator per object, shared networks; `--fp-mode` picks sequential or batched).
-3. Optionally, SAM recovery (`pipeline/recovery/`) runs at `sam_fps`. It compares each SAM mask with the FP mesh silhouette and re-registers an object after `failure_limit` consecutive mismatches.
-4. Manipulation hooks (`pipeline/robot_arm/manipulation_hooks.py`: `on_mouse`, `update`, `on_key`, `draw`, `close`) plug in `manipulation/basic_manipulation` (click-to-follow test) or `manipulation/policy`.
+3. The optional `before_recovery` manipulation hook. The policy ticks here, so a SAM stall cannot age the frame it observes.
+4. Optionally, SAM recovery (`pipeline/recovery/`) runs at `sam_fps`. It compares each SAM mask with the FP mesh silhouette and re-registers an object after `failure_limit` consecutive mismatches. Both block the loop (SAM about 60 ms, re-registration about 550 ms).
+5. The other manipulation hooks (`pipeline/robot_arm/manipulation_hooks.py`: `on_mouse`, `after_recovery`, `on_key`, `draw`, `close`) plug in `manipulation/basic_manipulation` (click-to-follow test) or `manipulation/policy`. The policy's `after_recovery` takes the frame's SAM verdict into the pose trust that the next tick uses.
 
 `manipulation/policy/session.py` runs the policy at the training control rate (20 Hz). Each tick goes through these modules:
 

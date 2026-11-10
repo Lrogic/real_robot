@@ -2,7 +2,9 @@
 
 
 def manipulation_hooks(args, recovery=None):
-    """Context manager yielding started hooks (on_mouse, update, on_key, draw, close) for args.manipulation."""
+    """Context manager yielding started hooks for args.manipulation: on_mouse, after_recovery
+    (after SAM recovery, or after FoundationPose without --recovery), on_key, draw, close, and
+    optionally before_recovery (after FoundationPose, before SAM recovery)."""
     if args.manipulation == "basic":
         from manipulation.basic_manipulation.session import manipulation_session
 

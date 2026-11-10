@@ -1,6 +1,11 @@
 """Hooks that run the jenga policy inside pipeline.tracking_loop.track_live (--manipulation policy).
 
-Every tracking-loop iteration (after FoundationPose and SAM recovery) updates the pose trust.
+Each tracking-loop iteration calls before_recovery() after FoundationPose, then
+after_recovery() after SAM recovery. The policy ticks in before_recovery(), so a SAM request or
+re-registration on that frame (which blocks the loop) cannot age the frame the tick observes; a
+tick that falls due during one runs late, on the next frame. after_recovery() takes the frame's
+SAM verdict into the pose trust, so a tick uses the trust left by the previous frame: a tick on
+a SAM frame acts before that frame's verdict, and its logged trust is the previous frame's.
 At each policy tick one robot-state read and the tracked object's original-mesh pose in the
 base frame, T_base_object = T_base_camera @ center_pose @ to_origin, build the observation;
 the actor turns it into a TCP goal (actions.ee_delta_target), and the controller decides
@@ -152,7 +157,10 @@ class PolicySession:
     def on_mouse(self, *_args) -> None:
         pass
 
-    def update(self, tracker, K: np.ndarray, timing) -> None:
+    def before_recovery(self, tracker, K: np.ndarray, timing) -> None:
+        """The policy tick, after FoundationPose and before SAM recovery on this frame, so a SAM
+        request or re-registration cannot age the frame it observes. Trust is what
+        after_recovery() left after the previous frame's recovery."""
         now = time.monotonic()
         update_interval = None if self._last_update_at is None else now - self._last_update_at
         self._last_update_at = now
@@ -163,18 +171,12 @@ class PolicySession:
         self._K = K
         if self._index is None:
             self._resolve_object(tracker)
-        tracked = tracker.objects[self._index]
-        T_raw = None if tracked.center_pose is None else self.X @ tracked.center_pose @ tracked.to_origin
-
-        trust, events = self.trust.observe(self.recovery, self._rec_index, timing.frame_number)
-        for event in events:
-            self._emit(event, frame_number=timing.frame_number)
-        if trust is Trust.VERIFIED and T_raw is not None:
-            self.manager.note_verified(T_raw, timing.frame_number)
 
         due, overrun = self.schedule.due(now)
         if not due:
             return
+        T_raw = self._T_base_object(tracker)
+        trust = self.trust.state
         tick_at = time.monotonic()
         frame_age = tick_at - timing.captured_at if timing.captured_at else None
         robot, robot_read_s = None, None
@@ -256,6 +258,17 @@ class PolicySession:
             print(f"[policy recent] {self.log.stats_line()} | {result.phase}, trust {result.trust.value}, "
                   f"control {self.control.state}")
             self._last_print_at = tick_at
+
+    def after_recovery(self, tracker, K: np.ndarray, timing) -> None:
+        """After recovery on this frame: its SAM verdict or re-registration sets the trust the next
+        tick uses, and a verified frame's pose becomes the symmetry reference."""
+        trust, events = self.trust.observe(self.recovery, self._rec_index, timing.frame_number)
+        for event in events:
+            self._emit(event, frame_number=timing.frame_number)
+        if trust is Trust.VERIFIED:
+            T_raw = self._T_base_object(tracker)
+            if T_raw is not None:
+                self.manager.note_verified(T_raw, timing.frame_number)
 
     def on_key(self, key: int) -> bool:
         """Handle a key; return True to quit."""
@@ -420,6 +433,10 @@ class PolicySession:
             self._emit(event, **extra)
 
     # ----- helpers ----------------------------------------------------------------------
+
+    def _T_base_object(self, tracker) -> Optional[np.ndarray]:
+        tracked = tracker.objects[self._index]
+        return None if tracked.center_pose is None else self.X @ tracked.center_pose @ tracked.to_origin
 
     def _draw_axes(self, vis, T_base_obj, K, length=0.03) -> None:
         from pipeline.drawing import project_point

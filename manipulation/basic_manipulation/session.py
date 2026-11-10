@@ -135,7 +135,7 @@ class ManipulationSession:
         else:
             self.pending, self.message = best[1], ""
 
-    def update(self, tracker, K: np.ndarray, timing) -> None:
+    def after_recovery(self, tracker, K: np.ndarray, timing) -> None:
         self._objects, self._K = tracker.objects, K
         if self.selected is None:
             return

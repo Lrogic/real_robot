@@ -1,7 +1,8 @@
 """Live tracking loop for the track stage: FoundationPose every frame, optional recovery and arm hooks.
 
 track_live reads the newest RealSense frameset, tracks every object, draws the window, and
-reports timing; hooks (--manipulation) and recovery (--recovery) plug into each iteration.
+reports timing; hooks (--manipulation) and recovery (--recovery) plug into each iteration:
+FoundationPose, hooks.before_recovery (optional), recovery.after_fp, hooks.after_recovery.
 """
 
 import time
@@ -150,11 +151,14 @@ def track_live(args, tracker, stream, hooks=None, recovery=None):
             fp_per_object = tracker.track(rgb, depth, stream.K, args.track_refine_iter)
             if pose_log is not None:
                 pose_log.record(time.monotonic() - started_at, tracker)
+            # Before recovery, which can block for a SAM request or a re-registration.
+            if hooks is not None and hasattr(hooks, "before_recovery"):
+                hooks.before_recovery(tracker, stream.K, timing)
             if recovery is not None:
                 recovery.after_fp(frame, show_during_recovery)
             vis = tracker.draw(rgb, stream.K)
             if hooks is not None:
-                hooks.update(tracker, stream.K, timing)
+                hooks.after_recovery(tracker, stream.K, timing)
                 vis = hooks.draw(vis)
             if recovery is not None:
                 vis = recovery.draw(vis, frame)
