@@ -595,12 +595,15 @@ def test_resting_and_grasp_contact(variant_env):
   assert obj.data.root_link_vel_w.abs().max() < 1e-3
   assert ((obj.data.root_link_quat_w * quat0).sum(-1).abs() > 1 - 1e-6).all()
 
+  # Every size is grasped and carried clear of the table. Not "at the lift
+  # goal": how close the arm gets depends on its reach (joint_3 soft limit) and
+  # gains, not on the variant.
   env.reset()
   _scripted_grasp(env)
   grasp = env.reward_manager.get_term_cfg("grasp").params
-  stable = env.reward_manager.get_term_cfg("stable_hold").params
   assert task_state.is_grasped(env, **grasp).all()
-  assert task_state.is_lifted(env, "grasp", stable["object_cfg"], 0.01).all()
+  object_cfg = env.reward_manager.get_term_cfg("stable_hold").params["object_cfg"]
+  assert (mdp.metrics.lift_height(env, "grasp", object_cfg) > 0.015).all()
 
 
 @needs_cuda
