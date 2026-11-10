@@ -7,6 +7,7 @@ import pytest
 import torch
 
 from mjlab.envs import ManagerBasedRlEnv
+from mjlab.utils.lab_api.math import quat_error_magnitude
 from tabletop_sim.scene import ConfigError, load_scene_config, load_task_config
 from tabletop_sim.tasks.grasp import mdp
 from tabletop_sim.tasks.grasp.env_cfg import (
@@ -25,6 +26,9 @@ from tabletop_sim.tasks.grasp.mdp.perception import perturb_pose
 
 CURRICULUM_TASK = CONFIGS_DIR / "tasks" / "grasp_curriculum_wxai.json"
 LATENCY_TASK = CONFIGS_DIR / "tasks" / "grasp_curriculum_size_variants_friction_latency_wxai.json"
+INTERP_TASK = (
+  CONFIGS_DIR / "tasks" / "grasp_curriculum_size_variants_friction_latency_interp_wxai.json"
+)
 DEVICE = "cuda:0"
 needs_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 DELAY_S, DELAY_SUBSTEPS = 0.01, 5
@@ -88,6 +92,7 @@ def test_defaults_add_nothing():
   assert {"table_contact_frac", "table_collision"}.isdisjoint(cfg.metrics)
   assert cfg.commands[PERCEPTION_NAME].history_sensor_name is None
   assert all(a.hold_command_name is None for a in cfg.actions.values())
+  assert cfg.actions["arm"].interpolate_goal is False
 
 
 def test_latency_task_wiring():
@@ -119,6 +124,17 @@ def test_latency_task_wiring():
   assert frac.params == collision.params == reward.params
 
 
+def test_interpolation_task_wiring(tmp_path):
+  assert load_task_config(LATENCY_TASK).action.ee_goal_interpolation is False
+  latency, interp = json.loads(LATENCY_TASK.read_text()), json.loads(INTERP_TASK.read_text())
+  assert interp["action"].pop("ee_goal_interpolation") is True
+  assert interp == latency
+  task = _task(tmp_path, action={"ee_goal_interpolation": True})
+  assert make_grasp_env_cfg(_scene(tmp_path), task).actions["arm"].interpolate_goal is True
+  with pytest.raises(ConfigError, match="needs an end-effector action space"):
+    make_grasp_env_cfg(_scene(tmp_path), task, "delta_joint_abs_gripper")
+
+
 @pytest.mark.parametrize(
   ("dr", "top", "match"),
   [
@@ -127,6 +143,7 @@ def test_latency_task_wiring():
     ({"action_hold_probability": -0.1}, {}, r"action_hold_probability must be in \[0, 1\]"),
     ({"action_hold_probability": 1.1}, {}, r"action_hold_probability must be in \[0, 1\]"),
     ({}, {"w_table_contact": 0.5}, "finite and nonpositive"),
+    ({}, {"action": {"ee_goal_interpolation": 1}}, "ee_goal_interpolation must be a bool"),
   ],
 )
 def test_config_rejects(tmp_path, dr, top, match):
@@ -332,6 +349,112 @@ def test_hold_never_on_first_step_and_scales_with_difficulty(tmp_path):
     assert term.hold.all()
     env.reset(env_ids=torch.tensor([0], device=DEVICE))
     assert term.hold.tolist() == [False, True, True, True]
+  finally:
+    env.close()
+
+
+# Goal interpolation.
+
+
+class _SubstepGoals:
+  """The arm term's IK goal and joint target change on every physics substep
+  of the latest env.step()."""
+
+  def __init__(self, env):
+    self.env, self.arm = env, env.action_manager.get_term("arm")
+    self.pos, self.quat, self.dq = [], [], []
+    inner = self.arm.apply_actions
+
+    def apply_actions():
+      inner()
+      self.pos.append(self.arm._desired_pos.clone())
+      self.quat.append(self.arm._desired_quat.clone())
+      self.dq.append(self.arm.compute_dq().abs().amax(dim=-1))
+
+    self.arm.apply_actions = apply_actions
+
+  def step(self, action):
+    self.pos.clear(), self.quat.clear(), self.dq.clear()
+    pos, quat = self.arm._get_frame_pose()
+    start = pos.clone(), quat.clone()
+    self.env.step(action)
+    return start
+
+
+def _interp_env(tmp_path, base=DEFAULT_TASK, dr=None):
+  task = _task(tmp_path, base, dr=dr, action={"ee_goal_interpolation": True})
+  return _make_env(_scene(tmp_path), task)
+
+
+@needs_cuda
+def test_interpolated_goal_moves_linearly_to_the_step_goal(tmp_path):
+  env = _interp_env(tmp_path)
+  try:
+    env.reset()
+    rec = _SubstepGoals(env)
+    arm, n = rec.arm, env.cfg.decimation
+    action = _action(env)
+    action[:, :6] = torch.tensor([1.0, -0.5, 0.25, 0.0, 0.0, 2.0], device=DEVICE)  # yaw clips to 1
+    d_pos = torch.tensor([1.0, -0.5, 0.25], device=DEVICE) * arm.cfg.delta_pos_scale
+    start_pos, start_quat = rec.step(action)
+    assert len(rec.pos) == n
+    for i, (pos, quat) in enumerate(zip(rec.pos, rec.quat, strict=True), start=1):
+      assert torch.allclose(pos, start_pos + d_pos * (i / n), atol=1e-6)
+      angle = quat_error_magnitude(quat, start_quat)
+      assert torch.allclose(angle, torch.full_like(angle, arm.cfg.delta_ori_scale * i / n), atol=1e-5)
+    # The last substep solves toward the goal process_actions computed.
+    assert torch.equal(rec.pos[-1], arm._goal_pos)
+    assert torch.equal(rec.quat[-1], arm._goal_quat)
+    # A second step starts again from the pose the arm has then.
+    start_pos, _ = rec.step(_action(env, z=-1.0))
+    first = start_pos + torch.tensor([0.0, 0.0, -arm.cfg.delta_pos_scale / n], device=DEVICE)
+    assert torch.allclose(rec.pos[0], first, atol=1e-6)
+  finally:
+    env.close()
+
+
+@needs_cuda
+def test_interpolation_replaces_the_first_substep_jump(tmp_path):
+  env = _interp_env(tmp_path)
+  try:
+    rec = _SubstepGoals(env)
+    arm = rec.arm
+    env.reset()
+    rec.step(_action(env, x=1.0))
+    ramp_first, ramp_goals = rec.dq[0].clone(), len({tuple(p[0].tolist()) for p in rec.pos})
+    arm.cfg.interpolate_goal = False
+    env.reset()
+    start_pos, _ = rec.step(_action(env, x=1.0))
+    goal = start_pos + torch.tensor([arm.cfg.delta_pos_scale, 0.0, 0.0], device=DEVICE)
+    # Off: every substep solves toward the same goal.
+    assert all(torch.equal(p, rec.pos[0]) for p in rec.pos)
+    assert torch.allclose(rec.pos[0], goal, atol=1e-6)
+    assert ramp_goals == env.cfg.decimation
+    assert (ramp_first < 0.2 * rec.dq[0]).all()
+  finally:
+    env.close()
+
+
+@needs_cuda
+def test_interpolation_keeps_a_held_goal(tmp_path):
+  env = _interp_env(tmp_path, CURRICULUM_TASK, dr={"action_hold_probability": 1.0})
+  try:
+    term = env.command_manager.get_term(ACTION_HOLD_NAME)
+    _set_difficulty(env, 1.0)
+    env.reset()
+    rec = _SubstepGoals(env)
+    arm = rec.arm
+    held = torch.tensor([True, True, False, False], device=DEVICE)
+    term.uniform = lambda count: torch.where(held, 0.0, 1.0)[:count]
+    rec.step(_action(env, x=1.0))
+    goal_pos, goal_quat = arm._desired_pos.clone(), arm._desired_quat.clone()
+    start_pos, _ = rec.step(_action(env, y=-1.0))
+    scale, n = arm.cfg.delta_pos_scale, env.cfg.decimation
+    for i, (pos, quat) in enumerate(zip(rec.pos, rec.quat, strict=True), start=1):
+      assert torch.equal(pos[held], goal_pos[held])
+      assert torch.equal(quat[held], goal_quat[held])
+      expected = start_pos + torch.tensor([0.0, -scale * i / n, 0.0], device=DEVICE)
+      assert torch.allclose(pos[~held], expected[~held], atol=1e-6)
   finally:
     env.close()
 

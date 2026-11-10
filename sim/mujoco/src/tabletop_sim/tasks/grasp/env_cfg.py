@@ -83,6 +83,7 @@ def _actions(emb: EmbodimentCfg, action_space: str, task: TaskConfig) -> dict[st
   if arm_kind == "ee_delta_pose":
     arm: ActionTermCfg = mdp.ClippedDifferentialIKActionCfg(
       hold_command_name=hold,
+      interpolate_goal=task.action.ee_goal_interpolation,
       entity_name="robot",
       actuator_names=emb.arm_joint_names,
       frame_type="site",
@@ -98,6 +99,10 @@ def _actions(emb: EmbodimentCfg, action_space: str, task: TaskConfig) -> dict[st
       posture_weight=emb.ik.posture_weight,
     )
   else:
+    if task.action.ee_goal_interpolation:
+      raise ConfigError(
+        f"task.action.ee_goal_interpolation needs an end-effector action space, got {action_space!r}"
+      )
     arm = mdp.DeltaJointPositionActionCfg(
       hold_command_name=hold,
       entity_name="robot",

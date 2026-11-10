@@ -356,6 +356,17 @@ class ActionConfig:
   gripper_delta_scale: float = 0.01
   """Metres of carriage target change per step at |action| = 1 (delta gripper
   only). Each finger moves this much, so the gap changes by twice as much."""
+  ee_goal_interpolation: bool = False
+  """End-effector action spaces only. Off: IK solves toward the step's TCP goal
+  on every physics substep. On: IK solves toward a subgoal that moves linearly
+  (constant linear and angular velocity) from the TCP pose at the start of the
+  control step to the goal, and reaches it on the step's last substep."""
+
+  def __post_init__(self) -> None:
+    if not isinstance(self.ee_goal_interpolation, bool):
+      raise ConfigError(
+        f"task.action.ee_goal_interpolation must be a bool, got {self.ee_goal_interpolation!r}"
+      )
 
 
 DEFAULT_SIZE_SCALES = tuple(round(0.90 + 0.01 * i, 2) for i in range(21))
@@ -832,7 +843,9 @@ class TaskConfig:
         )
       elif f.name == "action":
         _check_keys("task.action", value, ActionConfig)
-        kwargs[f.name] = ActionConfig(**{k: float(v) for k, v in value.items()})
+        kwargs[f.name] = ActionConfig(
+          **{k: v if k == "ee_goal_interpolation" else float(v) for k, v in value.items()}
+        )
       elif f.name == "domain_randomization":
         kwargs[f.name] = DomainRandomizationConfig.from_dict(value)
       elif f.name == "curriculum":
