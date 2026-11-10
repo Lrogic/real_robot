@@ -607,9 +607,24 @@ class DomainRandomizationConfig:
   object_size_variants: ObjectSizeVariantsConfig = field(default_factory=ObjectSizeVariantsConfig)
   friction: FrictionRandomizationConfig = field(default_factory=FrictionRandomizationConfig)
   object_pose_noise: ObjectPoseNoiseConfig = field(default_factory=ObjectPoseNoiseConfig)
+  object_pose_delay_s: float = 0.0
+  """Age (s) of the object pose the actor observes: the true pose this long
+  before the control step, with the pose noise applied to it. A whole number of
+  ``timing.sim_dt``; applies at every difficulty. The critic is not delayed."""
+  action_hold_probability: float = 0.0
+  """Probability at episode difficulty 1 (p = d * value) that a control step
+  discards the policy's action and keeps the previous absolute arm goal and
+  gripper target, drawn independently per step. Never on an episode's first
+  step."""
 
   def __post_init__(self) -> None:
     where = "domain_randomization"
+    delay = self.object_pose_delay_s
+    if not (math.isfinite(delay) and delay >= 0):
+      raise ConfigError(f"{where}.object_pose_delay_s must be finite and nonnegative, got {delay}")
+    hold = self.action_hold_probability
+    if not (math.isfinite(hold) and 0 <= hold <= 1):
+      raise ConfigError(f"{where}.action_hold_probability must be in [0, 1], got {hold}")
     if not isinstance(self.stiffness_damping_enabled, bool):
       raise ConfigError(
         f"{where}.stiffness_damping_enabled must be a bool, "
@@ -640,7 +655,12 @@ class DomainRandomizationConfig:
       raise ConfigError(f"{where} must be an object")
     _check_keys(where, data, cls)
     kwargs: dict[str, Any] = {}
-    for name in ("object_reset_radius", "object_reset_yaw_range_deg"):
+    for name in (
+      "object_reset_radius",
+      "object_reset_yaw_range_deg",
+      "object_pose_delay_s",
+      "action_hold_probability",
+    ):
       if name in data:
         kwargs[name] = float(data[name])
     if "stiffness_damping_enabled" in data:
@@ -757,6 +777,12 @@ class TaskConfig:
   """Weight (nonpositive) of the penalty on arm joint positions outside their
   soft limits (the embodiment's ``soft_joint_pos_limit_factor`` of each model
   range). The gripper is not penalized."""
+  w_table_contact: float = 0.0
+  """Weight (nonpositive) of the penalty on any moving robot part touching the
+  support surface object: the fraction of the control step's physics substeps
+  in contact. 0 disables it, together with the ``table_contact_frac`` and
+  ``table_collision`` metrics; a negligible weight (e.g. -1e-9) logs those
+  without penalizing."""
   reward_normalization: float = 10.0
   include_is_grasped_obs: bool = True
   """Adds ``is_grasped`` to the critic observations (never the actor)."""
@@ -767,12 +793,24 @@ class TaskConfig:
   domain_randomization: DomainRandomizationConfig = field(default_factory=DomainRandomizationConfig)
   curriculum: CurriculumConfig = field(default_factory=CurriculumConfig)
 
+  @property
+  def object_pose_delay_substeps(self) -> int:
+    """``domain_randomization.object_pose_delay_s`` in physics substeps."""
+    delay = self.domain_randomization.object_pose_delay_s
+    exact = delay / self.timing.sim_dt
+    if abs(exact - round(exact)) > 1e-6:
+      raise ConfigError(
+        f"task.domain_randomization.object_pose_delay_s={delay} must be a multiple of "
+        f"timing.sim_dt={self.timing.sim_dt}"
+      )
+    return round(exact)
+
   def __post_init__(self) -> None:
     for name in ("arm_speed_threshold", "gripper_speed_threshold"):
       value = getattr(self, name)
       if not (math.isfinite(value) and value >= 0):
         raise ConfigError(f"task.{name} must be finite and nonnegative, got {value}")
-    for name in ("w_arm_speed", "w_gripper_speed", "w_joint_pos_limits"):
+    for name in ("w_arm_speed", "w_gripper_speed", "w_joint_pos_limits", "w_table_contact"):
       value = getattr(self, name)
       if not (math.isfinite(value) and value <= 0):
         raise ConfigError(f"task.{name} must be finite and nonpositive, got {value}")
@@ -807,6 +845,7 @@ class TaskConfig:
     if cfg.reward_normalization <= 0:
       raise ConfigError("task.reward_normalization must be positive")
     _ = cfg.timing.decimation  # validates timing
+    _ = cfg.object_pose_delay_substeps  # validates the delay against sim_dt
     return cfg
 
 

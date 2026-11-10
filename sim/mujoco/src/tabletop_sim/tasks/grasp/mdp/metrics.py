@@ -2,7 +2,8 @@
 manager, which evaluates them after rewards, on the pre-reset state).
 
 ``mean_hold_score`` has no function here: it registers
-:func:`rewards.stable_hold` itself with ``reduce="mean"``."""
+:func:`rewards.stable_hold` itself with ``reduce="mean"``. Likewise
+``table_contact_frac`` registers :func:`rewards.table_contact`."""
 
 from __future__ import annotations
 
@@ -11,7 +12,7 @@ from typing import TYPE_CHECKING
 import torch
 
 from mjlab.managers.scene_entity_config import SceneEntityCfg
-from tabletop_sim.tasks.grasp.mdp import task_state
+from tabletop_sim.tasks.grasp.mdp import rewards, task_state
 
 if TYPE_CHECKING:
   from mjlab.envs import ManagerBasedRlEnv
@@ -59,3 +60,9 @@ def lift_height(
   obj_pos, _ = task_state.object_pose_w(env, object_cfg)
   initial = task_state.goal(env, command_name).initial_object_pos
   return (obj_pos[:, 2] - initial[:, 2]).clamp(min=0.0)
+
+
+def table_touched(env: ManagerBasedRlEnv, sensor_name: str) -> torch.Tensor:
+  """Use with ``reduce="max"``: 1 if the robot touched the table during this
+  control step, so the episode value says whether it ever did."""
+  return (rewards.table_contact(env, sensor_name) > 0).float()

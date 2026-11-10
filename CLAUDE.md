@@ -120,7 +120,7 @@ A change to sim observations, actions, action scales, control rate, embodiment o
 
 - Environments are built from config files: a **scene JSON** plus a **task JSON**, passed to `tasks/grasp/env_cfg.py::make_grasp_env_cfg`, which returns an mjlab `ManagerBasedRlEnvCfg`.
   - The scene JSON sets the embodiment, action space, base pose, objects and support surface. Its schema is in the docstring of `scene/config.py`.
-  - The task JSON sets timing, action scales, rewards, domain randomization, curriculum, pose noise and size variants.
+  - The task JSON sets timing, action scales, rewards, domain randomization, curriculum, pose noise and size variants. It also sets the real-loop effects, all off by default: `object_pose_delay_s` (age of the pose the actor sees), `action_hold_probability` (control steps that keep the previous absolute goal) and `w_table_contact` (robot-table contact penalty). `grasp_curriculum_size_variants_friction_latency_wxai.json` turns them on.
   - Unknown keys raise `ConfigError`.
 - Importing `tabletop_sim.tasks` registers one mjlab task per action space (`TASK_IDS` in `tasks/grasp/__init__.py`). `play.py` registers `WXAI-Grasp-Play` from any scene/task pair.
 - Embodiments (`embodiments/registry.py`) are the menagerie and Trossen WXAI models. Each has a `_real` variant whose `*_real_robot.xml` carries measured position-mode gains. The jenga scene uses `trossen_wxai_base_real`.

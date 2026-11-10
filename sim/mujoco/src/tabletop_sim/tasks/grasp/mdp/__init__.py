@@ -7,6 +7,7 @@ from tabletop_sim.tasks.grasp.mdp import (
   rewards,
   task_state,
 )
+from tabletop_sim.tasks.grasp.mdp.action_hold import ActionHold, ActionHoldCfg
 from tabletop_sim.tasks.grasp.mdp.actions import (
   ClippedDifferentialIKActionCfg,
   DeltaJointPositionActionCfg,
@@ -27,15 +28,20 @@ from tabletop_sim.tasks.grasp.mdp.perception import (
   PerceivedObjectPose,
   PerceivedObjectPoseCfg,
 )
+from tabletop_sim.tasks.grasp.mdp.pose_history import ObjectPoseHistory, ObjectPoseHistoryCfg
 
 __all__ = [
   "STIFFNESS_DAMPING_EVENTS",
+  "ActionHold",
+  "ActionHoldCfg",
   "ClippedDifferentialIKActionCfg",
   "DeltaJointPositionActionCfg",
   "GaussianPoseNoise",
   "GraspGoalCommand",
   "GraspGoalCommandCfg",
   "GripperActionCfg",
+  "ObjectPoseHistory",
+  "ObjectPoseHistoryCfg",
   "PerceivedObjectPose",
   "PerceivedObjectPoseCfg",
   "RandomizeKpActuatorKv",

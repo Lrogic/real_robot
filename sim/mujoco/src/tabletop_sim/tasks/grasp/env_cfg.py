@@ -10,6 +10,7 @@ from mjlab.envs import ManagerBasedRlEnvCfg
 from mjlab.envs.mdp import joint_pos_limits, time_out
 from mjlab.envs.mdp.events import reset_scene_to_default
 from mjlab.managers.action_manager import ActionTermCfg
+from mjlab.managers.command_manager import CommandTermCfg
 from mjlab.managers.curriculum_manager import CurriculumTermCfg
 from mjlab.managers.event_manager import EventTermCfg
 from mjlab.managers.metrics_manager import MetricsTermCfg
@@ -18,7 +19,7 @@ from mjlab.managers.reward_manager import RewardTermCfg
 from mjlab.managers.scene_entity_config import SceneEntityCfg
 from mjlab.managers.termination_manager import TerminationTermCfg
 from mjlab.scene import SceneCfg
-from mjlab.sensor import ContactMatch, ContactSensorCfg
+from mjlab.sensor import ContactMatch, ContactSensorCfg, SensorCfg
 from mjlab.sim import MujocoCfg, SimulationCfg
 from mjlab.viewer import ViewerConfig
 from tabletop_sim import CONFIGS_DIR
@@ -41,6 +42,9 @@ from tabletop_sim.tasks.grasp import mdp
 
 COMMAND_NAME = "grasp"
 PERCEPTION_NAME = "object_perception"
+ACTION_HOLD_NAME = "action_hold"
+POSE_HISTORY_SENSOR = "object_pose_history"
+TABLE_CONTACT_SENSOR = "robot_table_contact"
 FINGER_SENSORS = ("left_finger_object_contact", "right_finger_object_contact")
 DEFAULT_SCENE = CONFIGS_DIR / "scenes" / "tabletop_cube_wxai.json"
 DEFAULT_TASK = CONFIGS_DIR / "tasks" / "grasp_standard_wxai.json"
@@ -66,7 +70,9 @@ def _actions(emb: EmbodimentCfg, action_space: str, task: TaskConfig) -> dict[st
   if action_space not in _ACTION_SPACE_PARTS:
     raise ValueError(f"action_space must be one of {ACTION_SPACES}, got {action_space!r}")
   arm_kind, gripper_mode = _ACTION_SPACE_PARTS[action_space]
+  hold = ACTION_HOLD_NAME if task.domain_randomization.action_hold_probability > 0 else None
   gripper = mdp.GripperActionCfg(
+    hold_command_name=hold,
     entity_name="robot",
     joint_name=emb.gripper_actuator_joint,
     open_pos=emb.gripper_open,
@@ -76,6 +82,7 @@ def _actions(emb: EmbodimentCfg, action_space: str, task: TaskConfig) -> dict[st
   )
   if arm_kind == "ee_delta_pose":
     arm: ActionTermCfg = mdp.ClippedDifferentialIKActionCfg(
+      hold_command_name=hold,
       entity_name="robot",
       actuator_names=emb.arm_joint_names,
       frame_type="site",
@@ -92,6 +99,7 @@ def _actions(emb: EmbodimentCfg, action_space: str, task: TaskConfig) -> dict[st
     )
   else:
     arm = mdp.DeltaJointPositionActionCfg(
+      hold_command_name=hold,
       entity_name="robot",
       joint_names=emb.arm_joint_names,
       scale=task.action.joint_delta_scale,
@@ -200,7 +208,7 @@ def _rewards(task: TaskConfig, ent: _Entities) -> dict[str, RewardTermCfg]:
   r = mdp.rewards
   n = task.reward_normalization
   goal = lambda: {"command_name": COMMAND_NAME, "object_cfg": ent.object()}  # noqa: E731
-  return {
+  rewards = {
     "reach": RewardTermCfg(
       func=r.reach,
       weight=task.w_reach / n,
@@ -236,6 +244,13 @@ def _rewards(task: TaskConfig, ent: _Entities) -> dict[str, RewardTermCfg]:
       params={"asset_cfg": ent.arm()},
     ),
   }
+  if task.w_table_contact != 0:
+    rewards["table_contact"] = RewardTermCfg(
+      func=r.table_contact,
+      weight=task.w_table_contact / n,
+      params={"sensor_name": TABLE_CONTACT_SENSOR},
+    )
+  return rewards
 
 
 def _terminations() -> dict[str, TerminationTermCfg]:
@@ -244,7 +259,7 @@ def _terminations() -> dict[str, TerminationTermCfg]:
 
 def _metrics(task: TaskConfig, ent: _Entities) -> dict[str, MetricsTermCfg]:
   m = mdp.metrics
-  return {
+  metrics = {
     # Per-env sum of the unweighted stable_hold reward / that env's own step
     # count, including the final pre-reset step.
     "mean_hold_score": MetricsTermCfg(
@@ -269,6 +284,18 @@ def _metrics(task: TaskConfig, ent: _Entities) -> dict[str, MetricsTermCfg]:
       reduce="sum",
     ),
   }
+  if task.w_table_contact != 0:
+    contact = lambda: {"sensor_name": TABLE_CONTACT_SENSOR}  # noqa: E731
+    metrics |= {
+      # Fraction of the episode some moving robot part is on the table.
+      "table_contact_frac": MetricsTermCfg(
+        func=mdp.rewards.table_contact, params=contact(), reduce="mean"
+      ),
+      # 1 for an episode with any robot-table contact; logged as the fraction
+      # of such episodes.
+      "table_collision": MetricsTermCfg(func=m.table_touched, params=contact(), reduce="max"),
+    }
+  return metrics
 
 
 def _curriculum(
@@ -313,6 +340,27 @@ def _finger_sensors(emb: EmbodimentCfg, object_name: str) -> tuple[ContactSensor
       reduce="netforce",
     )
     for sensor_name, body in zip(FINGER_SENSORS, emb.finger_bodies, strict=True)
+  )
+
+
+def _table_contact_sensor(
+  scene: SceneConfig, emb: EmbodimentCfg, task: TaskConfig
+) -> ContactSensorCfg:
+  """Contacts between the robot's moving bodies (everything below the first
+  arm joint, fingers included; never the fixed base) and the support surface
+  object, with one force sample per physics substep of a control step."""
+  support = scene.support_surface
+  if support is None or support.object is None:
+    raise ConfigError("task.w_table_contact needs the scene's 'support_surface' to be an object")
+  robot_spec = load_spec(emb)  # Owns the joint below; keep it alive while reading it.
+  first_moving_body = robot_spec.joint(emb.arm_joint_names[0]).parent.name
+  return ContactSensorCfg(
+    name=TABLE_CONTACT_SENSOR,
+    primary=ContactMatch(mode="subtree", pattern=first_moving_body, entity="robot"),
+    secondary=ContactMatch(mode="body", pattern=support.object, entity=support.object),
+    fields=("found", "force"),
+    reduce="netforce",
+    history_length=task.timing.decimation,
   )
 
 
@@ -457,12 +505,26 @@ def make_grasp_env_cfg_from_configs(
   goal = mdp.GraspGoalCommandCfg(
     object_name=obj.name, target_lift_height=task.target_lift_height, debug_vis=True
   )
+  sensors: tuple[SensorCfg, ...] = _finger_sensors(emb, obj.name)
+  delay_substeps = task.object_pose_delay_substeps
+  if delay_substeps > 0:
+    sensors += (
+      mdp.ObjectPoseHistoryCfg(
+        name=POSE_HISTORY_SENSOR, object_name=obj.name, delay_substeps=delay_substeps
+      ),
+    )
+  if task.w_table_contact != 0:
+    sensors += (_table_contact_sensor(scene, emb, task),)
   perception = mdp.PerceivedObjectPoseCfg(
     object_name=obj.name,
     target_lift_height=task.target_lift_height,
     persistent_bias=_pose_noise(dr.object_pose_noise.persistent_bias),
     per_step=_pose_noise(dr.object_pose_noise.per_step),
+    history_sensor_name=POSE_HISTORY_SENSOR if delay_substeps > 0 else None,
   )
+  commands: dict[str, CommandTermCfg] = {COMMAND_NAME: goal, PERCEPTION_NAME: perception}
+  if dr.action_hold_probability > 0:
+    commands[ACTION_HOLD_NAME] = mdp.ActionHoldCfg(probability=dr.action_hold_probability)
 
   return ManagerBasedRlEnvCfg(
     scene=SceneCfg(
@@ -473,11 +535,11 @@ def make_grasp_env_cfg_from_configs(
         size_variants,
         pair_groups,
       ),
-      sensors=_finger_sensors(emb, obj.name),
+      sensors=sensors,
     ),
     observations=_observations(task, ent),
     actions=_actions(emb, action_space, task),
-    commands={COMMAND_NAME: goal, PERCEPTION_NAME: perception},
+    commands=commands,
     events=events,
     rewards=_rewards(task, ent),
     terminations=_terminations(),

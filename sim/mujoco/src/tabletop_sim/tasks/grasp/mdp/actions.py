@@ -1,4 +1,10 @@
-"""Action terms. Every policy input is clipped to [-1, 1] before scaling."""
+"""Action terms. Every policy input is clipped to [-1, 1] before scaling.
+
+Each term can be given the name of an :class:`ActionHold` command. On a control
+step that command marks as held, an env's stored target (the absolute TCP goal,
+or the joint target) is left exactly as it was: the new action is discarded and
+the previous delta is not applied again from the current state.
+"""
 
 from __future__ import annotations
 
@@ -9,10 +15,21 @@ import torch
 
 from mjlab.envs.mdp.actions import DifferentialIKAction, DifferentialIKActionCfg
 from mjlab.managers.action_manager import ActionTerm, ActionTermCfg
+from tabletop_sim.tasks.grasp.mdp.action_hold import ActionHold
 
 if TYPE_CHECKING:
   from mjlab.entity import Entity
   from mjlab.envs import ManagerBasedRlEnv
+
+
+def held_envs(env: ManagerBasedRlEnv, hold_command_name: str | None) -> torch.Tensor | None:
+  """Bool mask ``(num_envs,)`` of the envs holding this control step; None when
+  the term has no hold command."""
+  if hold_command_name is None:
+    return None
+  term = env.command_manager.get_term(hold_command_name)
+  assert isinstance(term, ActionHold)
+  return term.hold
 
 
 # End-effector control.
@@ -22,13 +39,23 @@ if TYPE_CHECKING:
 class ClippedDifferentialIKActionCfg(DifferentialIKActionCfg):
   """Delta TCP pose (dx, dy, dz, droll, dpitch, dyaw) solved by DLS IK."""
 
+  hold_command_name: str | None = None
+
   def build(self, env: ManagerBasedRlEnv) -> ClippedDifferentialIKAction:
     return ClippedDifferentialIKAction(self, env)
 
 
 class ClippedDifferentialIKAction(DifferentialIKAction):
+  cfg: ClippedDifferentialIKActionCfg
+
   def process_actions(self, actions: torch.Tensor) -> None:
+    hold = held_envs(self._env, self.cfg.hold_command_name)
+    if hold is None:
+      super().process_actions(actions.clamp(-1.0, 1.0))
+      return
+    pos, quat = self._desired_pos[hold], self._desired_quat[hold]
     super().process_actions(actions.clamp(-1.0, 1.0))
+    self._desired_pos[hold], self._desired_quat[hold] = pos, quat
 
 
 # Joint-space arm control.
@@ -40,6 +67,7 @@ class DeltaJointPositionActionCfg(ActionTermCfg):
 
   joint_names: tuple[str, ...]
   scale: float = 0.1
+  hold_command_name: str | None = None
 
   def build(self, env: ManagerBasedRlEnv) -> DeltaJointPositionAction:
     return DeltaJointPositionAction(self, env)
@@ -69,7 +97,9 @@ class DeltaJointPositionAction(ActionTerm):
     limits = self._entity.data.soft_joint_pos_limits[:, self._joint_ids]
     q = self._entity.data.joint_pos[:, self._joint_ids]
     target = q + actions.clamp(-1.0, 1.0) * self.cfg.scale
-    self._target[:] = torch.clamp(target, limits[..., 0], limits[..., 1])
+    target = torch.clamp(target, limits[..., 0], limits[..., 1])
+    hold = held_envs(self._env, self.cfg.hold_command_name)
+    self._target[:] = target if hold is None else torch.where(hold[:, None], self._target, target)
 
   def apply_actions(self) -> None:
     bias = self._entity.data.encoder_bias[:, self._joint_ids]
@@ -97,6 +127,7 @@ class GripperActionCfg(ActionTermCfg):
   closed_pos: float
   mode: str = "binary"
   delta_scale: float = 0.01
+  hold_command_name: str | None = None
 
   def build(self, env: ManagerBasedRlEnv) -> GripperAction:
     if self.mode not in ("binary", "absolute", "delta"):
@@ -127,19 +158,21 @@ class GripperAction(ActionTerm):
     self._raw_actions[:] = actions
     if self.cfg.mode == "binary":
       opened = actions >= 0.0
-      self._target[:] = torch.where(
+      target = torch.where(
         opened,
         torch.full_like(actions, self.cfg.open_pos),
         torch.full_like(actions, self.cfg.closed_pos),
       )
     elif self.cfg.mode == "absolute":
       frac = (actions.clamp(-1.0, 1.0) + 1.0) * 0.5
-      self._target[:] = self.cfg.closed_pos + frac * (self.cfg.open_pos - self.cfg.closed_pos)
+      target = self.cfg.closed_pos + frac * (self.cfg.open_pos - self.cfg.closed_pos)
     else:
       q = self._entity.data.joint_pos[:, self._joint_ids]
       target = q + actions.clamp(-1.0, 1.0) * self.cfg.delta_scale
       lo, hi = sorted((self.cfg.closed_pos, self.cfg.open_pos))
-      self._target[:] = target.clamp(lo, hi)
+      target = target.clamp(lo, hi)
+    hold = held_envs(self._env, self.cfg.hold_command_name)
+    self._target[:] = target if hold is None else torch.where(hold[:, None], self._target, target)
 
   def apply_actions(self) -> None:
     bias = self._entity.data.encoder_bias[:, self._joint_ids]

@@ -15,6 +15,7 @@ from tabletop_sim.tasks.grasp.mdp import task_state
 if TYPE_CHECKING:
   from mjlab.entity import Entity
   from mjlab.envs import ManagerBasedRlEnv
+  from mjlab.sensor import ContactSensor
 
 AxisPair = tuple[tuple[float, float, float], tuple[float, float, float]]
 
@@ -91,3 +92,14 @@ def joint_speed_excess(
   joint_vel = asset.data.joint_vel[:, asset_cfg.joint_ids]
   excess = (joint_vel.abs() - speed_threshold).clamp_min(0.0)
   return (excess**2).sum(dim=-1)
+
+
+def table_contact(env: ManagerBasedRlEnv, sensor_name: str) -> torch.Tensor:
+  """In [0, 1]: fraction of the sensor's force history (the control step's
+  physics substeps) in which any of its primaries pushes on its secondary. Use
+  with a nonpositive weight."""
+  sensor: ContactSensor = env.scene[sensor_name]
+  history = sensor.data.force_history  # [B, N, H, 3]
+  assert history is not None
+  touching = (torch.linalg.norm(history, dim=-1) > 0.0).any(dim=1)  # [B, H]
+  return touching.float().mean(dim=-1)

@@ -1,5 +1,6 @@
-"""The object pose the actor perceives: the true pose corrupted by a persistent
-per-episode bias and fresh per-step noise, both curriculum-scaled.
+"""The object pose the actor perceives: the true pose, optionally a fixed delay
+old, corrupted by a persistent per-episode bias and fresh per-step noise, both
+curriculum-scaled.
 
 All actor object observations read the one pose cached here; the simulated
 pose, the critic, rewards, terminations and metrics never see it.
@@ -20,6 +21,7 @@ from tabletop_sim.tasks.grasp.mdp import curriculum
 if TYPE_CHECKING:
   from mjlab.entity import Entity
   from mjlab.envs import ManagerBasedRlEnv
+  from tabletop_sim.tasks.grasp.mdp.pose_history import ObjectPoseHistory
 
 StandardNormal = Callable[[tuple[int, ...]], torch.Tensor]
 
@@ -87,6 +89,10 @@ class PerceivedObjectPoseCfg(CommandTermCfg):
   """Vertical (world z) offset of the actor goal; same as the clean goal's."""
   persistent_bias: GaussianPoseNoise = field(default_factory=GaussianPoseNoise)
   per_step: GaussianPoseNoise = field(default_factory=GaussianPoseNoise)
+  history_sensor_name: str | None = None
+  """:class:`ObjectPoseHistory` sensor of the object. When set, the perceived
+  pose is the errors applied to that sensor's delayed true pose instead of the
+  current one; None means no delay."""
   # Never resampled by the timer; resets flag envs instead.
   resampling_time_range: tuple[float, float] = (1.0e9, 1.0e9)
 
@@ -108,6 +114,10 @@ class PerceivedObjectPose(CommandTerm):
   draws the persistent bias, then the first per-step noise, and fixes the actor
   goal from that same corrupted pose. Flags rather than a step counter keep this
   correct when a reset and the observation share a global step.
+
+  With a history sensor the errors are applied to the true pose a fixed delay
+  ago: a noisy measurement taken that long before the control step. A flagged
+  env has no history yet, so its first pose is the undelayed (resting) one.
   """
 
   cfg: PerceivedObjectPoseCfg
@@ -116,6 +126,9 @@ class PerceivedObjectPose(CommandTerm):
     super().__init__(cfg, env)
     self.object: Entity = env.scene[cfg.object_name]
     self.robot: Entity = env.scene[cfg.robot_name]
+    self.history: ObjectPoseHistory | None = (
+      env.scene[cfg.history_sensor_name] if cfg.history_sensor_name else None
+    )
     n, dev = self.num_envs, self.device
     self.bias_pos_b = torch.zeros(n, 3, device=dev)
     self.bias_rotvec_b = torch.zeros(n, 3, device=dev)
@@ -172,9 +185,16 @@ class PerceivedObjectPose(CommandTerm):
       )
     ids = scope.nonzero(as_tuple=False).squeeze(-1)
     self.noise_pos_b[ids], self.noise_rotvec_b[ids] = self._sample("per_step", ids)
+    true_pos = self.object.data.root_link_pos_w[ids]
+    true_quat = self.object.data.root_link_quat_w[ids]
+    if self.history is not None:
+      delayed = self.history.data[ids]
+      current = self._needs_capture[ids, None]
+      true_pos = torch.where(current, true_pos, delayed[:, :3])
+      true_quat = torch.where(current, true_quat, delayed[:, 3:])
     self.pos_w[ids], self.quat_w[ids] = perturb_pose(
-      self.object.data.root_link_pos_w[ids],
-      self.object.data.root_link_quat_w[ids],
+      true_pos,
+      true_quat,
       self.robot.data.root_link_quat_w[ids],
       (self.bias_pos_b[ids], self.noise_pos_b[ids]),
       (self.bias_rotvec_b[ids], self.noise_rotvec_b[ids]),
