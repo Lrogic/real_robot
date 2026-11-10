@@ -5,13 +5,15 @@ process_actions (random policy action) and apply_actions, and compares the joint
 target with ik.DifferentialIK on the configured robot model: the goal composed by
 actions.ee_delta_target on its FK, then one solve(). Joints are sampled across the soft
 limits so the joint-limit rows and the max_dq clamp are exercised. Also checks the sim_ik
-config against the embodiment and the training model's kinematics.
+config against the embodiment and the training model's kinematics, and, with the task's
+action.ee_goal_interpolation on, every substep's subgoal: solve(q, alpha = i / N).
 
 Needs the wxai_mjlab env:
 
   /opt/conda-envs/wxai_mjlab/bin/python -m pytest real_robot/manipulation/policy/tests/test_ik_parity.py
 """
 
+import json
 import sys
 from pathlib import Path
 
@@ -23,7 +25,7 @@ pytest.importorskip("mjlab")
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from manipulation.policy.actions import ee_delta_target  # noqa: E402
+from manipulation.policy.actions import ee_delta_target, matrix_to_rotvec  # noqa: E402
 from manipulation.policy.ik import ARM_JOINTS, DifferentialIK  # noqa: E402
 from manipulation.policy.jenga.config import JengaPolicyConfig  # noqa: E402
 
@@ -63,6 +65,76 @@ def test_config_matches_embodiment(cfg, ik):
     for _ in range(100):
         q = rng.uniform(ik.ctrl_lower, ik.ctrl_upper)
         assert np.allclose(ik.fk(q), training.fk(q), atol=1e-12)
+
+
+def test_subgoal_interpolates_from_start_to_goal(cfg, ik):
+    q = cfg.ready_joint_pos
+    T_start = ik.fk(q)
+    T_goal = ee_delta_target(T_start, [1.0, -0.5, 0.25, 0.3, -1.0, 0.6, 1.0], pos_scale=cfg.ee_pos_scale,
+                             rot_scale=cfg.ee_rot_scale, gripper_open=0.04, gripper_closed=0.0).T_base_target
+    try:
+        ik.set_goal(T_goal)
+        direct = ik.solve(q)
+        for alpha in (0.0, 0.3, 1.0):  # no start pose: every subgoal is the goal
+            assert np.array_equal(ik.solve(q, alpha)[0], direct[0])
+
+        ik.set_goal(T_goal, T_start)
+        pos, rot = ik.subgoal(0.0)
+        assert np.allclose(pos, T_start[:3, 3], atol=1e-12) and np.allclose(rot, T_start[:3, :3], atol=1e-12)
+        for alpha in (1.0, 1.5):
+            pos, rot = ik.subgoal(alpha)
+            assert np.array_equal(pos, T_goal[:3, 3]) and np.array_equal(rot, T_goal[:3, :3])
+        full = matrix_to_rotvec(T_goal[:3, :3] @ T_start[:3, :3].T)
+        for alpha in (0.04, 0.5, 0.96):
+            pos, rot = ik.subgoal(alpha)
+            assert np.allclose(pos, T_start[:3, 3] + alpha * (T_goal[:3, 3] - T_start[:3, 3]), atol=1e-12)
+            assert np.allclose(matrix_to_rotvec(rot @ T_start[:3, :3].T), alpha * full, atol=1e-9)
+        assert np.array_equal(ik.solve(q)[0], direct[0])  # alpha defaults to the goal
+        assert np.allclose(ik.solve(q, 0.0)[1], 0.0, atol=1e-9)  # already at the start pose
+    finally:
+        ik.set_goal(np.eye(4))
+
+
+def test_interpolated_substeps_match_mjlab_action(cfg, ik, tmp_path):
+    from mjlab.envs import ManagerBasedRlEnv
+    from tabletop_sim.tasks.grasp.env_cfg import make_grasp_env_cfg
+
+    task = json.loads(cfg.task_path.read_text())
+    task.setdefault("action", {})["ee_goal_interpolation"] = True
+    task_path = tmp_path / "task.json"
+    task_path.write_text(json.dumps(task))
+    env = ManagerBasedRlEnv(make_grasp_env_cfg(cfg.scene_path, task_path, None, 1), device=DEVICE)
+    try:
+        env.reset()
+        term = env.action_manager.get_term("arm")
+        assert term.cfg.interpolate_goal is True
+        robot, ids, substeps = env.scene["robot"], term._joint_ids, env.cfg.decimation
+        assert substeps == round(1.0 / (cfg.control_hz * cfg.sim_dt))
+        rng = np.random.default_rng(1)
+        q_t = torch.zeros(1, len(ids), device=DEVICE)
+        worst = 0.0
+        for _ in range(40):
+            q = np.clip(cfg.ready_joint_pos + rng.normal(scale=0.3, size=6), ik.ctrl_lower, ik.ctrl_upper)
+            action = rng.uniform(-1.5, 1.5, 6)
+            q_t[0] = torch.as_tensor(q, dtype=torch.float32)
+            robot.write_joint_state_to_sim(q_t, torch.zeros_like(q_t), joint_ids=ids)
+            env.sim.forward()
+            q32 = robot.data.joint_pos[0, ids].cpu().numpy().astype(np.float64)
+            term.process_actions(torch.as_tensor(action[None], dtype=torch.float32, device=DEVICE))
+            target = ee_delta_target(ik.fk(q32), np.r_[action, 1.0], pos_scale=cfg.ee_pos_scale,
+                                     rot_scale=cfg.ee_rot_scale, gripper_open=0.04, gripper_closed=0.0)
+            ik.set_goal(target.T_base_target, target.T_base_start)
+            # The joints stay put, so each call is the next substep's solve from the same q.
+            for i in range(1, substeps + 1):
+                term.apply_actions()
+                expected = robot.data.joint_pos_target[0, ids].cpu().numpy().astype(np.float64)
+                _, dq = ik.solve(q32, i / substeps)
+                worst = max(worst, float(np.max(np.abs(q32 + dq - expected))))
+        print(f"max |numpy - mjlab| joint target over interpolated substeps: {worst:.2e} rad")
+        assert worst < 2e-5
+    finally:
+        env.close()
+        ik.set_goal(np.eye(4))
 
 
 def test_matches_mjlab_action(cfg, ik):

@@ -100,6 +100,7 @@ class SimIkConfig:
     inner_hz: float
     goal_time_s: float
     params: IkParams
+    interpolate_goal: bool = False
 
     @classmethod
     def from_raw(cls, raw: dict, base: Path) -> "SimIkConfig":
@@ -109,7 +110,10 @@ class SimIkConfig:
             inner_hz=float(raw.get("inner_hz", 500.0)),
             goal_time_s=float(raw.get("goal_time_s", 0.0)),
             params=IkParams(**{k: float(raw[k]) for k in IkParams.__dataclass_fields__}),
+            interpolate_goal=raw.get("interpolate_goal", False),
         )
+        if not isinstance(c.interpolate_goal, bool):
+            raise ValueError(f"sim_ik.interpolate_goal must be true or false, got {c.interpolate_goal!r}")
         if not c.model.is_file():
             raise ValueError(f"sim_ik.model {c.model} does not exist")
         if not 0 < c.inner_hz <= 1000:
@@ -216,6 +220,10 @@ class JengaPolicyConfig:
         if workspace_min.shape != (3,) or workspace_max.shape != (3,) or np.any(workspace_min >= workspace_max):
             raise ValueError("safety.workspace_min / workspace_max must be 3 values each, min < max")
         control = ControlConfig.from_raw(raw.get("control") or {})
+        sim_ik = SimIkConfig.from_raw(raw["sim_ik"], base)
+        if sim_ik.interpolate_goal and control.ik_solver != "sim":
+            raise ValueError("sim_ik.interpolate_goal needs control.ik_solver: sim (the driver interpolates "
+                             "its own Cartesian goals over the goal time)")
         episode_key = str(raw.get("episode", {}).get("key", "s"))
         keys = [episode_key, *control.keys().values()]
         if len(set(keys)) != len(keys) or any(len(k) != 1 or k == "q" for k in keys):
@@ -249,7 +257,7 @@ class JengaPolicyConfig:
             robot={k: v for k, v in (raw.get("robot") or {}).items() if v},
             episode_key=episode_key,
             control=control,
-            sim_ik=SimIkConfig.from_raw(raw["sim_ik"], base),
+            sim_ik=sim_ik,
             workspace_min=workspace_min,
             workspace_max=workspace_max,
             logging=LoggingConfig.from_raw(raw.get("logging") or {}),

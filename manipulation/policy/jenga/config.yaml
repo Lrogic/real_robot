@@ -93,6 +93,13 @@ sim_ik:
   inner_hz: 500.0
   # set_arm_positions goal time of each solve; 0 applies the target immediately.
   goal_time_s: 0.0
+  # false  every solve aims at the policy step's TCP goal
+  # true   the solves aim at a subgoal that moves linearly from the TCP at the start of the
+  #        policy step to its goal, over one step (full: 1 / control_hz, slow:
+  #        slow_time_dilation / control_hz, step: step_goal_time_s), then stays on the goal.
+  #        This is the task's action.ee_goal_interpolation; startup warns when the checkpoint
+  #        was trained with the other setting.
+  interpolate_goal: false
   # The training DifferentialIKActionCfg (tabletop_sim IkDefaults) and the entity's soft
   # joint limit factor; tests/test_ik_parity.py checks them against the embodiment.
   damping: 0.05

@@ -9,7 +9,8 @@ the TCP measured at the start of the step, both in the robot base frame:
 
 The gripper value opens at a >= 0 and closes below (no clamp). The sim's 25 damped IK
 solves per step are replaced by the driver's own Cartesian IK on the target, or, with
-control.ik_solver = sim, reproduced on the measured joints (ik.py, ik_arm.py).
+control.ik_solver = sim, reproduced on the measured joints (ik.py, ik_arm.py). With
+sim_ik.interpolate_goal those solves aim at subgoals between the start TCP and the target.
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ from .observations import make_T, quat_wxyz_from_matrix, rotvec_to_matrix
 @dataclass(frozen=True)
 class EeTarget:
     T_base_target: np.ndarray   # commanded TCP pose, base frame
+    T_base_start: np.ndarray    # the TCP pose the delta was applied to
     gripper: float              # carriage target, m
     gripper_open: bool
     clipped: np.ndarray         # the six arm values after the [-1, 1] clamp
@@ -53,7 +55,7 @@ def ee_delta_target(T_base_tcp, action, *, pos_scale: float, rot_scale: float, g
     dr = clipped[3:] * rot_scale * action_scale
     target = make_T(rotvec_to_matrix(dr) @ T[:3, :3], T[:3, 3] + dp)
     opened = bool(a[6] >= 0.0)
-    return EeTarget(T_base_target=target, gripper=gripper_open if opened else gripper_closed,
+    return EeTarget(T_base_target=target, T_base_start=T.copy(), gripper=gripper_open if opened else gripper_closed,
                     gripper_open=opened, clipped=clipped, delta_pos=dp, delta_rotvec=dr)
 
 

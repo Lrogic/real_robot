@@ -153,7 +153,10 @@ class PolicyActor:
         std = actor["obs_normalizer._std"].reshape(ACTOR_DIM)
         info = {"checkpoint": str(checkpoint), "iteration": state.get("iter"), "hidden_dims": hidden,
                 "experiment": agent.get("experiment_name"),
-                "normalizer_count": float(actor.get("obs_normalizer.count", np.nan))}
+                "normalizer_count": float(actor.get("obs_normalizer.count", np.nan)),
+                # ClippedDifferentialIKActionCfg.interpolate_goal; runs from before it existed lack it.
+                "trained_interpolate_goal": bool(env.get("actions", {}).get("arm", {}).get("interpolate_goal",
+                                                                                         False))}
         return cls(path=checkpoint, layers=layers, obs_mean=mean, obs_std=std, info=info)
 
     def normalize(self, obs: np.ndarray) -> np.ndarray:

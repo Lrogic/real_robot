@@ -14,6 +14,15 @@ with the site Jacobian of the robot model at q. The soft limits are mjlab's: the
 scaled by soft_joint_pos_limit_factor about its middle. The ctrlrange clip is what MuJoCo
 does to a limited position actuator's ctrl. tests/test_ik_parity.py checks it against the
 mjlab action itself.
+
+With the task's action.ee_goal_interpolation, substep i of the N in a control step solves
+toward a subgoal and not the goal: the start pose (the TCP the goal was computed from)
+advanced by alpha = i / N of the step's delta,
+
+    p_sub = p_start + alpha (p_goal - p_start)
+    R_sub = R(alpha rotvec(R_goal R_start^T)) R_start
+
+set_goal(goal, start) and solve(q, alpha) are that; the caller picks alpha (ik_arm.py).
 """
 
 from __future__ import annotations
@@ -24,7 +33,7 @@ from pathlib import Path
 import numpy as np
 
 from .actions import matrix_to_rotvec
-from .observations import make_T
+from .observations import make_T, rotvec_to_matrix
 
 ARM_JOINTS = tuple(f"joint_{i}" for i in range(6))
 
@@ -66,8 +75,7 @@ class DifferentialIK:
         self.posture_target = np.asarray(posture_target, dtype=np.float64).reshape(len(joints))
         self._jacp = np.zeros((3, m.nv))
         self._jacr = np.zeros((3, m.nv))
-        self.goal_pos = np.zeros(3)
-        self.goal_rot = np.eye(3)
+        self.set_goal(np.eye(4))
 
     def _ctrlrange(self, jids, lo, hi):
         """ctrlrange of the position actuator on each joint (MuJoCo clamps ctrl to it); else the joint range."""
@@ -91,19 +99,39 @@ class DifferentialIK:
         self._kinematics(d, np.asarray(q, dtype=np.float64))
         return make_T(d.site_xmat[self.site_id].reshape(3, 3).copy(), d.site_xpos[self.site_id].copy())
 
-    def set_goal(self, T_base_goal) -> None:
-        """The absolute TCP goal process_actions would store (_desired_pos / _desired_quat)."""
+    def set_goal(self, T_base_goal, T_base_start=None) -> None:
+        """The absolute TCP goal process_actions would store (_desired_pos / _desired_quat).
+
+        T_base_start, the TCP pose the goal was computed from, makes subgoal() interpolate from
+        it; without one every subgoal is the goal.
+        """
         T = np.asarray(T_base_goal, dtype=np.float64)
         self.goal_pos, self.goal_rot = T[:3, 3].copy(), T[:3, :3].copy()
+        if T_base_start is None:
+            self.start_pos, self.start_rot = self.goal_pos, self.goal_rot
+            self.delta_pos, self.delta_rotvec = np.zeros(3), np.zeros(3)
+            return
+        S = np.asarray(T_base_start, dtype=np.float64)
+        self.start_pos, self.start_rot = S[:3, 3].copy(), S[:3, :3].copy()
+        self.delta_pos = self.goal_pos - self.start_pos
+        self.delta_rotvec = matrix_to_rotvec(self.goal_rot @ self.start_rot.T)
 
-    def solve(self, q) -> tuple[np.ndarray, np.ndarray]:
-        """(q_target, dq) of one apply_actions() from arm joints q toward the goal."""
+    def subgoal(self, alpha: float) -> tuple[np.ndarray, np.ndarray]:
+        """(position, rotation) the solve at fraction alpha of the step aims at; the goal from 1 on."""
+        if alpha >= 1.0:
+            return self.goal_pos, self.goal_rot
+        return (self.start_pos + alpha * self.delta_pos,
+                rotvec_to_matrix(alpha * self.delta_rotvec) @ self.start_rot)
+
+    def solve(self, q, alpha: float = 1.0) -> tuple[np.ndarray, np.ndarray]:
+        """(q_target, dq) of one apply_actions() from arm joints q toward subgoal(alpha)."""
         p, q = self.params, np.asarray(q, dtype=np.float64)
         self._kinematics(self.data, q)
         pos = self.data.site_xpos[self.site_id]
         rot = self.data.site_xmat[self.site_id].reshape(3, 3)
-        pos_error = self.goal_pos - pos
-        rot_error = matrix_to_rotvec(self.goal_rot @ rot.T)
+        goal_pos, goal_rot = self.subgoal(alpha)
+        pos_error = goal_pos - pos
+        rot_error = matrix_to_rotvec(goal_rot @ rot.T)
         self._mj.mj_jacSite(self.model, self.data, self._jacp, self._jacr, self.site_id)
         jacp, jacr = self._jacp[:, self.dof_adr], self._jacr[:, self.dof_adr]
 

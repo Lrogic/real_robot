@@ -91,6 +91,11 @@ class Controller:
             return self.driver_goal_time_s
         return self.tick_period_s
 
+    @property
+    def step_time_s(self) -> float:
+        """Duration of one policy step's motion: what the sim IK loop interpolates a goal over."""
+        return self.step_goal_time_s if self.mode == "step" else self.tick_period_s
+
     # ----- keys -------------------------------------------------------------------------
 
     def press_episode(self) -> str:

@@ -98,7 +98,7 @@ Everything runs in one process: `pipeline.track_stage` → `pipeline.tracking_lo
 - `controller.py`: the state machine and command gate (shadow/step/slow/full, holds on stale frames or untrusted poses).
 - The arm. `control.ik_solver` picks how the goal reaches it:
   - `driver`: `arm.py` sends the goal to the driver's Cartesian IK.
-  - `sim`: `ik_arm.py` re-solves the training IK from the measured joints at `sim_ik.inner_hz` and sends joint positions.
+  - `sim`: `ik_arm.py` re-solves the training IK from the measured joints at `sim_ik.inner_hz` and sends joint positions. With `sim_ik.interpolate_goal` the solves aim at a subgoal that moves from the step's start TCP to its goal over one policy step.
 
 The object pose in the base frame is `T_base_camera @ center_pose @ to_origin`.
 
@@ -110,7 +110,7 @@ The deployment re-implements the trained env's interface in plain numpy/mujoco i
 |---|---|---|
 | `observations.py` | Actor group of `tasks/grasp/env_cfg.py::_observations` and `mdp/observations.py` | `test_obs_parity.py` |
 | `actions.py` | `ClippedDifferentialIKAction` (relative mode) and binary `GripperAction` in `mdp/actions.py` | `test_actions.py` |
-| `ik.py` | mjlab `DifferentialIKAction.apply_actions`: one damped least-squares solve per 2 ms substep, 25 per policy step | `test_ik_parity.py` |
+| `ik.py` | mjlab `DifferentialIKAction.apply_actions`: one damped least-squares solve per 2 ms substep, 25 per policy step. Also the interpolated subgoal of `ClippedDifferentialIKAction` (`interpolate_goal`) | `test_ik_parity.py` |
 | `actor.py` | rsl_rl `MLPModel`. It refuses to load if the run's `params/env.yaml`/`agent.yaml` disagree with the deployment. | `test_actor.py` |
 | `jenga/config.yaml` `embodiment`/`sim_ik` | `EmbodimentCfg`/`IkDefaults` of `trossen_wxai_base_real` | `test_obs_parity.py`, `test_ik_parity.py` |
 
@@ -120,7 +120,7 @@ A change to sim observations, actions, action scales, control rate, embodiment o
 
 - Environments are built from config files: a **scene JSON** plus a **task JSON**, passed to `tasks/grasp/env_cfg.py::make_grasp_env_cfg`, which returns an mjlab `ManagerBasedRlEnvCfg`.
   - The scene JSON sets the embodiment, action space, base pose, objects and support surface. Its schema is in the docstring of `scene/config.py`.
-  - The task JSON sets timing, action scales, rewards, domain randomization, curriculum, pose noise and size variants. It also sets the real-loop effects, all off by default: `object_pose_delay_s` (age of the pose the actor sees), `action_hold_probability` (control steps that keep the previous absolute goal) and `w_table_contact` (robot-table contact penalty). `grasp_curriculum_size_variants_friction_latency_wxai.json` turns them on. `action.ee_goal_interpolation` (off by default) makes the IK track a subgoal that moves linearly from the TCP pose at the start of the control step to the goal; the `..._latency_interp_wxai.json` task adds it. The real side does not implement it yet.
+  - The task JSON sets timing, action scales, rewards, domain randomization, curriculum, pose noise and size variants. It also sets the real-loop effects, all off by default: `object_pose_delay_s` (age of the pose the actor sees), `action_hold_probability` (control steps that keep the previous absolute goal) and `w_table_contact` (robot-table contact penalty). `grasp_curriculum_size_variants_friction_latency_wxai.json` turns them on. `action.ee_goal_interpolation` (off by default) makes the IK track a subgoal that moves linearly from the TCP pose at the start of the control step to the goal; the `..._latency_interp_wxai.json` task adds it. On the real arm, `sim_ik.interpolate_goal` in `jenga/config.yaml` turns on the same interpolation for `ik_solver: sim`; startup warns when it differs from what the checkpoint was trained with.
   - Unknown keys raise `ConfigError`.
 - Importing `tabletop_sim.tasks` registers one mjlab task per action space (`TASK_IDS` in `tasks/grasp/__init__.py`). `play.py` registers `WXAI-Grasp-Play` from any scene/task pair.
 - Embodiments (`embodiments/registry.py`) are the menagerie and Trossen WXAI models. Each has a `_real` variant whose `*_real_robot.xml` carries measured position-mode gains. The jenga scene uses `trossen_wxai_base_real`.

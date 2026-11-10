@@ -8,6 +8,15 @@ the first goal and stops for the ready move, a stop (hold_at) and kill; between 
 during control holds it keeps tracking the last goal, as the driver does with a Cartesian
 goal. A failure in the loop kills the arm (gravity compensation).
 
+With interpolate_goal (the task's action.ee_goal_interpolation) each solve aims at a subgoal
+between the step's start TCP and its goal, at the fraction alpha of the step that has passed:
+
+    alpha = min(1, (time since send_tcp + one loop period) / goal_time_s)
+
+The sim's substep i of N aims at i / N, one substep ahead of the time passed, hence the added
+period. Once alpha is 1 the loop tracks the goal itself until the next send_tcp, so a tick
+that sends nothing leaves the arm on the last goal, like a held step in the sim.
+
 Deadlines are period apart with no catch-up (a tick more than a period late re-anchors).
 The GIL switch interval is lowered while the loop runs so the tracking thread cannot hold it
 for the default 5 ms.
@@ -31,9 +40,11 @@ class SimIkPolicyArm(PolicyArm):
     MODE_NOTE = (PolicyArm.MODE_NOTE + "; TCP goals tracked by the training IK in a joint-position loop")
 
     def __init__(self, identity: dict, gripper_limit_margin_m: float, ik: DifferentialIK, inner_hz: float,
-                 goal_time_s: float):
+                 goal_time_s: float, interpolate_goal: bool = False):
         super().__init__(identity, gripper_limit_margin_m)
         self.ik, self.inner_hz, self.inner_goal_time_s = ik, float(inner_hz), float(goal_time_s)
+        self.interpolate_goal = bool(interpolate_goal)
+        self._goal_at, self._ramp_s = 0.0, 0.0   # when the goal was set; 0 = no interpolation
         self._thread: Optional[threading.Thread] = None
         self._stop = threading.Event()
         self._stats_lock = threading.Lock()
@@ -42,7 +53,8 @@ class SimIkPolicyArm(PolicyArm):
 
     def __enter__(self) -> "SimIkPolicyArm":
         super().__enter__()
-        self.info.update(inner_hz=self.inner_hz, inner_goal_time_s=self.inner_goal_time_s)
+        self.info.update(inner_hz=self.inner_hz, inner_goal_time_s=self.inner_goal_time_s,
+                         interpolate_goal=self.interpolate_goal)
         return self
 
     # ----- PolicyArm interface ----------------------------------------------------------
@@ -55,13 +67,22 @@ class SimIkPolicyArm(PolicyArm):
         self._stop_loop()
         super().hold_at(joints, goal_time_s)
 
-    def send_tcp(self, T_base_tcp: np.ndarray, goal_time_s: float) -> None:
-        """Hold a new TCP goal; the first one starts the loop. goal_time_s is unused (inner_goal_time_s)."""
+    def send_tcp(self, T_base_tcp: np.ndarray, goal_time_s: float, T_base_start=None) -> None:
+        """Hold a new TCP goal; the first one starts the loop.
+
+        With interpolate_goal the loop moves its subgoal from T_base_start to the goal over
+        goal_time_s. Otherwise both are unused (each solve is sent with inner_goal_time_s).
+        """
         with self.lock:
             self._check()
             if not self.position_mode:
                 raise RuntimeError("the arm is not in position mode (move to the ready pose first)")
-            self.ik.set_goal(T_base_tcp)
+            if self.interpolate_goal and T_base_start is not None:
+                self.ik.set_goal(T_base_tcp, T_base_start)
+                self._goal_at, self._ramp_s = time.monotonic(), float(goal_time_s)
+            else:
+                self.ik.set_goal(T_base_tcp)
+                self._ramp_s = 0.0
             if self._thread is None:
                 self._start_loop()
 
@@ -80,14 +101,16 @@ class SimIkPolicyArm(PolicyArm):
         return {"ticks": n, "rate_hz": (n - 1) / span if n > 1 and span > 0 else None,
                 "late_ticks": s["late"], "reanchored": s["reanchored"], "max_late_s": s["max_late"],
                 "reused_state": s["reused"], "max_dq_clamped": s["clamped"], "max_solve_s": s["max_solve"],
-                "max_send_s": s["max_send"], "last_q_target": s["q_target"], "last_dq": s["dq"]}
+                "max_send_s": s["max_send"], "last_q_target": s["q_target"], "last_dq": s["dq"],
+                "last_alpha": s["alpha"]}
 
     # ----- loop ---------------------------------------------------------------------------
 
     @staticmethod
     def _new_stats() -> dict:
         return {"ticks": 0, "first_at": None, "last_at": None, "late": 0, "reanchored": 0, "max_late": 0.0,
-                "reused": 0, "clamped": 0, "max_solve": 0.0, "max_send": 0.0, "q_target": None, "dq": None}
+                "reused": 0, "clamped": 0, "max_solve": 0.0, "max_send": 0.0, "q_target": None, "dq": None,
+                "alpha": None}
 
     def _start_loop(self) -> None:
         self._stop.clear()
@@ -118,8 +141,11 @@ class SimIkPolicyArm(PolicyArm):
                     if self._stop.is_set():
                         break
                     state = self.read()
+                    alpha = 1.0
+                    if self._ramp_s > 0:
+                        alpha = min(1.0, (time.monotonic() - self._goal_at + period) / self._ramp_s)
                     t0 = time.perf_counter()
-                    q_target, dq = self.ik.solve(state.arm_q)
+                    q_target, dq = self.ik.solve(state.arm_q, alpha)
                     t1 = time.perf_counter()
                     self.driver.set_arm_positions([float(v) for v in q_target], self.inner_goal_time_s, False)
                     t2 = time.perf_counter()
@@ -136,7 +162,7 @@ class SimIkPolicyArm(PolicyArm):
                     s["clamped"] += bool(np.any(np.abs(dq) >= max_dq - 1e-9))
                     s["max_solve"] = max(s["max_solve"], t1 - t0)
                     s["max_send"] = max(s["max_send"], t2 - t1)
-                    s["q_target"], s["dq"] = q_target.tolist(), dq.tolist()
+                    s["q_target"], s["dq"], s["alpha"] = q_target.tolist(), dq.tolist(), alpha
                 last_id = state.header_id
                 due = (now if reanchor else due) + period
                 self._stop.wait(max(0.0, due - time.monotonic()))

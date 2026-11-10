@@ -38,6 +38,48 @@ def test_timing_per_mode():
         c = _controller(mode)
         c.driver_goal_time_s = 0.1
         assert c.goal_time_s == expected
+    # The sim IK loop's interpolation time is one policy step, whatever the driver goal time.
+    for mode, expected in (("full", 0.05), ("slow", 0.2), ("step", 1.0)):
+        c = _controller(mode)
+        c.driver_goal_time_s = 0.1
+        assert c.step_time_s == pytest.approx(expected)
+
+
+def _config_copy(tmp_path, edit):
+    """jenga/config.yaml with its relative paths made absolute and edit(raw) applied."""
+    import yaml
+
+    from manipulation.policy.jenga.config import DEFAULT_CONFIG
+
+    raw = yaml.safe_load(DEFAULT_CONFIG.read_text())
+    for section, key in (("sim", "scene"), ("sim", "task"), ("policy", "checkpoint"), ("sim_ik", "model")):
+        raw[section][key] = str((DEFAULT_CONFIG.parent / raw[section][key]).resolve())
+    edit(raw)
+    path = tmp_path / "config.yaml"
+    path.write_text(yaml.safe_dump(raw))
+    return path
+
+
+def test_interpolate_goal_config(tmp_path):
+    from manipulation.policy.jenga.config import JengaPolicyConfig
+
+    def edit(interpolate, solver="sim"):
+        def apply(raw):
+            raw["control"]["ik_solver"] = solver
+            if interpolate is None:
+                raw["sim_ik"].pop("interpolate_goal", None)
+            else:
+                raw["sim_ik"]["interpolate_goal"] = interpolate
+        return apply
+
+    assert JengaPolicyConfig.load(_config_copy(tmp_path, edit(None))).sim_ik.interpolate_goal is False
+    cfg = JengaPolicyConfig.load(_config_copy(tmp_path, edit(True)))
+    assert cfg.sim_ik.interpolate_goal is True and cfg.describe()["sim_ik"]["interpolate_goal"] is True
+    with pytest.raises(ValueError, match="must be true or false"):
+        JengaPolicyConfig.load(_config_copy(tmp_path, edit(1)))
+    with pytest.raises(ValueError, match="needs control.ik_solver: sim"):
+        JengaPolicyConfig.load(_config_copy(tmp_path, edit(True, "driver")))
+    assert JengaPolicyConfig.load(_config_copy(tmp_path, edit(False, "driver"))).control.ik_solver == "driver"
 
 
 def test_episode_key_cycle():

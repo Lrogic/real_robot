@@ -134,8 +134,10 @@ class PolicySession:
         self.log.event("start", **info)
         print(__doc__)
         c, k = self.cfg.control, self.cfg.sim_ik
+        ramp = (f", interpolated from the start TCP over {1000 * self.control.step_time_s:g} ms"
+                if k.interpolate_goal else "")
         goals = (f"goals tracked by the training IK at {k.inner_hz:g} Hz (training {1.0 / self.cfg.sim_dt:g} Hz), "
-                 f"joint goal time {1000 * k.goal_time_s:g} ms" if self.ik is not None
+                 f"joint goal time {1000 * k.goal_time_s:g} ms{ramp}" if self.ik is not None
                  else f"goals over {1000 * self.control.goal_time_s:.0f} ms")
         print(f"Policy {self.actor.info.get('experiment')} iteration {self.actor.info.get('iteration')}; "
               f"control mode {c.mode.upper()}, policy ticks at {1.0 / self.control.tick_period_s:g} Hz, "
@@ -210,7 +212,8 @@ class PolicySession:
         sent, gripper_sent, send_error = False, False, None
         if decision.send:
             try:
-                self.arm.send_tcp(target.T_base_target, self.control.goal_time_s)
+                goal_time = self.control.goal_time_s if self.ik is None else self.control.step_time_s
+                self.arm.send_tcp(target.T_base_target, goal_time, target.T_base_start)
                 gripper_sent = self.arm.set_gripper(target.gripper, self.cfg.control.gripper_goal_time_s)
                 sent = True
             except Exception as error:
@@ -507,6 +510,11 @@ def policy_session(args, recovery):
     actor = PolicyActor.load(cfg.checkpoint, cfg)
     actor(actor.obs_mean)  # first numpy call is slow; keep it off the first tick
     print(f"Policy {cfg.checkpoint} (iteration {actor.info.get('iteration')}) matches the scene and task.")
+    trained, used = actor.info["trained_interpolate_goal"], cfg.sim_ik.interpolate_goal
+    if trained != used:
+        print(f"WARNING: the policy was trained {'with' if trained else 'without'} goal interpolation, but "
+              f"sim_ik.interpolate_goal is {str(used).lower()}"
+              + ("" if cfg.control.ik_solver == "sim" else " (control.ik_solver: driver cannot interpolate)") + ".")
     cal_path = find_calibration(args.calibration or cfg.calibration)
     cal = json.loads(cal_path.read_text())
     X = load_T_base_camera(cal_path)
@@ -522,7 +530,8 @@ def policy_session(args, recovery):
         arm = DryRunPolicyArm()
     elif ik is not None:
         arm = SimIkPolicyArm(resolve_robot_identity(cfg.robot, cal, args.calibration_config),
-                             cfg.control.gripper_limit_margin_m, ik, cfg.sim_ik.inner_hz, cfg.sim_ik.goal_time_s)
+                             cfg.control.gripper_limit_margin_m, ik, cfg.sim_ik.inner_hz, cfg.sim_ik.goal_time_s,
+                             cfg.sim_ik.interpolate_goal)
     else:
         arm = PolicyArm(resolve_robot_identity(cfg.robot, cal, args.calibration_config),
                         cfg.control.gripper_limit_margin_m)

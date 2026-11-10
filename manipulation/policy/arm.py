@@ -83,8 +83,12 @@ class PolicyArm(RobotStateReader):
             if self.position_mode:
                 self.driver.set_arm_positions([float(q) for q in joints], goal_time_s, False)
 
-    def send_tcp(self, T_base_tcp: np.ndarray, goal_time_s: float) -> None:
-        """Non-blocking Cartesian goal; raises what the driver raises (e.g. no IK solution)."""
+    def send_tcp(self, T_base_tcp: np.ndarray, goal_time_s: float, T_base_start=None) -> None:
+        """Non-blocking Cartesian goal; raises what the driver raises (e.g. no IK solution).
+
+        T_base_start (the TCP pose the goal was computed from) is unused: the driver interpolates
+        from wherever it is.
+        """
         import trossen_arm
 
         with self.lock:
@@ -168,7 +172,7 @@ class DryRunPolicyArm:
     def hold_at(self, _joints, _goal_time_s: float) -> None:
         pass
 
-    def send_tcp(self, T_base_tcp: np.ndarray, _goal_time_s: float) -> None:
+    def send_tcp(self, T_base_tcp: np.ndarray, _goal_time_s: float, _T_base_start=None) -> None:
         if not self.killed:
             self.last_T = np.array(T_base_tcp, dtype=np.float64)
 

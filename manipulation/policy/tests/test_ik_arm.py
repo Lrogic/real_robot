@@ -1,5 +1,6 @@
 """ik_arm.SimIkPolicyArm's inner loop against a fake driver whose joints follow the commanded
-targets (first order, tau 30 ms): rate, goal time, convergence to the held goal, stop and kill.
+targets (first order, tau 30 ms): rate, goal time, convergence to the held goal, the
+interpolated subgoal's timing, stop and kill.
 
 Needs mujoco and trossen_arm (wxai_mjlab or wxai_mjlab_hw):
 
@@ -100,6 +101,56 @@ def test_tracks_held_goal_at_inner_rate(setup):
     assert rate == pytest.approx(cfg.sim_ik.inner_hz, rel=0.1)
     assert np.linalg.norm(T[:3, 3] - T_goal[:3, 3]) < 1e-4
     assert np.allclose(T[:3, :3], T_goal[:3, :3], atol=1e-3)
+
+
+def _record_alpha(ik):
+    """(time, alpha) of every solve the loop makes from now on."""
+    solves, solve = [], ik.solve
+
+    def recording(q, alpha=1.0):
+        solves.append((time.monotonic(), alpha))
+        return solve(q, alpha)
+
+    ik.solve = recording
+    return solves
+
+
+def test_interpolates_the_subgoal_over_the_step(setup):
+    cfg, ik, arm = setup
+    arm.interpolate_goal = True
+    solves, ramp_s, period = _record_alpha(ik), 0.2, 1.0 / cfg.sim_ik.inner_hz
+    T_start = ik.fk(cfg.ready_joint_pos)
+    T_goal = _goal(cfg, ik, [1.0, -1.0, -1.0, 0.0, 0.0, 1.0])
+    sent_at = time.monotonic()
+    arm.send_tcp(T_goal, ramp_s, T_start)
+    time.sleep(0.1)
+    # Half way through the step the arm is between the two, still short of the goal.
+    travelled = np.linalg.norm(ik.fk(arm.driver.q)[:3, 3] - T_start[:3, 3])
+    assert 0.1 < travelled / np.linalg.norm(T_goal[:3, 3] - T_start[:3, 3]) < 0.6
+    time.sleep(0.4)
+    assert arm.drain_stats()["last_alpha"] == 1.0
+    first = len(solves)
+    ramp = [(t, a) for t, a in solves if a < 1.0]
+    assert len(ramp) > 0.8 * ramp_s * cfg.sim_ik.inner_hz
+    for t, alpha in ramp:  # the fraction of the step passed, one loop period ahead
+        assert alpha == pytest.approx((t - sent_at + period) / ramp_s, abs=0.02)
+    assert all(a == 1.0 for _, a in solves[len(ramp):])  # then it stays on the goal
+    assert np.linalg.norm(ik.fk(arm.driver.q)[:3, 3] - T_goal[:3, 3]) < 1e-4
+
+    # A new goal starts a new ramp from its own start pose.
+    T_start = ik.fk(arm.driver.q)
+    arm.send_tcp(_goal(cfg, ik, [0, 0, 0, 0, 0, 0]), ramp_s, T_start)
+    time.sleep(0.05)
+    assert 0.0 < solves[first][1] < 0.1 and solves[-1][1] < 1.0
+
+    # A goal without a start pose, and the option off, are tracked directly.
+    arm.send_tcp(T_goal, ramp_s)
+    time.sleep(0.02)
+    assert solves[-1][1] == 1.0
+    arm.interpolate_goal = False
+    arm.send_tcp(T_goal, ramp_s, T_start)
+    time.sleep(0.02)
+    assert solves[-1][1] == 1.0
 
 
 def test_new_goal_replaces_held_one(setup):
