@@ -69,10 +69,9 @@ control:
   driver_goal_time_s: 0
   # Multiplies the scaled TCP delta; 1 is the training step size.
   action_scale: 1.0
-  # Commands wait while the observed frame is older than this at the tick, or was captured
-  # more than max_frame_gap_s after the previous frame; they resume on their own.
+  # Commands wait while the observed frame is older than this at the tick; they resume on
+  # their own.
   max_frame_age_s: 0.030
-  max_frame_gap_s: 0.030
   # Gripper open/close duration. Over 0.2 s the driver uses a quintic; shorter linear moves
   # overshoot the target, and past the driver's position_max the controller faults to idle.
   gripper_goal_time_s: 0.5

@@ -38,7 +38,6 @@ class ControlConfig:
     step_goal_time_s: float
     action_scale: float
     max_frame_age_s: float
-    max_frame_gap_s: float
     gripper_goal_time_s: float
     gripper_limit_margin_m: float
     ready_move_time_s: float
@@ -60,7 +59,6 @@ class ControlConfig:
             step_goal_time_s=float(raw.get("step_goal_time_s", 1.0)),
             action_scale=float(raw.get("action_scale", 1.0)),
             max_frame_age_s=float(raw.get("max_frame_age_s", 0.030)),
-            max_frame_gap_s=float(raw.get("max_frame_gap_s", 0.030)),
             gripper_goal_time_s=float(raw.get("gripper_goal_time_s", 0.5)),
             gripper_limit_margin_m=float(raw.get("gripper_limit_margin_m", 0.002)),
             ready_move_time_s=float(raw.get("ready_move_time_s", 4.0)),
@@ -85,7 +83,7 @@ class ControlConfig:
             raise ValueError("control.driver_goal_time_s must be >= 0 or null")
         if self.gripper_limit_margin_m < 0:
             raise ValueError("control.gripper_limit_margin_m must be >= 0")
-        for name in ("step_goal_time_s", "max_frame_age_s", "max_frame_gap_s", "gripper_goal_time_s",
+        for name in ("step_goal_time_s", "max_frame_age_s", "gripper_goal_time_s",
                      "ready_move_time_s", "ready_tolerance_rad", "ready_gripper_tolerance", "stop_goal_time_s"):
             if getattr(self, name) <= 0:
                 raise ValueError(f"control.{name} must be > 0")

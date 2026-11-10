@@ -202,7 +202,7 @@ class PolicySession:
         elif result.phase == ACTIVE:
             action_error = "no robot state" if robot is None else "no observation (object pose missing)"
         decision = self.control.tick(ctl.Gate(
-            trust=trust, frame_age_s=frame_age, frame_gap_s=self._frame_gap, action_error=action_error,
+            trust=trust, frame_age_s=frame_age, action_error=action_error,
             in_workspace=None if target is None else in_workspace(
                 target.T_base_target[:3, 3], self.cfg.workspace_min, self.cfg.workspace_max)))
         sent, gripper_sent, send_error = False, False, None

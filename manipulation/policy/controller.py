@@ -5,7 +5,7 @@ the arm calls each transition asks for.
   moving_to_ready  episode key: position mode, joint move to the training ready pose
   await_go         at the ready pose, episode armed / active; ready key starts commands
   running          one command per policy tick (shadow: computed and logged, not sent)
-  hold_stale       frame too old or too far after the previous one; resumes on its own
+  hold_stale       frame too old at the tick; resumes on its own
   hold_tracking    object pose untrusted (any SAM verdict other than a match, re-registration),
                    no observation or action, target outside the workspace, or a driver error;
                    resumes on the ready key once the pose is trusted again
@@ -38,7 +38,6 @@ class Gate:
     """What a policy tick knows before sending its command."""
     trust: Trust
     frame_age_s: Optional[float]
-    frame_gap_s: Optional[float]
     action_error: Optional[str] = None      # no observation, non-finite action, ...
     in_workspace: Optional[bool] = None     # of the commanded TCP; None when there is no target
 
@@ -56,7 +55,6 @@ class Controller:
     slow_time_dilation: int
     step_goal_time_s: float
     max_frame_age_s: float
-    max_frame_gap_s: float
     keys: dict
     # full / slow Cartesian goal time override (control.driver_goal_time_s); None = one tick.
     driver_goal_time_s: Optional[float] = None
@@ -70,7 +68,7 @@ class Controller:
         c = cfg.control
         return cls(mode=c.mode, control_period_s=cfg.control_period_s, slow_time_dilation=c.slow_time_dilation,
                    step_goal_time_s=c.step_goal_time_s, max_frame_age_s=c.max_frame_age_s,
-                   max_frame_gap_s=c.max_frame_gap_s, keys={"episode": cfg.episode_key, **c.keys()},
+                   keys={"episode": cfg.episode_key, **c.keys()},
                    driver_goal_time_s=c.driver_goal_time_s)
 
     # ----- timing -----------------------------------------------------------------------
@@ -178,8 +176,6 @@ class Controller:
     def _stale_reason(self, gate: Gate) -> Optional[str]:
         if gate.frame_age_s is not None and gate.frame_age_s > self.max_frame_age_s:
             return f"frame age {1000 * gate.frame_age_s:.0f} ms > {1000 * self.max_frame_age_s:.0f} ms"
-        if gate.frame_gap_s is not None and gate.frame_gap_s > self.max_frame_gap_s:
-            return f"frame gap {1000 * gate.frame_gap_s:.0f} ms > {1000 * self.max_frame_gap_s:.0f} ms"
         return None
 
     def _set(self, state: str, reason: str) -> None:

@@ -10,12 +10,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from manipulation.policy import controller as ctl  # noqa: E402
 from manipulation.policy.trust import Trust  # noqa: E402
 
-FRESH = dict(frame_age_s=0.01, frame_gap_s=0.017)
+FRESH = dict(frame_age_s=0.01)
 
 
 def _controller(mode="full") -> ctl.Controller:
     return ctl.Controller(mode=mode, control_period_s=0.05, slow_time_dilation=4, step_goal_time_s=1.0,
-                          max_frame_age_s=0.03, max_frame_gap_s=0.03,
+                          max_frame_age_s=0.03,
                           keys={"episode": "s", "ready": "r", "kill": "k", "step": "n"})
 
 
@@ -71,10 +71,8 @@ def test_untrusted_latches_until_ready_key():
 
 def test_stale_frames_resume_on_their_own():
     c = _running()
-    d = c.tick(ctl.Gate(trust=Trust.VERIFIED, frame_age_s=0.05, frame_gap_s=0.017, in_workspace=True))
+    d = c.tick(ctl.Gate(trust=Trust.VERIFIED, frame_age_s=0.05, in_workspace=True))
     assert not d.send and c.state == ctl.HOLD_STALE and "frame age" in d.reason
-    d = c.tick(ctl.Gate(trust=Trust.VERIFIED, frame_age_s=0.01, frame_gap_s=0.2, in_workspace=True))
-    assert not d.send and "frame gap" in d.reason
     assert c.tick(ctl.Gate(trust=Trust.VERIFIED, in_workspace=True, **FRESH)).send
     assert c.state == ctl.RUNNING
 
