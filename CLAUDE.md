@@ -34,7 +34,7 @@ No single environment runs everything. Each script's docstring or `run.sh` names
 
 ```bash
 python scripts/train.py --scene configs/scenes/tabletop_jenga_wxai.json \
-    --task configs/tasks/grasp_curriculum_size_variants_friction_wxai.json \
+    --task configs/tasks/grasp_wxai.json \
     --agent.experiment-name NAME [--agent.max-iterations N] [--agent.logger wandb]
 python scripts/play.py --scene ... --task ... --checkpoint-file logs/rsl_rl/<exp>/<run>/model_N.pt
 python scripts/view_scene.py --scene ... --task ... --agent zero|random [--static]
@@ -42,7 +42,7 @@ python -m pytest tests                                  # tests that build the e
 python -m pytest tests/test_reward_terms.py -k NAME     # single test
 ```
 
-Each script parses its own flags first. The remaining flags go to mjlab's `TrainConfig`/`PlayConfig` (tyro). Logs are written to `logs/rsl_rl/<experiment_name>/` under the cwd. The default scene and task are the cube and `grasp_standard_wxai.json`.
+Each script parses its own flags first. The remaining flags go to mjlab's `TrainConfig`/`PlayConfig` (tyro). Logs are written to `logs/rsl_rl/<experiment_name>/` under the cwd. The default scene and task are the jenga scene and `grasp_wxai.json`, the original policy's configuration.
 
 ### Vision pipeline and on-robot policy (`vision/run.sh`, env `vision`)
 
@@ -114,25 +114,32 @@ The deployment re-implements the trained env's interface in plain numpy/mujoco i
 | `actor.py` | rsl_rl `MLPModel`. It refuses to load if the run's `params/env.yaml`/`agent.yaml` disagree with the deployment. | `test_actor.py` |
 | `jenga/config.yaml` `embodiment`/`sim_ik` | `EmbodimentCfg`/`IkDefaults` of `trossen_wxai_base_real` | `test_obs_parity.py`, `test_ik_parity.py` |
 
-A change to sim observations, actions, action scales, control rate, embodiment or IK settings needs the matching change on the real side, and the parity tests rerun in `wxai_mjlab`. `jenga/config.py` derives control_hz, action scales, lift height and reset pose from the same scene and task JSONs the policy was trained on.
+A change to sim observations, actions, action scales, control rate, embodiment or IK settings needs the matching change on the real side, and the parity tests rerun in `wxai_mjlab`. `jenga/config.py` derives control_hz, action scales, lift height and reset pose from the same scene and task JSONs the policy was trained on. `sim.scene` and `sim.task` in `jenga/config.yaml` are each either a path or null; null reads the copy the checkpoint's run saved (`params/scene.json`, `params/task.json`) and fails at load when the run has none (`tests/test_config_sources.py`).
 
 ### Simulation package (`sim/mujoco/src/tabletop_sim`)
 
 - Environments are built from config files: a **scene JSON** plus a **task JSON**, passed to `tasks/grasp/env_cfg.py::make_grasp_env_cfg`, which returns an mjlab `ManagerBasedRlEnvCfg`.
   - The scene JSON sets the embodiment, action space, base pose, objects and support surface. Its schema is in the docstring of `scene/config.py`.
-  - The task JSON sets timing, action scales, rewards, domain randomization, curriculum, pose noise and size variants. It also sets the real-loop effects, all off by default: `object_pose_delay_s` (age of the pose the actor sees), `action_hold_probability` (control steps that keep the previous absolute goal) and `w_table_contact` (robot-table contact penalty). `grasp_curriculum_size_variants_friction_latency_wxai.json` turns them on. `action.ee_goal_interpolation` (off by default) makes the IK track a subgoal that moves linearly from the TCP pose at the start of the control step to the goal; the `..._latency_interp_wxai.json` task adds it. On the real arm, `sim_ik.interpolate_goal` in `jenga/config.yaml` turns on the same interpolation for `ik_solver: sim`; startup warns when it differs from what the checkpoint was trained with.
+  - The task JSON sets timing, action scales, rewards, domain randomization, curriculum, pose noise and size variants. `configs/tasks/grasp_wxai.json` is the only task file: it lists every option and, as written, is the task the original (best) policy was trained on. Derive any other configuration by editing a copy; a training run saves its task as `params/task.json`. `docs/sim2real_control.md` lists the edits for each past run, and `sim/mujoco/tests/task_files.py` builds the tests' variants the same way. The options that model the real loop are off in that file: `object_pose_delay_s` (age of the pose the actor sees), `action_hold_probability` (control steps that keep the previous absolute goal), `w_table_contact` (robot-table contact penalty), `action.ee_goal_interpolation` (the IK tracks a subgoal that moves linearly from the TCP pose at the start of the control step to the goal; the real `sim_ik.interpolate_goal` for `ik_solver: sim`, with a startup warning when it differs from the checkpoint), `action.gripper_goal_time_s` (moves the binary gripper's target over that time as the driver does; the real `control.gripper_goal_time_s`), `w_gripper_switch` (penalty per open/close change), `action.command_delay_s` (delay of the IK joint targets) and `domain_randomization.joint_friction` (scales the model's arm joint dry friction at reset). The joint goal time the real loop sends (`sim_ik.goal_time_s`) has no sim model.
   - Unknown keys raise `ConfigError`.
 - Importing `tabletop_sim.tasks` registers one mjlab task per action space (`TASK_IDS` in `tasks/grasp/__init__.py`). `play.py` registers `WXAI-Grasp-Play` from any scene/task pair.
-- Embodiments (`embodiments/registry.py`) are the menagerie and Trossen WXAI models. Each has a `_real` variant whose `*_real_robot.xml` carries measured position-mode gains. The jenga scene uses `trossen_wxai_base_real`.
+- Embodiments (`embodiments/registry.py`) are the menagerie and Trossen WXAI models. Each has a `_real` variant whose `*_real_robot.xml` carries measured position-mode gains. The jenga scene uses `trossen_wxai_base_real`. `trossen_wxai_base_real_friction` (`wxai_base_real_robot_friction.xml`, scene `tabletop_jenga_wxai_friction.json`) is the same model with the arm joints' dry friction fitted by `sim2real/experiments/joint_step`.
 
 ### sim2real experiments (`sim2real/experiments`)
 
-These are standalone scripts. Each docstring says which env to launch from. `common/` holds shared driver, pose, prompt and IO helpers. `hardware_control/README.md` describes in detail what the training controller actually does: IK once per substep with no trajectory, the PD actuator response, and the `joint_3` soft limit at the ready pose. Read it before changing arm control. `hardware_control/results/` and the `object_frame` renders are git-ignored. The other experiments commit their result JSONs.
+These are standalone scripts. Each docstring says which env to launch from. `joint_step/` steps single joints on the arm (`run_hardware.py`) and in a model of it (`run_sim.py`); `fit.py` fits joint friction, command delay and how the driver treats a re-sent joint goal time, and `summarize.py` prints the comparison tables. Its `results/*.npz` sample logs are git-ignored. `common/` holds shared driver, pose, prompt and IO helpers. `hardware_control/README.md` describes in detail what the training controller actually does: IK once per substep with no trajectory, the PD actuator response, and the `joint_3` soft limit at the ready pose. Read it before changing arm control. `hardware_control/results/` and the `object_frame` renders are git-ignored. The other experiments commit their result JSONs.
+
+## Findings to read first
+
+- `docs/sim2real_control.md`: what was tried to get smooth full-speed control on the real arm, the joint-step measurements (joint friction, command delay, goal-time behaviour), which policies worked, and definitions of the control settings (joint versus Cartesian goal time, IK goal interpolation, re-sent versus send-once commands).
+- `docs/block_height_offset.md`: why the tracked block reads about 13 mm high. The D405 depth reads short (about 7 mm of height at the block; check with `python -m calibration.check_depth` from `vision/`), and the arm reports its fingertip higher as reach grows, so the table is not at z = 0 in the arm's coordinates.
+
+`python -m pipeline.view_camera` (from `vision/`, env `vision`) shows the plain live camera feed.
 
 ## Conventions
 
 - Quaternions are `(w, x, y, z)` with `w >= 0`. Pose JSON is `[x, y, z, qw, qx, qy, qz]`.
-- Poses are in the robot base frame unless the name says otherwise. The table top is base z = 0.
+- Poses are in the robot base frame unless the name says otherwise. The table top is nominally base z = 0; on the real arm it is not exactly (`docs/block_height_offset.md`).
 - Transforms are named `T_<to>_<from>` (for example, `T_base_camera`). Units are m, rad and s.
 - `sim/mujoco` uses 2-space indentation (mjlab style). Everything else uses 4 spaces.
 - Relative paths inside YAML configs resolve against the YAML file's own directory.
