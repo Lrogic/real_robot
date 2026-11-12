@@ -1,0 +1,77 @@
+# Single-joint step tests: how each arm joint follows small position commands, on the
+# real arm and in the training model. Relative paths are relative to this file.
+# Angles in radians, lengths in metres, times in seconds.
+
+# Robot identity (ip / model / end_effector) comes from this file's robot section.
+calibration_config: ../../../vision/calibration/config.yaml
+
+# Kinematics for the safety check (TCP of every target) and the model the sim run steps.
+fk_model: ../../../sim/mujoco/assets/robots/trossen_wxai_base/wxai/wxai_base.xml
+sim_model: ../../../sim/mujoco/assets/robots/trossen_wxai_base/wxai/wxai_base_real_robot.xml
+site: ee_site
+
+loop_hz: 500.0            # read + command rate, the policy's sim_ik.inner_hz
+policy_period_s: 0.05     # 20 Hz policy step: ramp length and the relative test's tick
+gripper: 0.026            # held in position mode (the policy's ready_gripper)
+
+poses:
+  # The policy's ready pose (TCP 0.214, 0, 0.085).
+  ready: [0.0, 1.38, 1.04, -1.26, 0.0, 0.0]
+  # Arm reached toward the block with the ready orientation (TCP 0.36, 0, 0.08).
+  reach: [0.0, 1.939, 1.63, -1.288, 0.0, 0.0]
+
+joints: [0, 1, 2, 3, 4, 5]
+
+# One joint moves; the other five are commanded to stay at the pose.
+#   step      the target jumps by the amplitude and is held for observe_s
+#   ramp      the target moves linearly to the amplitude over policy_period_s, then is held
+#             (the policy's sim_ik.interpolate_goal)
+#   relative  every policy_period_s the target becomes the measured joint + amplitude, as
+#             the policy's relative actions do, for at most relative_ticks ticks and
+#             relative_max_travel in total
+#   step_once, relative_once  the same targets, but each new target is sent to the driver
+#             once and not re-sent every loop tick, so the driver's interpolation over the
+#             goal time runs to its end
+# goal_times: set_arm_positions goal time of every command (the policy's sim_ik.goal_time_s).
+step:
+  amplitudes: [0.005, 0.01, 0.02, 0.04]
+  goal_times: [0.0, 0.05]
+  observe_s: 0.6
+ramp:
+  amplitudes: [0.005, 0.01, 0.02, 0.04]
+  goal_times: [0.0]
+  observe_s: 0.6
+relative:
+  amplitudes: [0.01, 0.02, 0.04]
+  goal_times: [0.0, 0.05]
+  relative_ticks: 8
+  relative_max_travel: 0.12
+  observe_s: 0.3          # after the last tick
+
+step_once:
+  amplitudes: [0.005, 0.01, 0.02, 0.04]
+  goal_times: [0.05]
+  observe_s: 0.6
+relative_once:
+  amplitudes: [0.01, 0.02, 0.04]
+  goal_times: [0.05]
+  relative_ticks: 8
+  relative_max_travel: 0.12
+  observe_s: 0.3
+
+# Between trials: joint move back to the pose, then a hold before the next onset.
+return_time_s: 0.6
+settle_s: 0.5
+pose_move_speed_rad_s: 0.3   # moves between poses take at least distance / this
+pose_move_min_s: 3.0
+
+safety:
+  # Every commanded target's TCP must stay in this box (robot base frame, table top z = 0).
+  workspace_min: [0.10, -0.35, 0.03]
+  workspace_max: [0.60, 0.35, 0.45]
+  joint_limit_margin: 0.05       # targets stay this far inside the driver's joint limits
+  max_tracking_error: 0.25       # |measured - target| on any joint stops the session
+  max_joint_speed: 4.0           # rad/s
+  min_measured_tcp_z: 0.02
+  max_state_age_s: 0.05          # no new state message for this long stops the session
+  stop_goal_time_s: 0.2

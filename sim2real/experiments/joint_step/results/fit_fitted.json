@@ -1,0 +1,198 @@
+{
+  "kind": "joint_step_fit",
+  "hardware_file": "results/hardware_20261111_142208.npz",
+  "joints": [
+    {
+      "joint": 0,
+      "plant_trials": 28,
+      "default": {
+        "frictionloss": 0.1,
+        "armature": 0.032,
+        "damping": 0.0,
+        "loss": 0.2688845728080075
+      },
+      "fitted": {
+        "frictionloss": 0.6381486191567148,
+        "armature": 0.12827938547568696,
+        "damping": 0.42808221559426857,
+        "timeconst": 0.00028659938926646396,
+        "delay_ticks": 2,
+        "loss": 0.004471295643612791
+      },
+      "goal_time_models": {
+        "exp": {
+          "default_plant": 0.05852793362092897,
+          "fitted_plant": 0.17339285695840806
+        },
+        "exp_ff": {
+          "default_plant": 0.35040954942157754,
+          "fitted_plant": 0.006679174387058922
+        },
+        "ramp_ff": {
+          "default_plant": 1.1506257033633394,
+          "fitted_plant": 0.11542187196144862
+        }
+      }
+    },
+    {
+      "joint": 1,
+      "plant_trials": 28,
+      "default": {
+        "frictionloss": 0.1,
+        "armature": 0.032,
+        "damping": 0.0,
+        "loss": 1.301792195008204
+      },
+      "fitted": {
+        "frictionloss": 1.85396270173057,
+        "armature": 0.21874376737993895,
+        "damping": 0.0001462587160017628,
+        "timeconst": 0.00032546061409170855,
+        "delay_ticks": 2,
+        "loss": 0.07447443133498198
+      },
+      "goal_time_models": {
+        "exp": {
+          "default_plant": 0.622683846176573,
+          "fitted_plant": 0.14220094108415557
+        },
+        "exp_ff": {
+          "default_plant": 1.5909782126980374,
+          "fitted_plant": 0.08695697174394049
+        },
+        "ramp_ff": {
+          "default_plant": 2.9460038220737483,
+          "fitted_plant": 0.11688624917316337
+        }
+      }
+    },
+    {
+      "joint": 2,
+      "plant_trials": 28,
+      "default": {
+        "frictionloss": 0.1,
+        "armature": 0.032,
+        "damping": 0.0,
+        "loss": 1.3135628051374812
+      },
+      "fitted": {
+        "frictionloss": 1.9230494779694525,
+        "armature": 8.595223138069637e-05,
+        "damping": 0.05931684834582523,
+        "timeconst": 0.0037725002592403126,
+        "delay_ticks": 5,
+        "loss": 0.02565132830615099
+      },
+      "goal_time_models": {
+        "exp": {
+          "default_plant": 0.6325430735140041,
+          "fitted_plant": 0.0780550241809226
+        },
+        "exp_ff": {
+          "default_plant": 1.7269935762050161,
+          "fitted_plant": 0.028117573171349393
+        },
+        "ramp_ff": {
+          "default_plant": 3.3292368854522136,
+          "fitted_plant": 0.07287325480882054
+        }
+      }
+    },
+    {
+      "joint": 3,
+      "plant_trials": 28,
+      "default": {
+        "frictionloss": 0.1,
+        "armature": 0.0018,
+        "damping": 0.0,
+        "loss": 0.1331025063098435
+      },
+      "fitted": {
+        "frictionloss": 0.09834323126349825,
+        "armature": 0.008516494376227614,
+        "damping": 0.19786053476711252,
+        "timeconst": 0.00037750083342654285,
+        "delay_ticks": 3,
+        "loss": 0.06825079574805207
+      },
+      "goal_time_models": {
+        "exp": {
+          "default_plant": 0.03512200530061581,
+          "fitted_plant": 0.0776724690354267
+        },
+        "exp_ff": {
+          "default_plant": 0.03292979251763508,
+          "fitted_plant": 0.0239027170246176
+        },
+        "ramp_ff": {
+          "default_plant": 0.6165910514565133,
+          "fitted_plant": 0.23227574629994624
+        }
+      }
+    },
+    {
+      "joint": 4,
+      "plant_trials": 28,
+      "default": {
+        "frictionloss": 0.1,
+        "armature": 0.0018,
+        "damping": 0.0,
+        "loss": 0.012052545932661208
+      },
+      "fitted": {
+        "frictionloss": 0.09043663943993058,
+        "armature": 0.0004200834744066179,
+        "damping": 0.06878509751123366,
+        "timeconst": 0.000646799418567769,
+        "delay_ticks": 2,
+        "loss": 0.0040731105357173164
+      },
+      "goal_time_models": {
+        "exp": {
+          "default_plant": 0.06530710258480332,
+          "fitted_plant": 0.0850738737736986
+        },
+        "exp_ff": {
+          "default_plant": 0.009474425797065825,
+          "fitted_plant": 0.003630827356855361
+        },
+        "ramp_ff": {
+          "default_plant": 0.5453724370709326,
+          "fitted_plant": 0.33704874854375966
+        }
+      }
+    },
+    {
+      "joint": 5,
+      "plant_trials": 28,
+      "default": {
+        "frictionloss": 0.1,
+        "armature": 0.0018,
+        "damping": 0.0,
+        "loss": 0.07227711750479238
+      },
+      "fitted": {
+        "frictionloss": 0.15918134985460886,
+        "armature": 0.0022911206683245687,
+        "damping": 0.032746215799512327,
+        "timeconst": 0.00018056247194895886,
+        "delay_ticks": 2,
+        "loss": 0.017474704888096736
+      },
+      "goal_time_models": {
+        "exp": {
+          "default_plant": 0.03164860676259811,
+          "fitted_plant": 0.09009527681918386
+        },
+        "exp_ff": {
+          "default_plant": 0.05593164999773187,
+          "fitted_plant": 0.016118618833931883
+        },
+        "ramp_ff": {
+          "default_plant": 0.7422425485209871,
+          "fitted_plant": 0.2596338860776124
+        }
+      }
+    }
+  ]
+}

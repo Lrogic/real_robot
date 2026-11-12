@@ -16,3 +16,5 @@ sim2real/experiments/object_frame/results/*/*.png
 sim2real/experiments/object_frame/tmp_*/
 # Hardware-control experiment outputs are regenerated; do not commit.
 sim2real/experiments/hardware_control/results/
+# Joint-step experiment: keep scripts and the small result JSONs; the sample logs are large.
+sim2real/experiments/joint_step/results/*.npz

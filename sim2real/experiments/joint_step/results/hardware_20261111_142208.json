@@ -1,0 +1,5601 @@
+{
+  "kind": "joint_step_session",
+  "source": "hardware",
+  "stop_reason": "completed",
+  "config": {
+    "calibration_config": "/home/luka/research/real_robot/vision/calibration/config.yaml",
+    "fk_model": "/home/luka/research/real_robot/sim/mujoco/assets/robots/trossen_wxai_base/wxai/wxai_base.xml",
+    "sim_model": "/home/luka/research/real_robot/sim/mujoco/assets/robots/trossen_wxai_base/wxai/wxai_base_real_robot.xml",
+    "site": "ee_site",
+    "loop_hz": 500.0,
+    "policy_period_s": 0.05,
+    "gripper": 0.026,
+    "poses": {
+      "ready": [
+        0.0,
+        1.38,
+        1.04,
+        -1.26,
+        0.0,
+        0.0
+      ],
+      "reach": [
+        0.0,
+        1.939,
+        1.63,
+        -1.288,
+        0.0,
+        0.0
+      ]
+    },
+    "joints": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "step": {
+      "amplitudes": [
+        0.005,
+        0.01,
+        0.02,
+        0.04
+      ],
+      "goal_times": [
+        0.0,
+        0.05
+      ],
+      "observe_s": 0.6
+    },
+    "ramp": {
+      "amplitudes": [
+        0.005,
+        0.01,
+        0.02,
+        0.04
+      ],
+      "goal_times": [
+        0.0
+      ],
+      "observe_s": 0.6
+    },
+    "relative": {
+      "amplitudes": [
+        0.01,
+        0.02,
+        0.04
+      ],
+      "goal_times": [
+        0.0,
+        0.05
+      ],
+      "relative_ticks": 8,
+      "relative_max_travel": 0.12,
+      "observe_s": 0.3
+    },
+    "return_time_s": 0.6,
+    "settle_s": 0.5,
+    "pose_move_speed_rad_s": 0.3,
+    "pose_move_min_s": 3.0,
+    "safety": {
+      "workspace_min": [
+        0.1,
+        -0.35,
+        0.03
+      ],
+      "workspace_max": [
+        0.6,
+        0.35,
+        0.45
+      ],
+      "joint_limit_margin": 0.05,
+      "max_tracking_error": 0.25,
+      "max_joint_speed": 4.0,
+      "min_measured_tcp_z": 0.02,
+      "max_state_age_s": 0.05,
+      "stop_goal_time_s": 0.2
+    },
+    "config_file": "/home/luka/research/real_robot/sim2real/experiments/joint_step/config.yaml"
+  },
+  "trials": [
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j0_step_+5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j0_step_-5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j0_step_+10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j0_step_-10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j0_step_+20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j0_step_-20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j0_step_+40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j0_step_-40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j0_step_+5mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j0_step_-5mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j0_step_+10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j0_step_-10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j0_step_+20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j0_step_-20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j0_step_+40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j0_step_-40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "ramp",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j0_ramp_+5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "ramp",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j0_ramp_-5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "ramp",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j0_ramp_+10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "ramp",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j0_ramp_-10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "ramp",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j0_ramp_+20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "ramp",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j0_ramp_-20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "ramp",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j0_ramp_+40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "ramp",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j0_ramp_-40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j0_relative_+10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j0_relative_-10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j0_relative_+20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j0_relative_-20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j0_relative_+40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j0_relative_-40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j0_relative_+10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j0_relative_-10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j0_relative_+20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j0_relative_-20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j0_relative_+40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j0_relative_-40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j1_step_+5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j1_step_-5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j1_step_+10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j1_step_-10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j1_step_+20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j1_step_-20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j1_step_+40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j1_step_-40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j1_step_+5mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j1_step_-5mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j1_step_+10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j1_step_-10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j1_step_+20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j1_step_-20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j1_step_+40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j1_step_-40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "ramp",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j1_ramp_+5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "ramp",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j1_ramp_-5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "ramp",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j1_ramp_+10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "ramp",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j1_ramp_-10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "ramp",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j1_ramp_+20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "ramp",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j1_ramp_-20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "ramp",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j1_ramp_+40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "ramp",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j1_ramp_-40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j1_relative_+10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j1_relative_-10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j1_relative_+20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j1_relative_-20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j1_relative_+40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j1_relative_-40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j1_relative_+10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j1_relative_-10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j1_relative_+20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j1_relative_-20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j1_relative_+40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j1_relative_-40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j2_step_+5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j2_step_-5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j2_step_+10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j2_step_-10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j2_step_+20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j2_step_-20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j2_step_+40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j2_step_-40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j2_step_+5mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j2_step_-5mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j2_step_+10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j2_step_-10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j2_step_+20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j2_step_-20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j2_step_+40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j2_step_-40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "ramp",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j2_ramp_+5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "ramp",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j2_ramp_-5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "ramp",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j2_ramp_+10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "ramp",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j2_ramp_-10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "ramp",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j2_ramp_+20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "ramp",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j2_ramp_-20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "ramp",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j2_ramp_+40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "ramp",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j2_ramp_-40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j2_relative_+10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j2_relative_-10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j2_relative_+20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j2_relative_-20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j2_relative_+40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j2_relative_-40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j2_relative_+10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j2_relative_-10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j2_relative_+20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j2_relative_-20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j2_relative_+40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j2_relative_-40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j3_step_+5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j3_step_-5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j3_step_+10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j3_step_-10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j3_step_+20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j3_step_-20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j3_step_+40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j3_step_-40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j3_step_+5mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j3_step_-5mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j3_step_+10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j3_step_-10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j3_step_+20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j3_step_-20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j3_step_+40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j3_step_-40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "ramp",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j3_ramp_+5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "ramp",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j3_ramp_-5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "ramp",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j3_ramp_+10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "ramp",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j3_ramp_-10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "ramp",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j3_ramp_+20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "ramp",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j3_ramp_-20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "ramp",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j3_ramp_+40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "ramp",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j3_ramp_-40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j3_relative_+10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j3_relative_-10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j3_relative_+20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j3_relative_-20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j3_relative_+40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j3_relative_-40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j3_relative_+10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j3_relative_-10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j3_relative_+20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j3_relative_-20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j3_relative_+40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j3_relative_-40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j4_step_+5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j4_step_-5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j4_step_+10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j4_step_-10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j4_step_+20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j4_step_-20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j4_step_+40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j4_step_-40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j4_step_+5mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j4_step_-5mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j4_step_+10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j4_step_-10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j4_step_+20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j4_step_-20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j4_step_+40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j4_step_-40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "ramp",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j4_ramp_+5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "ramp",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j4_ramp_-5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "ramp",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j4_ramp_+10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "ramp",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j4_ramp_-10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "ramp",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j4_ramp_+20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "ramp",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j4_ramp_-20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "ramp",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j4_ramp_+40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "ramp",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j4_ramp_-40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j4_relative_+10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j4_relative_-10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j4_relative_+20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j4_relative_-20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j4_relative_+40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j4_relative_-40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j4_relative_+10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j4_relative_-10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j4_relative_+20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j4_relative_-20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j4_relative_+40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j4_relative_-40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j5_step_+5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j5_step_-5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j5_step_+10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j5_step_-10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j5_step_+20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j5_step_-20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j5_step_+40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j5_step_-40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j5_step_+5mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j5_step_-5mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j5_step_+10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j5_step_-10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j5_step_+20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j5_step_-20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j5_step_+40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "ready_j5_step_-40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "ramp",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j5_ramp_+5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "ramp",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j5_ramp_-5mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "ramp",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j5_ramp_+10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "ramp",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j5_ramp_-10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "ramp",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j5_ramp_+20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "ramp",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j5_ramp_-20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "ramp",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j5_ramp_+40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "ramp",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "ready_j5_ramp_-40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j5_relative_+10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j5_relative_-10mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j5_relative_+20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j5_relative_-20mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j5_relative_+40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j5_relative_-40mrad_gt0ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j5_relative_+10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "ready_j5_relative_-10mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j5_relative_+20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "ready_j5_relative_-20mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j5_relative_+40mrad_gt50ms"
+    },
+    {
+      "pose": "ready",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "ready_j5_relative_-40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j0_step_+5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j0_step_-5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j0_step_+10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j0_step_-10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j0_step_+20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j0_step_-20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j0_step_+40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j0_step_-40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j0_step_+5mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j0_step_-5mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j0_step_+10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j0_step_-10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j0_step_+20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j0_step_-20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j0_step_+40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j0_step_-40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "ramp",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j0_ramp_+5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "ramp",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j0_ramp_-5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "ramp",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j0_ramp_+10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "ramp",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j0_ramp_-10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "ramp",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j0_ramp_+20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "ramp",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j0_ramp_-20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "ramp",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j0_ramp_+40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "ramp",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j0_ramp_-40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j0_relative_+10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j0_relative_-10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j0_relative_+20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j0_relative_-20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j0_relative_+40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j0_relative_-40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j0_relative_+10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j0_relative_-10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j0_relative_+20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j0_relative_-20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j0_relative_+40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 0,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j0_relative_-40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j1_step_+5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j1_step_-5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j1_step_+10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j1_step_-10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j1_step_+20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j1_step_-20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j1_step_+40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j1_step_-40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j1_step_+5mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j1_step_-5mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j1_step_+10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j1_step_-10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j1_step_+20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j1_step_-20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j1_step_+40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j1_step_-40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "ramp",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j1_ramp_+5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "ramp",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j1_ramp_-5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "ramp",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j1_ramp_+10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "ramp",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j1_ramp_-10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "ramp",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j1_ramp_+20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "ramp",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j1_ramp_-20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "ramp",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j1_ramp_+40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "ramp",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j1_ramp_-40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j1_relative_+10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j1_relative_-10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j1_relative_+20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j1_relative_-20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j1_relative_+40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j1_relative_-40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j1_relative_+10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j1_relative_-10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j1_relative_+20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j1_relative_-20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j1_relative_+40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 1,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j1_relative_-40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j2_step_+5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j2_step_-5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j2_step_+10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j2_step_-10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j2_step_+20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j2_step_-20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j2_step_+40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j2_step_-40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j2_step_+5mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j2_step_-5mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j2_step_+10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j2_step_-10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j2_step_+20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j2_step_-20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j2_step_+40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j2_step_-40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "ramp",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j2_ramp_+5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "ramp",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j2_ramp_-5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "ramp",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j2_ramp_+10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "ramp",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j2_ramp_-10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "ramp",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j2_ramp_+20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "ramp",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j2_ramp_-20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "ramp",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j2_ramp_+40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "ramp",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j2_ramp_-40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j2_relative_+10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j2_relative_-10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j2_relative_+20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j2_relative_-20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j2_relative_+40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j2_relative_-40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j2_relative_+10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j2_relative_-10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j2_relative_+20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j2_relative_-20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j2_relative_+40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 2,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j2_relative_-40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j3_step_+5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j3_step_-5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j3_step_+10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j3_step_-10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j3_step_+20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j3_step_-20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j3_step_+40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j3_step_-40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j3_step_+5mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j3_step_-5mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j3_step_+10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j3_step_-10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j3_step_+20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j3_step_-20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j3_step_+40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j3_step_-40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "ramp",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j3_ramp_+5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "ramp",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j3_ramp_-5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "ramp",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j3_ramp_+10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "ramp",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j3_ramp_-10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "ramp",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j3_ramp_+20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "ramp",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j3_ramp_-20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "ramp",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j3_ramp_+40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "ramp",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j3_ramp_-40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j3_relative_+10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j3_relative_-10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j3_relative_+20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j3_relative_-20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j3_relative_+40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j3_relative_-40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j3_relative_+10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j3_relative_-10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j3_relative_+20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j3_relative_-20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j3_relative_+40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 3,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j3_relative_-40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j4_step_+5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j4_step_-5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j4_step_+10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j4_step_-10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j4_step_+20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j4_step_-20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j4_step_+40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j4_step_-40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j4_step_+5mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j4_step_-5mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j4_step_+10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j4_step_-10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j4_step_+20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j4_step_-20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j4_step_+40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j4_step_-40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "ramp",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j4_ramp_+5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "ramp",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j4_ramp_-5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "ramp",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j4_ramp_+10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "ramp",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j4_ramp_-10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "ramp",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j4_ramp_+20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "ramp",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j4_ramp_-20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "ramp",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j4_ramp_+40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "ramp",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j4_ramp_-40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j4_relative_+10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j4_relative_-10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j4_relative_+20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j4_relative_-20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j4_relative_+40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j4_relative_-40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j4_relative_+10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j4_relative_-10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j4_relative_+20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j4_relative_-20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j4_relative_+40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 4,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j4_relative_-40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j5_step_+5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j5_step_-5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j5_step_+10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j5_step_-10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j5_step_+20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j5_step_-20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j5_step_+40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j5_step_-40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": 0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j5_step_+5mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": -0.005,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j5_step_-5mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j5_step_+10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j5_step_-10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j5_step_+20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j5_step_-20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j5_step_+40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "step",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 0,
+      "command_s": 0.0,
+      "observe_s": 0.6,
+      "name": "reach_j5_step_-40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "ramp",
+      "amplitude": 0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j5_ramp_+5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "ramp",
+      "amplitude": -0.005,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j5_ramp_-5mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "ramp",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j5_ramp_+10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "ramp",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j5_ramp_-10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "ramp",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j5_ramp_+20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "ramp",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j5_ramp_-20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "ramp",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j5_ramp_+40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "ramp",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 0,
+      "command_s": 0.05,
+      "observe_s": 0.65,
+      "name": "reach_j5_ramp_-40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j5_relative_+10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.0,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j5_relative_-10mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j5_relative_+20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.0,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j5_relative_-20mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j5_relative_+40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.0,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j5_relative_-40mrad_gt0ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": 0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j5_relative_+10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": -0.01,
+      "goal_time": 0.05,
+      "ticks": 8,
+      "command_s": 0.4,
+      "observe_s": 0.7,
+      "name": "reach_j5_relative_-10mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": 0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j5_relative_+20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": -0.02,
+      "goal_time": 0.05,
+      "ticks": 6,
+      "command_s": 0.30000000000000004,
+      "observe_s": 0.6000000000000001,
+      "name": "reach_j5_relative_-20mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": 0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j5_relative_+40mrad_gt50ms"
+    },
+    {
+      "pose": "reach",
+      "joint": 5,
+      "kind": "relative",
+      "amplitude": -0.04,
+      "goal_time": 0.05,
+      "ticks": 3,
+      "command_s": 0.15000000000000002,
+      "observe_s": 0.45,
+      "name": "reach_j5_relative_-40mrad_gt50ms"
+    }
+  ],
+  "robot_identity": {
+    "ip": "192.168.1.2",
+    "model": "wxai_v0",
+    "end_effector": "wxai_v0_base"
+  },
+  "hardware_configuration": {
+    "driver_version": "1.11.0",
+    "controller_version": "1.11.1",
+    "num_joints": 7,
+    "modes": [
+      "external_effort",
+      "external_effort",
+      "external_effort",
+      "external_effort",
+      "external_effort",
+      "external_effort",
+      "external_effort"
+    ],
+    "joint_limits": [
+      {
+        "position_min": -3.1415927410125732,
+        "position_max": 3.1415927410125732,
+        "position_tolerance": 0.20000000298023224,
+        "velocity_max": 6.2831854820251465,
+        "velocity_tolerance": 0.0,
+        "effort_max": 27.0,
+        "effort_tolerance": 5.400000095367432
+      },
+      {
+        "position_min": 0.0,
+        "position_max": 3.1415927410125732,
+        "position_tolerance": 0.20000000298023224,
+        "velocity_max": 6.2831854820251465,
+        "velocity_tolerance": 0.0,
+        "effort_max": 27.0,
+        "effort_tolerance": 5.400000095367432
+      },
+      {
+        "position_min": 0.0,
+        "position_max": 2.356194496154785,
+        "position_tolerance": 0.20000000298023224,
+        "velocity_max": 6.2831854820251465,
+        "velocity_tolerance": 0.0,
+        "effort_max": 27.0,
+        "effort_tolerance": 5.400000095367432
+      },
+      {
+        "position_min": -1.5707963705062866,
+        "position_max": 1.5707963705062866,
+        "position_tolerance": 0.4000000059604645,
+        "velocity_max": 9.42477798461914,
+        "velocity_tolerance": 0.0,
+        "effort_max": 7.0,
+        "effort_tolerance": 1.399999976158142
+      },
+      {
+        "position_min": -1.5707963705062866,
+        "position_max": 1.5707963705062866,
+        "position_tolerance": 0.4000000059604645,
+        "velocity_max": 9.42477798461914,
+        "velocity_tolerance": 0.0,
+        "effort_max": 7.0,
+        "effort_tolerance": 1.399999976158142
+      },
+      {
+        "position_min": -3.1415927410125732,
+        "position_max": 3.1415927410125732,
+        "position_tolerance": 0.4000000059604645,
+        "velocity_max": 9.42477798461914,
+        "velocity_tolerance": 0.0,
+        "effort_max": 7.0,
+        "effort_tolerance": 1.399999976158142
+      },
+      {
+        "position_min": 0.0,
+        "position_max": 0.03999999910593033,
+        "position_tolerance": 0.004000000189989805,
+        "velocity_max": 0.25,
+        "velocity_tolerance": 0.0,
+        "effort_max": 100.0,
+        "effort_tolerance": 300.0
+      }
+    ],
+    "motor_parameters": [
+      {
+        "idle": {
+          "position": {
+            "kp": 0.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 8.0,
+            "ki": 0.03999999910593033,
+            "kd": 0.0,
+            "imax": 9.0
+          }
+        },
+        "position": {
+          "position": {
+            "kp": 16.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 8.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        },
+        "velocity": {
+          "position": {
+            "kp": 120.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 8.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        },
+        "external_effort": {
+          "position": {
+            "kp": 120.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 8.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        },
+        "effort": {
+          "position": {
+            "kp": 120.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 8.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        }
+      },
+      {
+        "idle": {
+          "position": {
+            "kp": 0.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 8.0,
+            "ki": 0.03999999910593033,
+            "kd": 0.0,
+            "imax": 27.0
+          }
+        },
+        "position": {
+          "position": {
+            "kp": 16.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 8.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        },
+        "velocity": {
+          "position": {
+            "kp": 120.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 8.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        },
+        "external_effort": {
+          "position": {
+            "kp": 120.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 8.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        },
+        "effort": {
+          "position": {
+            "kp": 120.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 8.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        }
+      },
+      {
+        "idle": {
+          "position": {
+            "kp": 0.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 8.0,
+            "ki": 0.03999999910593033,
+            "kd": 0.0,
+            "imax": 9.0
+          }
+        },
+        "position": {
+          "position": {
+            "kp": 16.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 8.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        },
+        "velocity": {
+          "position": {
+            "kp": 120.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 8.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        },
+        "external_effort": {
+          "position": {
+            "kp": 120.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 8.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        },
+        "effort": {
+          "position": {
+            "kp": 120.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 8.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        }
+      },
+      {
+        "idle": {
+          "position": {
+            "kp": 0.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 1.0,
+            "ki": 0.009999999776482582,
+            "kd": 0.0,
+            "imax": 3.0
+          }
+        },
+        "position": {
+          "position": {
+            "kp": 80.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 1.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        },
+        "velocity": {
+          "position": {
+            "kp": 80.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 1.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        },
+        "external_effort": {
+          "position": {
+            "kp": 80.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 1.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        },
+        "effort": {
+          "position": {
+            "kp": 80.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 1.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        }
+      },
+      {
+        "idle": {
+          "position": {
+            "kp": 0.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 1.0,
+            "ki": 0.009999999776482582,
+            "kd": 0.0,
+            "imax": 3.0
+          }
+        },
+        "position": {
+          "position": {
+            "kp": 40.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 1.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        },
+        "velocity": {
+          "position": {
+            "kp": 40.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 1.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        },
+        "external_effort": {
+          "position": {
+            "kp": 40.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 1.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        },
+        "effort": {
+          "position": {
+            "kp": 40.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 1.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        }
+      },
+      {
+        "idle": {
+          "position": {
+            "kp": 0.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 1.0,
+            "ki": 0.009999999776482582,
+            "kd": 0.0,
+            "imax": 3.0
+          }
+        },
+        "position": {
+          "position": {
+            "kp": 40.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 1.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        },
+        "velocity": {
+          "position": {
+            "kp": 40.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 1.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        },
+        "external_effort": {
+          "position": {
+            "kp": 40.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 1.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        },
+        "effort": {
+          "position": {
+            "kp": 40.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 1.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        }
+      },
+      {
+        "idle": {
+          "position": {
+            "kp": 0.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 0.05000000074505806,
+            "ki": 0.0005000000237487257,
+            "kd": 0.0,
+            "imax": 3.0
+          }
+        },
+        "position": {
+          "position": {
+            "kp": 20.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 1.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        },
+        "velocity": {
+          "position": {
+            "kp": 20.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 1.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        },
+        "external_effort": {
+          "position": {
+            "kp": 20.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 1.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        },
+        "effort": {
+          "position": {
+            "kp": 20.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          },
+          "velocity": {
+            "kp": 1.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "imax": 0.0
+          }
+        }
+      }
+    ],
+    "joint_characteristics": [
+      {
+        "effort_correction": 1.2000000476837158,
+        "friction_constant_term": 0.12999999523162842,
+        "friction_coulomb_coef": 0.0,
+        "friction_transition_velocity": 0.0,
+        "friction_viscous_coef": 0.0,
+        "position_offset": 0.0
+      },
+      {
+        "effort_correction": 1.1219820976257324,
+        "friction_constant_term": -0.2800000011920929,
+        "friction_coulomb_coef": 0.11546818166971207,
+        "friction_transition_velocity": 0.0,
+        "friction_viscous_coef": -0.05392245948314667,
+        "position_offset": 0.0
+      },
+      {
+        "effort_correction": 1.1713593006134033,
+        "friction_constant_term": 0.23999999463558197,
+        "friction_coulomb_coef": 0.14089082181453705,
+        "friction_transition_velocity": 0.0,
+        "friction_viscous_coef": -0.29886069893836975,
+        "position_offset": 0.0
+      },
+      {
+        "effort_correction": 1.0973777770996094,
+        "friction_constant_term": -0.11999999731779099,
+        "friction_coulomb_coef": 0.032083164900541306,
+        "friction_transition_velocity": 0.0,
+        "friction_viscous_coef": 0.020000476390123367,
+        "position_offset": 0.0
+      },
+      {
+        "effort_correction": 1.107961893081665,
+        "friction_constant_term": -0.05999999865889549,
+        "friction_coulomb_coef": 0.06065040081739426,
+        "friction_transition_velocity": 0.0,
+        "friction_viscous_coef": 0.01264506857842207,
+        "position_offset": 0.0
+      },
+      {
+        "effort_correction": 1.2000000476837158,
+        "friction_constant_term": 0.029999999329447746,
+        "friction_coulomb_coef": 0.0,
+        "friction_transition_velocity": 0.0,
+        "friction_viscous_coef": 0.01716070994734764,
+        "position_offset": 0.0
+      },
+      {
+        "effort_correction": 1.2000000476837158,
+        "friction_constant_term": 3.25,
+        "friction_coulomb_coef": 0.0,
+        "friction_transition_velocity": 0.0,
+        "friction_viscous_coef": 0.0,
+        "position_offset": 0.0
+      }
+    ],
+    "end_effector": {
+      "offset_finger_left_m": 0.02449817955493927,
+      "offset_finger_right_m": -0.024501819163560867,
+      "pitch_circle_radius_m": 0.008750000037252903,
+      "t_flange_tool_m_rotvec_rad": [
+        0.156062,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "finger_offset_meaning": "offset_finger_left/right are the palm-centre to carriage-centre offsets with the fingers at the closed configuration, in metres. They are not the gripper joint coordinate.",
+      "palm": {
+        "mass_kg": 0.5598414540290833,
+        "inertia": [
+          0.0008366000256501138,
+          -7.300000106624793e-07,
+          3.580000111469417e-06,
+          -7.300000106624793e-07,
+          0.000380940007744357,
+          -1.700000069604357e-07,
+          3.580000111469417e-06,
+          -1.700000069604357e-07,
+          0.0009712100145407021
+        ],
+        "origin_xyz_m": [
+          0.04530753940343857,
+          -4.230999911669642e-05,
+          0.00021127999934833497
+        ],
+        "origin_rpy_rad": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "finger_left": {
+        "mass_kg": 0.07283511012792587,
+        "inertia": [
+          2.513999970688019e-05,
+          4.86999988424941e-06,
+          -2.530000074330019e-06,
+          4.86999988424941e-06,
+          3.632999869296327e-05,
+          -1.4400000054592965e-06,
+          -2.530000074330019e-06,
+          -1.4400000054592965e-06,
+          4.148000152781606e-05
+        ],
+        "origin_xyz_m": [
+          0.003004679922014475,
+          -0.006998749915510416,
+          -0.0038340298924595118
+        ],
+        "origin_rpy_rad": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "finger_right": {
+        "mass_kg": 0.0728352963924408,
+        "inertia": [
+          2.5780000214581378e-05,
+          -4.86999988424941e-06,
+          4.9599998419580515e-06,
+          -4.86999988424941e-06,
+          3.696999920066446e-05,
+          -5.499999815583578e-07,
+          4.9599998419580515e-06,
+          -5.499999815583578e-07,
+          4.148000152781606e-05
+        ],
+        "origin_xyz_m": [
+          0.003004699945449829,
+          0.006998640019446611,
+          0.002443620003759861
+        ],
+        "origin_rpy_rad": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "algorithm_singularity_threshold": 0.01,
+    "factory_reset_flag": false,
+    "unreadable": {},
+    "note": "Read only; nothing is written. Motor PID gains are the controller's cascaded position/velocity loops in its own units; they are not MuJoCo kp/kv."
+  },
+  "units": {
+    "t": "s since trial onset (host monotonic clock)",
+    "q": "rad",
+    "qd": "rad/s",
+    "effort": "Nm",
+    "target": "rad"
+  }
+}
