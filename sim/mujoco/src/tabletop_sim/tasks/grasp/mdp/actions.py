@@ -185,13 +185,21 @@ class GripperActionCfg(ActionTermCfg):
   ``absolute``: clip(a, -1, 1) maps linearly from closed (-1) to open (+1).
   ``delta``: target = q + clip(a, -1, 1) * delta_scale (a > 0 opens), clamped
   to [closed_pos, open_pos] and computed once per control step.
-  """
 
+  ``goal_time_s`` > 0.001: the carriage position target does not jump to a new
+  target. Each control step whose target differs from the previous step's (and
+  an episode's first step) starts a move from the carriage position measured
+  then, with zero velocity, that reaches the target after ``goal_time_s``:
+  a quintic (zero end velocity and acceleration) above 0.2 s, else linear. This
+  is the Trossen driver's rule for a position command's goal time.
+  """
+# negative reward for opening gripper at all?
   joint_name: str
   open_pos: float
   closed_pos: float
   mode: str = "binary"
   delta_scale: float = 0.01
+  goal_time_s: float = 0.0
   hold_command_name: str | None = None
 
   def build(self, env: ManagerBasedRlEnv) -> GripperAction:
@@ -210,10 +218,22 @@ class GripperAction(ActionTerm):
     self._joint_ids = torch.tensor(ids, device=self.device, dtype=torch.long)
     self._raw_actions = torch.zeros(self.num_envs, 1, device=self.device)
     self._target = torch.full_like(self._raw_actions, cfg.open_pos)
+    self.switched = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
+    """Whether the latest control step changed the target of an env that
+    already had one this episode."""
+    # No command yet this episode.
+    self._fresh = torch.ones(self.num_envs, dtype=torch.bool, device=self.device)
+    # The current move: where it started, and physics substeps applied since.
+    self._move_start = self._target.clone()
+    self._move_substeps = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
 
   @property
   def action_dim(self) -> int:
     return 1
+
+  @property
+  def _timed(self) -> bool:
+    return self.cfg.goal_time_s > 0.001
 
   @property
   def raw_action(self) -> torch.Tensor:
@@ -237,11 +257,35 @@ class GripperAction(ActionTerm):
       lo, hi = sorted((self.cfg.closed_pos, self.cfg.open_pos))
       target = target.clamp(lo, hi)
     hold = held_envs(self._env, self.cfg.hold_command_name)
-    self._target[:] = target if hold is None else torch.where(hold[:, None], self._target, target)
+    if hold is not None:
+      target = torch.where(hold[:, None], self._target, target)
+    changed = (target != self._target).squeeze(-1)
+    self.switched[:] = changed & ~self._fresh
+    if self._timed:
+      restart = changed | self._fresh
+      q = self._entity.data.joint_pos[:, self._joint_ids]
+      self._move_start[restart] = q[restart]
+      self._move_substeps[restart] = 0
+    self._target[:] = target
+    self._fresh[:] = False
+
+  def _position_target(self) -> torch.Tensor:
+    if not self._timed:
+      return self._target
+    self._move_substeps += 1
+    goal_time = self.cfg.goal_time_s
+    tau = (self._move_substeps * (self._env.physics_dt / goal_time)).clamp(max=1.0).unsqueeze(-1)
+    s = tau**3 * (10.0 - 15.0 * tau + 6.0 * tau**2) if goal_time > 0.2 else tau
+    moving = self._move_start + (self._target - self._move_start) * s
+    return torch.where(tau >= 1.0, self._target, moving)
 
   def apply_actions(self) -> None:
     bias = self._entity.data.encoder_bias[:, self._joint_ids]
-    self._entity.set_joint_position_target(self._target - bias, joint_ids=self._joint_ids)
+    self._entity.set_joint_position_target(
+      self._position_target() - bias, joint_ids=self._joint_ids
+    )
 
   def reset(self, env_ids: torch.Tensor | slice | None = None) -> None:
     self._raw_actions[env_ids] = 0.0
+    self.switched[env_ids] = False
+    self._fresh[env_ids] = True

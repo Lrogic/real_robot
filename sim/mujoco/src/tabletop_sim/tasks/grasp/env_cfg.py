@@ -43,6 +43,7 @@ from tabletop_sim.tasks.grasp import mdp
 COMMAND_NAME = "grasp"
 PERCEPTION_NAME = "object_perception"
 ACTION_HOLD_NAME = "action_hold"
+GRIPPER_ACTION_NAME = "gripper"
 POSE_HISTORY_SENSOR = "object_pose_history"
 TABLE_CONTACT_SENSOR = "robot_table_contact"
 FINGER_SENSORS = ("left_finger_object_contact", "right_finger_object_contact")
@@ -71,6 +72,13 @@ def _actions(emb: EmbodimentCfg, action_space: str, task: TaskConfig) -> dict[st
     raise ValueError(f"action_space must be one of {ACTION_SPACES}, got {action_space!r}")
   arm_kind, gripper_mode = _ACTION_SPACE_PARTS[action_space]
   hold = ACTION_HOLD_NAME if task.domain_randomization.action_hold_probability > 0 else None
+  if gripper_mode != "binary":
+    for name, value in (
+      ("action.gripper_goal_time_s", task.action.gripper_goal_time_s),
+      ("w_gripper_switch", task.w_gripper_switch),
+    ):
+      if value != 0:
+        raise ConfigError(f"task.{name} needs a binary gripper action space, got {action_space!r}")
   gripper = mdp.GripperActionCfg(
     hold_command_name=hold,
     entity_name="robot",
@@ -79,6 +87,7 @@ def _actions(emb: EmbodimentCfg, action_space: str, task: TaskConfig) -> dict[st
     closed_pos=emb.gripper_closed,
     mode=gripper_mode,
     delta_scale=task.action.gripper_delta_scale,
+    goal_time_s=task.action.gripper_goal_time_s,
   )
   if arm_kind == "ee_delta_pose":
     arm: ActionTermCfg = mdp.ClippedDifferentialIKActionCfg(
@@ -109,7 +118,7 @@ def _actions(emb: EmbodimentCfg, action_space: str, task: TaskConfig) -> dict[st
       joint_names=emb.arm_joint_names,
       scale=task.action.joint_delta_scale,
     )
-  return {"arm": arm, "gripper": gripper}
+  return {"arm": arm, GRIPPER_ACTION_NAME: gripper}
 
 
 class _Entities:
@@ -249,6 +258,12 @@ def _rewards(task: TaskConfig, ent: _Entities) -> dict[str, RewardTermCfg]:
       params={"asset_cfg": ent.arm()},
     ),
   }
+  if task.w_gripper_switch != 0:
+    rewards["gripper_switch"] = RewardTermCfg(
+      func=r.gripper_switch,
+      weight=task.w_gripper_switch / n,
+      params={"action_name": GRIPPER_ACTION_NAME},
+    )
   if task.w_table_contact != 0:
     rewards["table_contact"] = RewardTermCfg(
       func=r.table_contact,
@@ -289,6 +304,11 @@ def _metrics(task: TaskConfig, ent: _Entities) -> dict[str, MetricsTermCfg]:
       reduce="sum",
     ),
   }
+  if task.w_gripper_switch != 0:
+    # Open/close command changes in the episode.
+    metrics["gripper_switches"] = MetricsTermCfg(
+      func=mdp.rewards.gripper_switch, params={"action_name": GRIPPER_ACTION_NAME}, reduce="sum"
+    )
   if task.w_table_contact != 0:
     contact = lambda: {"sensor_name": TABLE_CONTACT_SENSOR}  # noqa: E731
     metrics |= {

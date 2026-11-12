@@ -94,6 +94,14 @@ def joint_speed_excess(
   return (excess**2).sum(dim=-1)
 
 
+def gripper_switch(env: ManagerBasedRlEnv, action_name: str) -> torch.Tensor:
+  """1 on a control step whose gripper command differs from the previous
+  step's (see ``GripperAction.switched``), else 0. Use with a nonpositive
+  weight."""
+  term = env.action_manager.get_term(action_name)
+  return term.switched.float()  # type: ignore[attr-defined]
+
+
 def table_contact(env: ManagerBasedRlEnv, sensor_name: str) -> torch.Tensor:
   """In [0, 1]: fraction of the sensor's force history (the control step's
   physics substeps) in which any of its primaries pushes on its secondary. Use

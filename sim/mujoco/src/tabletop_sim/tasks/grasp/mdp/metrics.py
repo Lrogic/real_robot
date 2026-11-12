@@ -3,7 +3,9 @@ manager, which evaluates them after rewards, on the pre-reset state).
 
 ``mean_hold_score`` has no function here: it registers
 :func:`rewards.stable_hold` itself with ``reduce="mean"``. Likewise
-``table_contact_frac`` registers :func:`rewards.table_contact`."""
+``table_contact_frac`` registers :func:`rewards.table_contact`, and
+``gripper_switches`` registers :func:`rewards.gripper_switch` with
+``reduce="sum"``."""
 
 from __future__ import annotations
 

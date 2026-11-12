@@ -356,6 +356,13 @@ class ActionConfig:
   gripper_delta_scale: float = 0.01
   """Metres of carriage target change per step at |action| = 1 (delta gripper
   only). Each finger moves this much, so the gap changes by twice as much."""
+  gripper_goal_time_s: float = 0.0
+  """Binary gripper only. Seconds over which each new open/close command moves
+  the carriage target, as the Trossen driver does with a position goal time:
+  from the carriage position at the command, a quintic (zero end velocity and
+  acceleration) above 0.2 s, linear down to 0.001 s, and immediate at or below
+  that. A command that changes mid-move starts a new move from where the
+  carriage is. 0 sets the target at once."""
   ee_goal_interpolation: bool = False
   """End-effector action spaces only. Off: IK solves toward the step's TCP goal
   on every physics substep. On: IK solves toward a subgoal that moves linearly
@@ -363,6 +370,10 @@ class ActionConfig:
   control step to the goal, and reaches it on the step's last substep."""
 
   def __post_init__(self) -> None:
+    for name in ("gripper_goal_time_s",):
+      value = getattr(self, name)
+      if not (math.isfinite(value) and value >= 0):
+        raise ConfigError(f"task.action.{name} must be finite and nonnegative, got {value}")
     if not isinstance(self.ee_goal_interpolation, bool):
       raise ConfigError(
         f"task.action.ee_goal_interpolation must be a bool, got {self.ee_goal_interpolation!r}"
@@ -794,6 +805,11 @@ class TaskConfig:
   in contact. 0 disables it, together with the ``table_contact_frac`` and
   ``table_collision`` metrics; a negligible weight (e.g. -1e-9) logs those
   without penalizing."""
+  w_gripper_switch: float = 0.0
+  """Binary gripper only. Weight (nonpositive) of the penalty on a control step
+  whose open/close command differs from the previous step's; an episode's
+  first command and held steps do not count. 0 disables it, together with the
+  ``gripper_switches`` metric (switches per episode)."""
   reward_normalization: float = 10.0
   include_is_grasped_obs: bool = True
   """Adds ``is_grasped`` to the critic observations (never the actor)."""
@@ -821,7 +837,13 @@ class TaskConfig:
       value = getattr(self, name)
       if not (math.isfinite(value) and value >= 0):
         raise ConfigError(f"task.{name} must be finite and nonnegative, got {value}")
-    for name in ("w_arm_speed", "w_gripper_speed", "w_joint_pos_limits", "w_table_contact"):
+    for name in (
+      "w_arm_speed",
+      "w_gripper_speed",
+      "w_joint_pos_limits",
+      "w_table_contact",
+      "w_gripper_switch",
+    ):
       value = getattr(self, name)
       if not (math.isfinite(value) and value <= 0):
         raise ConfigError(f"task.{name} must be finite and nonpositive, got {value}")
