@@ -135,6 +135,27 @@ class LoggingConfig:
         return cls(summary_fields=tuple(fields))
 
 
+def _saved_with_checkpoint(checkpoint: Optional[Path], kind: str) -> Path:
+    """<run>/params/<kind>.json that train.py saved beside the checkpoint (kind: scene | task)."""
+    if checkpoint is None:
+        raise ValueError(f"sim.{kind} is null and policy.checkpoint is not set: set sim.{kind}, or a "
+                         f"checkpoint whose run saved params/{kind}.json")
+    saved = checkpoint.parent / "params" / f"{kind}.json"
+    if not saved.is_file():
+        raise ValueError(f"sim.{kind} is null and the checkpoint's run has no saved {kind} ({saved}); "
+                         f"set sim.{kind} to the {kind} JSON the policy was trained on")
+    return saved
+
+
+def _original_scene_dir(saved_scene: Path) -> Path:
+    """Folder of the scene file a run was trained from, from the params/source.json beside its copy."""
+    source = saved_scene.with_name("source.json")
+    if not source.is_file():
+        raise ValueError(f"{saved_scene} has no source.json beside it to resolve the scene's asset paths; "
+                         "set sim.scene")
+    return Path(json.loads(source.read_text())["scene"]).parent
+
+
 @dataclass(frozen=True)
 class JengaPolicyConfig:
     path: Path
@@ -183,8 +204,13 @@ class JengaPolicyConfig:
         path = Path(path or DEFAULT_CONFIG).resolve()
         raw = yaml.safe_load(path.read_text())
         base = path.parent
-        scene_path = _path(base, raw["sim"]["scene"])
-        task_path = _path(base, raw["sim"]["task"])
+        checkpoint = _path(base, (raw.get("policy") or {}).get("checkpoint"))
+        sim = raw.get("sim") or {}
+        scene_path = _path(base, sim.get("scene")) or _saved_with_checkpoint(checkpoint, "scene")
+        task_path = _path(base, sim.get("task")) or _saved_with_checkpoint(checkpoint, "task")
+        # A scene's asset paths are relative to the folder it was written in; the copy a run
+        # saves keeps them, so they resolve against the original scene's folder.
+        scene_dir = scene_path.parent if sim.get("scene") else _original_scene_dir(scene_path)
         scene = json.loads(scene_path.read_text())
         task = json.loads(task_path.read_text())
 
@@ -235,7 +261,7 @@ class JengaPolicyConfig:
             task_path=task_path,
             embodiment=scene["robot"]["embodiment"],
             object_name=name,
-            mesh_path=_path(scene_path.parent, obj["asset_path"]),
+            mesh_path=_path(scene_dir, obj["asset_path"]),
             tracked_name=raw["object"].get("tracked_name"),
             box_center=np.asarray(raw["object"].get("box_center", [0, 0, 0]), dtype=np.float64),
             T_base_initial=np.linalg.inv(T_world_base) @ T_world_obj,
@@ -252,7 +278,7 @@ class JengaPolicyConfig:
             # ActionConfig defaults when the task leaves them out.
             ee_pos_scale=float(action.get("ee_pos_scale", 0.01)),
             ee_rot_scale=float(action.get("ee_rot_scale", 0.05)),
-            checkpoint=_path(base, (raw.get("policy") or {}).get("checkpoint")),
+            checkpoint=checkpoint,
             calibration=_path(base, raw.get("calibration", {}).get("T_base_camera")),
             robot={k: v for k, v in (raw.get("robot") or {}).items() if v},
             episode_key=episode_key,

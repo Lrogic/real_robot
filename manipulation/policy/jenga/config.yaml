@@ -6,9 +6,10 @@ sim:
   # space (only ee_delta_pose_binary_gripper is supported), the jenga mesh and its training
   # reset pose (symmetry reference), target_lift_height (goal), control_hz (observation
   # rate), episode_steps and the action scales (ee_pos_scale, ee_rot_scale).
-  # grasp_wxai.json is the one checked-in task and is the original policy's task as written.
-  # A checkpoint trained on an edited copy needs the same edits here (a run saves its task as
-  # params/task.json); docs/sim2real_control.md lists the edits for each past run.
+  # Each of scene and task: a path is used as given; null reads the copy the checkpoint's run
+  # saved (<run>/params/scene.json, task.json; runs since 2026-11-10), and is an error when
+  # the run has none. The original policy's run predates the copies, so both are set for it:
+  # grasp_wxai.json is the one checked-in task and is that policy's task as written.
   scene: ../../../sim/mujoco/configs/scenes/tabletop_jenga_wxai.json
   # scene: ../../../sim/mujoco/configs/scenes/tabletop_jenga_wxai_friction.json
   task: ../../../sim/mujoco/configs/tasks/grasp_wxai.json
