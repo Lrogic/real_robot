@@ -1,10 +1,20 @@
 from tabletop_sim.embodiments.base import EmbodimentCfg
 from tabletop_sim.embodiments.menagerie_wxai import MENAGERIE_WXAI, MENAGERIE_WXAI_REAL
-from tabletop_sim.embodiments.trossen_wxai import TROSSEN_WXAI_BASE, TROSSEN_WXAI_BASE_REAL
+from tabletop_sim.embodiments.trossen_wxai import (
+  TROSSEN_WXAI_BASE,
+  TROSSEN_WXAI_BASE_REAL,
+  TROSSEN_WXAI_BASE_REAL_FRICTION,
+)
 
 EMBODIMENTS: dict[str, EmbodimentCfg] = {
   emb.name: emb
-  for emb in (MENAGERIE_WXAI, MENAGERIE_WXAI_REAL, TROSSEN_WXAI_BASE, TROSSEN_WXAI_BASE_REAL)
+  for emb in (
+    MENAGERIE_WXAI,
+    MENAGERIE_WXAI_REAL,
+    TROSSEN_WXAI_BASE,
+    TROSSEN_WXAI_BASE_REAL,
+    TROSSEN_WXAI_BASE_REAL_FRICTION,
+  )
 }
 
 

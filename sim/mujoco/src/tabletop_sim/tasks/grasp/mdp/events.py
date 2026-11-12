@@ -255,6 +255,47 @@ class RandomizeKpActuatorKv(_StiffnessDampingRandomization):
   damping_source = "actuator"
 
 
+@requires_model_fields("dof_frictionloss")
+class RandomizeJointFriction(ManagerTermBase):
+  """Scale the named joints' dry friction (``dof_frictionloss``) at reset.
+
+  Each resetting env draws one multiplier per joint, uniformly within its
+  episode difficulty's :func:`difficulty_scale_bounds`. Values are the compiled
+  model's times the multiplier, so samples never compound, and they hold until
+  that env's next reset.
+  """
+
+  def __init__(self, cfg: EventTermCfg, env: ManagerBasedRlEnv):
+    super().__init__(env)
+    entity: Entity = env.scene[cfg.params["entity_name"]]
+    names: tuple[str, ...] = cfg.params["joint_names"]
+    joint_ids, found = entity.find_joints(names, preserve_order=True)
+    if tuple(found) != tuple(names):
+      raise ValueError(f"friction joints {names} resolved to {found}")
+    self._dof_ids = entity.indexing.joint_v_adr[joint_ids].to(torch.long)
+    nominal = env.sim.get_default_field("dof_frictionloss")[self._dof_ids]
+    if not bool((nominal > 0).all()):
+      raise ValueError(
+        f"nominal frictionloss of {names} is {nominal.tolist()}; every joint needs "
+        "positive friction to scale"
+      )
+
+  def __call__(
+    self,
+    env: ManagerBasedRlEnv,
+    env_ids: torch.Tensor | None,
+    entity_name: str,
+    joint_names: tuple[str, ...],
+    scale_range: tuple[float, float],
+  ) -> None:
+    del entity_name, joint_names  # Resolved in __init__.
+    env_ids = resolve_env_ids(env, env_ids).to(torch.long)
+    d = curriculum.episode_difficulty(env, env_ids)
+    scale = sample_difficulty_scales(d, scale_range, len(self._dof_ids))
+    nominal = env.sim.get_default_field("dof_frictionloss")[self._dof_ids]
+    env.sim.model.dof_frictionloss[env_ids[:, None], self._dof_ids] = nominal * scale
+
+
 STIFFNESS_DAMPING_EVENTS: dict[str, type[_StiffnessDampingRandomization]] = {
   "joint": RandomizeKpJointDamping,
   "actuator": RandomizeKpActuatorKv,

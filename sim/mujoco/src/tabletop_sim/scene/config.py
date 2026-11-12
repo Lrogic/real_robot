@@ -368,9 +368,12 @@ class ActionConfig:
   on every physics substep. On: IK solves toward a subgoal that moves linearly
   (constant linear and angular velocity) from the TCP pose at the start of the
   control step to the goal, and reaches it on the step's last substep."""
+  command_delay_s: float = 0.0
+  """End-effector action spaces only. Seconds between an IK joint target being
+  computed and the arm acting on it; a whole number of ``timing.sim_dt``."""
 
   def __post_init__(self) -> None:
-    for name in ("gripper_goal_time_s",):
+    for name in ("gripper_goal_time_s", "command_delay_s"):
       value = getattr(self, name)
       if not (math.isfinite(value) and value >= 0):
         raise ConfigError(f"task.action.{name} must be finite and nonnegative, got {value}")
@@ -611,6 +614,40 @@ class ObjectPoseNoiseConfig:
 
 
 @dataclass(frozen=True)
+class JointFrictionConfig:
+  """Randomization of the arm joints' dry friction (MuJoCo ``frictionloss``)."""
+
+  enabled: bool = False
+  scale_range: tuple[float, float] = (0.7, 1.3)
+  """Per-joint multiplier of the robot model's value, drawn at every reset. The
+  range is for episode difficulty 1 and is interpolated from [1, 1] at
+  difficulty 0."""
+
+  def __post_init__(self) -> None:
+    where = "domain_randomization.joint_friction"
+    if not isinstance(self.enabled, bool):
+      raise ConfigError(f"{where}.enabled must be a bool, got {self.enabled!r}")
+    lower, upper = self.scale_range
+    if not (math.isfinite(lower) and math.isfinite(upper) and 0 < lower <= upper):
+      raise ConfigError(
+        f"{where}.scale_range must be finite with 0 < lower <= upper, got [{lower}, {upper}]"
+      )
+
+  @classmethod
+  def from_dict(cls, data: Any) -> JointFrictionConfig:
+    where = "task.domain_randomization.joint_friction"
+    if not isinstance(data, dict):
+      raise ConfigError(f"{where} must be an object")
+    _check_keys(where, data, cls)
+    kwargs: dict[str, Any] = {}
+    if "enabled" in data:
+      kwargs["enabled"] = data["enabled"]
+    if "scale_range" in data:
+      kwargs["scale_range"] = _vec(f"{where}.scale_range", data["scale_range"], 2)
+    return cls(**kwargs)
+
+
+@dataclass(frozen=True)
 class DomainRandomizationConfig:
   object_reset_radius: float = 0.05
   """Radius (m) of the disk around each object's default position in which the
@@ -629,6 +666,7 @@ class DomainRandomizationConfig:
   object_size_variants: ObjectSizeVariantsConfig = field(default_factory=ObjectSizeVariantsConfig)
   friction: FrictionRandomizationConfig = field(default_factory=FrictionRandomizationConfig)
   object_pose_noise: ObjectPoseNoiseConfig = field(default_factory=ObjectPoseNoiseConfig)
+  joint_friction: JointFrictionConfig = field(default_factory=JointFrictionConfig)
   object_pose_delay_s: float = 0.0
   """Age (s) of the object pose the actor observes: the true pose this long
   before the control step, with the pose noise applied to it. A whole number of
@@ -703,6 +741,8 @@ class DomainRandomizationConfig:
       kwargs["friction"] = FrictionRandomizationConfig.from_dict(data["friction"])
     if "object_pose_noise" in data:
       kwargs["object_pose_noise"] = ObjectPoseNoiseConfig.from_dict(data["object_pose_noise"])
+    if "joint_friction" in data:
+      kwargs["joint_friction"] = JointFrictionConfig.from_dict(data["joint_friction"])
     return cls(**kwargs)
 
 
@@ -832,6 +872,18 @@ class TaskConfig:
       )
     return round(exact)
 
+  @property
+  def command_delay_substeps(self) -> int:
+    """``action.command_delay_s`` in physics substeps."""
+    delay = self.action.command_delay_s
+    exact = delay / self.timing.sim_dt
+    if abs(exact - round(exact)) > 1e-6:
+      raise ConfigError(
+        f"task.action.command_delay_s={delay} must be a multiple of "
+        f"timing.sim_dt={self.timing.sim_dt}"
+      )
+    return round(exact)
+
   def __post_init__(self) -> None:
     for name in ("arm_speed_threshold", "gripper_speed_threshold"):
       value = getattr(self, name)
@@ -881,6 +933,7 @@ class TaskConfig:
       raise ConfigError("task.reward_normalization must be positive")
     _ = cfg.timing.decimation  # validates timing
     _ = cfg.object_pose_delay_substeps  # validates the delay against sim_dt
+    _ = cfg.command_delay_substeps
     return cfg
 
 

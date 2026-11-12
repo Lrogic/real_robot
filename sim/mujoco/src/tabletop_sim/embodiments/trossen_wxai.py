@@ -35,3 +35,15 @@ TROSSEN_WXAI_BASE_REAL = replace(
   name="trossen_wxai_base_real",
   xml_path=ASSETS_DIR / "robots" / "trossen_wxai_base" / "wxai" / "wxai_base_real_robot.xml",
 )
+
+# The real-robot model with the arm joints' dry friction fitted to single-joint
+# step tests on the arm (sim2real/experiments/joint_step).
+TROSSEN_WXAI_BASE_REAL_FRICTION = replace(
+  TROSSEN_WXAI_BASE_REAL,
+  name="trossen_wxai_base_real_friction",
+  xml_path=ASSETS_DIR
+  / "robots"
+  / "trossen_wxai_base"
+  / "wxai"
+  / "wxai_base_real_robot_friction.xml",
+)

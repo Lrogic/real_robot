@@ -93,6 +93,7 @@ def _actions(emb: EmbodimentCfg, action_space: str, task: TaskConfig) -> dict[st
     arm: ActionTermCfg = mdp.ClippedDifferentialIKActionCfg(
       hold_command_name=hold,
       interpolate_goal=task.action.ee_goal_interpolation,
+      command_delay_substeps=task.command_delay_substeps,
       entity_name="robot",
       actuator_names=emb.arm_joint_names,
       frame_type="site",
@@ -108,10 +109,11 @@ def _actions(emb: EmbodimentCfg, action_space: str, task: TaskConfig) -> dict[st
       posture_weight=emb.ik.posture_weight,
     )
   else:
-    if task.action.ee_goal_interpolation:
-      raise ConfigError(
-        f"task.action.ee_goal_interpolation needs an end-effector action space, got {action_space!r}"
-      )
+    for name in ("ee_goal_interpolation", "command_delay_s"):
+      if getattr(task.action, name):
+        raise ConfigError(
+          f"task.action.{name} needs an end-effector action space, got {action_space!r}"
+        )
     arm = mdp.DeltaJointPositionActionCfg(
       hold_command_name=hold,
       entity_name="robot",
@@ -503,6 +505,16 @@ def make_grasp_env_cfg_from_configs(
         ),
         "stiffness_scale_range": dr.stiffness_scale_range,
         "damping_scale_range": dr.damping_scale_range,
+      },
+    )
+  if dr.joint_friction.enabled:
+    events["randomize_joint_friction"] = EventTermCfg(
+      func=mdp.RandomizeJointFriction,
+      mode="reset",
+      params={
+        "entity_name": "robot",
+        "joint_names": emb.arm_joint_names,
+        "scale_range": dr.joint_friction.scale_range,
       },
     )
   friction = dr.friction

@@ -8,6 +8,9 @@ the previous delta is not applied again from the current state.
 The end-effector term can also interpolate its goal (``interpolate_goal``): IK
 then tracks a subgoal that moves at constant velocity from the TCP pose at the
 start of the control step to the goal.
+
+It can also delay its IK joint targets (``command_delay_substeps``), as the real
+arm's command path does.
 """
 
 from __future__ import annotations
@@ -52,6 +55,8 @@ class ClippedDifferentialIKActionCfg(DifferentialIKActionCfg):
   vector), so the last substep solves toward the goal itself. The start pose is
   the TCP pose the goal was computed from. On a held step the subgoal stays on
   the kept goal."""
+  command_delay_substeps: int = 0
+  """Physics substeps between an IK joint target and the arm acting on it."""
 
   def build(self, env: ManagerBasedRlEnv) -> ClippedDifferentialIKAction:
     if self.interpolate_goal and not self.use_relative_mode:
@@ -72,6 +77,16 @@ class ClippedDifferentialIKAction(DifferentialIKAction):
     self._delta = torch.zeros(self.num_envs, 6, device=self.device)
     # Physics substeps applied since the last process_actions.
     self._substep = 0
+    # Command delay: the delayed joint targets (oldest at _delay_at) and the
+    # envs whose buffer starts at the next substep.
+    self._delay_fresh = torch.ones(self.num_envs, dtype=torch.bool, device=self.device)
+    self._delayed = torch.zeros(
+      max(cfg.command_delay_substeps, 0),
+      self.num_envs,
+      len(self._joint_ids),
+      device=self.device,
+    )
+    self._delay_at = 0
 
   def process_actions(self, actions: torch.Tensor) -> None:
     actions = actions.clamp(-1.0, 1.0)
@@ -110,7 +125,20 @@ class ClippedDifferentialIKAction(DifferentialIKAction):
         moving = (self._delta != 0).any(dim=-1, keepdim=True)
         self._desired_pos[:] = torch.where(moving, pos, self._goal_pos)
         self._desired_quat[:] = torch.where(moving, quat, self._goal_quat)
-    super().apply_actions()
+    if self.cfg.command_delay_substeps <= 0:
+      super().apply_actions()
+      return
+    q = self._entity.data.joint_pos[:, self._joint_ids]
+    command = q + self.compute_dq()
+    fresh = self._delay_fresh
+    if fresh.any():
+      # An episode starts with its first command already in the buffer.
+      self._delayed[:, fresh] = command[fresh]
+      self._delay_fresh[:] = False
+    delayed = self._delayed[self._delay_at].clone()
+    self._delayed[self._delay_at] = command
+    self._delay_at = (self._delay_at + 1) % self.cfg.command_delay_substeps
+    self._entity.set_joint_position_target(delayed, joint_ids=self._joint_ids)
 
   def reset(self, env_ids: torch.Tensor | slice | None = None) -> None:
     super().reset(env_ids)
@@ -121,6 +149,7 @@ class ClippedDifferentialIKAction(DifferentialIKAction):
     self._start_quat[env_ids] = self._desired_quat[env_ids]
     self._goal_pos[env_ids] = self._desired_pos[env_ids]
     self._goal_quat[env_ids] = self._desired_quat[env_ids]
+    self._delay_fresh[env_ids] = True
 
 
 # Joint-space arm control.

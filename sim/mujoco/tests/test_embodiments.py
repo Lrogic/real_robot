@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import mujoco
 import pytest
 
@@ -69,6 +71,9 @@ def test_embodiment_damping_sources():
   real = get_embodiment("trossen_wxai_base_real")
   assert real.stiffness_damping.damping_source == "actuator"
   assert real.xml_path.name == "wxai_base_real_robot.xml"
+  friction = get_embodiment("trossen_wxai_base_real_friction")
+  assert friction.xml_path.name == "wxai_base_real_robot_friction.xml"
+  assert replace(friction, name=real.name, xml_path=real.xml_path) == real
   follower = get_embodiment("menagerie_wxai_real")
   assert follower.stiffness_damping.damping_source == "joint"
   assert follower.xml_path.name == "wxai_follower_real_robot.xml"
@@ -101,3 +106,14 @@ def test_menagerie_camera_mount_removed():
 def test_unknown_embodiment():
   with pytest.raises(KeyError):
     get_embodiment("ur5")
+
+
+def test_friction_model_changes_only_the_arm_joint_friction():
+  base = mujoco.MjModel.from_xml_path(str(get_embodiment("trossen_wxai_base_real").xml_path))
+  fric = mujoco.MjModel.from_xml_path(str(get_embodiment("trossen_wxai_base_real_friction").xml_path))
+  arm = [fric.jnt_dofadr[mujoco.mj_name2id(fric, mujoco.mjtObj.mjOBJ_JOINT, f"joint_{i}")] for i in range(6)]
+  assert fric.dof_frictionloss[arm].tolist() == pytest.approx([0.64, 1.85, 1.92, 0.10, 0.10, 0.16])
+  rest = [i for i in range(fric.nv) if i not in arm]
+  assert fric.dof_frictionloss[rest].tolist() == base.dof_frictionloss[rest].tolist()
+  for name in ("dof_armature", "dof_damping", "actuator_gainprm", "actuator_biasprm", "jnt_range", "body_mass"):
+    assert (getattr(fric, name) == getattr(base, name)).all(), name
