@@ -47,8 +47,8 @@ GRIPPER_ACTION_NAME = "gripper"
 POSE_HISTORY_SENSOR = "object_pose_history"
 TABLE_CONTACT_SENSOR = "robot_table_contact"
 FINGER_SENSORS = ("left_finger_object_contact", "right_finger_object_contact")
-DEFAULT_SCENE = CONFIGS_DIR / "scenes" / "tabletop_cube_wxai.json"
-DEFAULT_TASK = CONFIGS_DIR / "tasks" / "grasp_standard_wxai.json"
+DEFAULT_SCENE = CONFIGS_DIR / "scenes" / "tabletop_jenga_wxai.json"
+DEFAULT_TASK = CONFIGS_DIR / "tasks" / "grasp_wxai.json"
 # Per-world contact / constraint budget. Elliptic cones use several constraint
 # rows per contact, and a gripped box can touch the fingers and table at once.
 NCONMAX_PER_OBJECT = 32

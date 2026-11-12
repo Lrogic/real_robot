@@ -6,13 +6,21 @@ sim:
   # space (only ee_delta_pose_binary_gripper is supported), the jenga mesh and its training
   # reset pose (symmetry reference), target_lift_height (goal), control_hz (observation
   # rate), episode_steps and the action scales (ee_pos_scale, ee_rot_scale).
+  # grasp_wxai.json is the one checked-in task and is the original policy's task as written.
+  # A checkpoint trained on an edited copy needs the same edits here (a run saves its task as
+  # params/task.json); docs/sim2real_control.md lists the edits for each past run.
   scene: ../../../sim/mujoco/configs/scenes/tabletop_jenga_wxai.json
-  task: ../../../sim/mujoco/configs/tasks/grasp_curriculum_size_variants_friction_wxai.json
+  # scene: ../../../sim/mujoco/configs/scenes/tabletop_jenga_wxai_friction.json
+  task: ../../../sim/mujoco/configs/tasks/grasp_wxai.json
 
 policy:
   # rsl_rl checkpoint (actor weights and observation normalizer). The run's params/env.yaml
   # and params/agent.yaml are checked against the scene, the task and this file at startup.
+  # checkpoint: ../../../sim/mujoco/logs/rsl_rl/10HZ-gripper-interpolation-collision-hold-delay/2026-11-11_16-04-26/model_999.pt
   checkpoint: ../../../sim/mujoco/logs/rsl_rl/grasp_jenga_DR_adjusted_gripper_width_with_grav_comp_real_robot_parameters_higher_gain_adjusted_quat/2026-10-28_14-55-03/model_999.pt
+  # checkpoint: ../../../sim/mujoco/logs/rsl_rl/gripper_modelling-smooth_control-collision-delay-hold/2026-11-10_17-00-53/model_999.pt
+  # checkpoint: ../../../sim/mujoco/logs/rsl_rl/joint_friction_model-command_delay-goal_time_model/2026-11-11_17-21-17/model_750.pt
+  # checkpoint: ../../../sim/mujoco/logs/rsl_rl/joint_friction_model-command_delay-no_joint_goal-interpolation-10Hz-no_pose_delay-no_hold_prob-no_table_collision-no_gripper_switch/2026-11-11_18-09-48/model_600.pt
 
 object:
   # Tracked object to build observations for. null finds the one whose saved mesh is the
@@ -66,7 +74,7 @@ control:
   # (full: 1 / control_hz, slow: slow_time_dilation / control_hz). The driver applies 0
   # immediately, interpolates linearly up to 0.2 s and with a quintic above. Step mode uses
   # step_goal_time_s; ik_solver sim uses sim_ik.goal_time_s.
-  driver_goal_time_s: 0
+  driver_goal_time_s: null
   # Multiplies the scaled TCP delta; 1 is the training step size.
   action_scale: 1.0
   # Commands wait while the observed frame is older than this at the tick; they resume on
@@ -91,8 +99,9 @@ sim_ik:
   site: ee_site
   # IK solves (and joint commands) per second; training solves once per 2 ms physics step.
   inner_hz: 500.0
-  # set_arm_positions goal time of each solve; 0 applies the target immediately.
-  goal_time_s: 0.0
+  # set_arm_positions (joint) goal time of each solve; 0 applies the target immediately.
+  # Training has no model of it. The original policy ran smoothest on the arm at 0.05.
+  goal_time_s: 0.05
   # false  every solve aims at the policy step's TCP goal
   # true   the solves aim at a subgoal that moves linearly from the TCP at the start of the
   #        policy step to its goal, over one step (full: 1 / control_hz, slow:

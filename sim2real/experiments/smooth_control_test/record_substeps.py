@@ -30,7 +30,7 @@ DEFAULT_CKPT = (
   "_higher_gain_adjusted_quat/2026-10-28_14-55-03/model_999.pt"
 )
 DEFAULT_SCENE = SIM_ROOT / "configs/scenes/tabletop_jenga_wxai.json"
-DEFAULT_TASK = SIM_ROOT / "configs/tasks/grasp_curriculum_size_variants_friction_wxai.json"
+DEFAULT_TASK = SIM_ROOT / "configs/tasks/grasp_wxai.json"
 
 
 class SubstepRecorder:

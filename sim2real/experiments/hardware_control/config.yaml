@@ -7,7 +7,7 @@ training:
   # The robot model, ready pose, physics timestep, decimation, actuators, gravity
   # compensation and IK settings all come from these through tabletop_sim.
   scene: ../../../sim/mujoco/configs/scenes/tabletop_jenga_wxai.json
-  task: ../../../sim/mujoco/configs/tasks/grasp_curriculum_size_variants_friction_wxai.json
+  task: ../../../sim/mujoco/configs/tasks/grasp_wxai.json
 
 motion:
   translation_m: 0.01     # single-move and scheduled step size; training ee_pos_scale

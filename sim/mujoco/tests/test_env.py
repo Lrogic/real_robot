@@ -11,18 +11,21 @@ from mjlab.envs import ManagerBasedRlEnv
 from mjlab.managers.event_manager import EventTermCfg
 from mjlab.utils.lab_api.math import quat_inv, quat_mul, quat_unique
 from tabletop_sim.embodiments import get_embodiment
-from tabletop_sim.tasks.grasp.env_cfg import DEFAULT_SCENE, DEFAULT_TASK, make_grasp_env_cfg
+from tabletop_sim.tasks.grasp.env_cfg import make_grasp_env_cfg
 from tabletop_sim.tasks.grasp.mdp import GraspGoalCommand, curriculum, task_state
+from task_files import CUBE_SCENE, task_file
+
+STANDARD_TASK = task_file("standard")
+CURRICULUM_TASK = task_file("curriculum")
 
 pytestmark = pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 DEVICE = "cuda:0"
 NUM_ENVS = 4
-CURRICULUM_TASK = DEFAULT_TASK.parent / "grasp_curriculum_wxai.json"
 CUBE_POSES = [[-0.25, y, 0.015, 1.0, 0.0, 0.0, 0.0] for y in (-0.06, 0.0, 0.06)]
 
 
 def _scene_file(tmp_path_factory, **robot_overrides) -> str:
-  data = json.loads(DEFAULT_SCENE.read_text())
+  data = json.loads(CUBE_SCENE.read_text())
   data["robot"].update(robot_overrides)
   data["objects"][1]["initial_poses"] = CUBE_POSES
   path = tmp_path_factory.mktemp("scene") / "scene.json"
@@ -30,7 +33,7 @@ def _scene_file(tmp_path_factory, **robot_overrides) -> str:
   return str(path)
 
 
-def _make_env(scene, task=DEFAULT_TASK, action_space=None, num_envs=NUM_ENVS):
+def _make_env(scene, task=STANDARD_TASK, action_space=None, num_envs=NUM_ENVS):
   cfg = make_grasp_env_cfg(scene, task, action_space, num_envs)
   cfg.seed = 0
   return ManagerBasedRlEnv(cfg, device=DEVICE)

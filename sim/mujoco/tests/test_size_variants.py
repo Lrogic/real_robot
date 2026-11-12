@@ -25,15 +25,16 @@ from tabletop_sim.scene.builder import BalancedRandomAssignment, SizeVariantEnti
 from tabletop_sim.tasks.grasp import mdp
 from tabletop_sim.tasks.grasp.env_cfg import (
   CONFIGS_DIR,
-  DEFAULT_SCENE,
-  DEFAULT_TASK,
   make_grasp_env_cfg,
   make_grasp_env_cfg_from_configs,
 )
 from tabletop_sim.tasks.grasp.mdp import object_size, task_state
+from task_files import CUBE_SCENE, JENGA_SCENE, task_file
 
-JENGA_SCENE = CONFIGS_DIR / "scenes" / "tabletop_jenga_wxai.json"
-SIZE_TASK = CONFIGS_DIR / "tasks" / "grasp_size_variants_wxai.json"
+STANDARD_TASK = task_file("standard")
+CURRICULUM_TASK = task_file("curriculum")
+SIZE_TASK = task_file("size_variants")
+
 JENGA_SIZE = (0.075, 0.015, 0.025)
 REPRESENTATIVE = (0.9, 1.0, 1.1)
 DEVICE = "cuda:0"
@@ -110,7 +111,7 @@ def _mesh_object(tmp_path: Path, kind: str, **extra) -> dict:
 
 
 def _scene_with(tmp_path: Path, obj: dict, **scene_extra) -> Path:
-  data = json.loads(DEFAULT_SCENE.read_text())
+  data = json.loads(CUBE_SCENE.read_text())
   data["objects"] = [data["objects"][0], obj]
   data["manipulated_object"] = obj["name"]
   data["support_surface"] = {"object": "table"}
@@ -130,7 +131,7 @@ def test_default_scales_and_disabled_by_default():
   assert not c.enabled and c.clearance == 0.0
   assert len(c.scales) == 21 and (c.scales[0], c.scales[10], c.scales[-1]) == (0.9, 1.0, 1.1)
   assert c.scales == pytest.approx([0.90 + 0.01 * i for i in range(21)], abs=1e-12)
-  for path in (DEFAULT_TASK, DEFAULT_TASK.parent / "grasp_curriculum_wxai.json"):
+  for path in (STANDARD_TASK, CURRICULUM_TASK):
     assert not load_task_config(path).domain_randomization.object_size_variants.enabled
   example = load_task_config(SIZE_TASK).domain_randomization.object_size_variants
   assert example.enabled and example.scales == c.scales and example.clearance == 0.0
@@ -163,7 +164,7 @@ def test_support_surface_from_table_top():
 
 
 def _scene_dict(**overrides) -> dict:
-  data = json.loads(DEFAULT_SCENE.read_text())
+  data = json.loads(CUBE_SCENE.read_text())
   data.update(overrides)
   return data
 
@@ -208,7 +209,7 @@ def test_support_surface_rejects_dynamic_or_tilted(tmp_path):
 
 @needs_jenga
 def test_disabled_keeps_primitive_path():
-  cfg = make_grasp_env_cfg(JENGA_SCENE, DEFAULT_TASK)
+  cfg = make_grasp_env_cfg(JENGA_SCENE, STANDARD_TASK)
   assert all(type(e) is EntityCfg for n, e in cfg.scene.entities.items() if n != "robot")
   assert cfg.events["reset_jenga_xy"].func is mdp.reset_object_xy_in_disk_with_yaw
   model = cfg.scene.entities["jenga"].spec_fn().compile()
@@ -233,7 +234,7 @@ def test_enabled_wiring_only_touches_manipulated_object():
 def test_enabled_needs_mesh_object_and_support_surface():
   task = load_task_config(SIZE_TASK)
   with pytest.raises(ConfigError, match="mesh manipulated object"):
-    make_grasp_env_cfg_from_configs(load_scene_config(DEFAULT_SCENE), task)
+    make_grasp_env_cfg_from_configs(load_scene_config(CUBE_SCENE), task)
   scene = dataclasses.replace(load_scene_config(JENGA_SCENE), support_surface=None)
   with pytest.raises(ConfigError, match="support_surface"):
     make_grasp_env_cfg_from_configs(scene, task)

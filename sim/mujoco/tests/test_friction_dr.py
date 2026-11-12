@@ -17,11 +17,12 @@ from tabletop_sim.embodiments.base import finger_collision_geoms, load_spec
 from tabletop_sim.scene import ConfigError, FrictionRandomizationConfig, load_scene_config, load_task_config
 from tabletop_sim.scene.builder import HULL_REF_PREFIX, PairGeom, mixed_solver_params
 from tabletop_sim.tasks.grasp import mdp
-from tabletop_sim.tasks.grasp.env_cfg import CONFIGS_DIR, DEFAULT_SCENE, make_grasp_env_cfg
+from tabletop_sim.tasks.grasp.env_cfg import CONFIGS_DIR, make_grasp_env_cfg
 from tabletop_sim.tasks.grasp.mdp import curriculum, task_state
+from task_files import CUBE_SCENE, JENGA_SCENE, task_file
 
-JENGA_SCENE = CONFIGS_DIR / "scenes" / "tabletop_jenga_wxai.json"
-FRICTION_TASK = CONFIGS_DIR / "tasks" / "grasp_curriculum_size_variants_friction_wxai.json"
+FRICTION_TASK = task_file("friction")
+
 EVENT = "randomize_pair_friction"
 EMBODIMENT_NAMES = ["menagerie_wxai", "trossen_wxai_base"]
 GRIPPER = (1.0, 0.005, 0.0005)
@@ -79,8 +80,8 @@ def test_defaults_disabled():
   assert c.gripper_object == GRIPPER and c.table_object == TABLE
   for r in (c.sliding_scale_range, c.torsional_scale_range, c.rolling_scale_range):
     assert r == (0.7, 1.3)
-  for task in ("grasp_standard_wxai", "grasp_curriculum_wxai", "grasp_curriculum_size_variants_wxai"):
-    assert not load_task_config(CONFIGS_DIR / "tasks" / f"{task}.json").domain_randomization.friction.enabled
+  for task in ("standard", "curriculum", "curriculum_size_variants"):
+    assert not load_task_config(task_file(task)).domain_randomization.friction.enabled
   assert load_task_config(FRICTION_TASK).domain_randomization.friction.enabled
 
 
@@ -121,7 +122,7 @@ def test_config_rejects(tmp_path, override, match):
 def test_needs_support_object(tmp_path):
   # The default cube scene has no support_surface.
   with pytest.raises(ConfigError, match="support_surface"):
-    make_grasp_env_cfg(DEFAULT_SCENE, _task(tmp_path, variants=False))
+    make_grasp_env_cfg(CUBE_SCENE, _task(tmp_path, variants=False))
 
 
 @needs_jenga

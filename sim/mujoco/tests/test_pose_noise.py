@@ -22,8 +22,6 @@ from tabletop_sim.scene import ConfigError, ObjectPoseNoiseConfig, load_scene_co
 from tabletop_sim.tasks.grasp import mdp
 from tabletop_sim.tasks.grasp.env_cfg import (
   CONFIGS_DIR,
-  DEFAULT_SCENE,
-  DEFAULT_TASK,
   PERCEPTION_NAME,
   make_grasp_env_cfg,
 )
@@ -33,10 +31,12 @@ from tabletop_sim.tasks.grasp.mdp.perception import (
   perturb_pose,
   quat_from_rotvec,
 )
+from task_files import CUBE_SCENE, JENGA_SCENE, task_file
 
-FRICTION_TASK = CONFIGS_DIR / "tasks" / "grasp_curriculum_size_variants_friction_wxai.json"
-CURRICULUM_TASK = CONFIGS_DIR / "tasks" / "grasp_curriculum_wxai.json"
-JENGA_SCENE = CONFIGS_DIR / "scenes" / "tabletop_jenga_wxai.json"
+STANDARD_TASK = task_file("standard")
+CURRICULUM_TASK = task_file("curriculum")
+FRICTION_TASK = task_file("friction")
+
 DEVICE = "cuda:0"
 needs_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 needs_jenga = pytest.mark.skipif(
@@ -76,7 +76,7 @@ def _task(tmp_path: Path, base: Path = CURRICULUM_TASK, **noise) -> Path:
 def _cube_scene(tmp_path: Path, yaw_deg: float = 0.0) -> Path:
   """The default cube scene, with the robot base optionally yawed (and tilted
   slightly) so world and base axes differ."""
-  data = json.loads(DEFAULT_SCENE.read_text())
+  data = json.loads(CUBE_SCENE.read_text())
   if yaw_deg:
     q = quat_from_euler_xyz(
       torch.tensor([math.radians(4.0)]), torch.tensor([0.0]), torch.tensor([math.radians(yaw_deg)])
@@ -231,8 +231,8 @@ def test_config_defaults_and_units():
   assert c.persistent_bias.rotation_std_deg == (0.1,) * 3
   for src in (c.persistent_bias, c.per_step):
     assert src.translation_clip_sigma == src.rotation_clip_sigma == 2.0
-  for task in ("grasp_standard_wxai", "grasp_curriculum_wxai", "grasp_curriculum_size_variants_wxai"):
-    t = load_task_config(CONFIGS_DIR / "tasks" / f"{task}.json")
+  for task in ("standard", "curriculum", "curriculum_size_variants"):
+    t = load_task_config(task_file(task))
     assert t.domain_randomization.object_pose_noise == c
 
   cfg = make_grasp_env_cfg(JENGA_SCENE, FRICTION_TASK)
@@ -289,7 +289,7 @@ def test_observation_wiring_and_lift_tolerance():
   assert cfg.metrics["mean_hold_score"].params["lift_threshold"] == 0.02
   assert cfg.metrics["grasped_lifted_frac"].params["lift_threshold"] == 0.02
   assert cfg.curriculum[curriculum.TERM_NAME].params["metric_name"] == "grasped_lifted_frac"
-  assert load_task_config(DEFAULT_TASK).lift_threshold == 0.01
+  assert load_task_config(STANDARD_TASK).lift_threshold == 0.01
 
 
 # --- Simulation --------------------------------------------------------------------

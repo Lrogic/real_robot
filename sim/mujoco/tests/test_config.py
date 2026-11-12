@@ -13,11 +13,13 @@ from tabletop_sim.embodiments import get_embodiment
 from tabletop_sim.scene import ConfigError, load_scene_config, load_task_config, object_spec
 from tabletop_sim.tasks.grasp import mdp
 from tabletop_sim.tasks.grasp.env_cfg import (
-  DEFAULT_SCENE,
-  DEFAULT_TASK,
   make_grasp_env_cfg,
   make_grasp_env_cfg_from_configs,
 )
+from task_files import CUBE_SCENE, task_file
+
+STANDARD_TASK = task_file("standard")
+CURRICULUM_TASK = task_file("curriculum")
 
 
 def _write(tmp_path: Path, data: dict, name: str = "cfg.json") -> Path:
@@ -28,17 +30,17 @@ def _write(tmp_path: Path, data: dict, name: str = "cfg.json") -> Path:
 
 @pytest.fixture
 def scene_dict() -> dict:
-  return json.loads(DEFAULT_SCENE.read_text())
+  return json.loads(CUBE_SCENE.read_text())
 
 
 @pytest.fixture
 def task_dict() -> dict:
-  return json.loads(DEFAULT_TASK.read_text())
+  return json.loads(STANDARD_TASK.read_text())
 
 
 def test_default_configs_load():
-  scene = load_scene_config(DEFAULT_SCENE)
-  task = load_task_config(DEFAULT_TASK)
+  scene = load_scene_config(CUBE_SCENE)
+  task = load_task_config(STANDARD_TASK)
   assert scene.manipulated.name == "cube"
   assert scene.robot.embodiment == "menagerie_wxai"
   assert [o.name for o in scene.objects] == ["table", "cube"]
@@ -161,13 +163,12 @@ def test_multiple_initial_poses(tmp_path, scene_dict):
   assert len(scene.manipulated.initial_poses) == 3
 
 
-CURRICULUM_TASK = DEFAULT_TASK.parent / "grasp_curriculum_wxai.json"
 
 
 def test_curriculum_disabled_by_default():
-  task = load_task_config(DEFAULT_TASK)
+  task = load_task_config(STANDARD_TASK)
   assert not task.curriculum.enabled
-  assert make_grasp_env_cfg(task_path=DEFAULT_TASK).curriculum == {}
+  assert make_grasp_env_cfg(CUBE_SCENE, STANDARD_TASK).curriculum == {}
 
 
 def test_curriculum_config_loads():
@@ -179,7 +180,7 @@ def test_curriculum_config_loads():
 
 
 def test_curriculum_term_registered_when_enabled():
-  cfg = make_grasp_env_cfg(task_path=CURRICULUM_TASK)
+  cfg = make_grasp_env_cfg(CUBE_SCENE, CURRICULUM_TASK)
   assert list(cfg.curriculum) == [mdp.curriculum.TERM_NAME]
   term = cfg.curriculum[mdp.curriculum.TERM_NAME]
   assert term.func is mdp.curriculum.GraspDifficultyCurriculum
@@ -228,7 +229,7 @@ def test_curriculum_invalid_metric_rejected(tmp_path, metric, match):
   path = _write(tmp_path, data)
   load_task_config(path)
   with pytest.raises(ConfigError, match=match):
-    make_grasp_env_cfg(task_path=path)
+    make_grasp_env_cfg(CUBE_SCENE, path)
 
 
 def test_domain_randomization_object_reset_radius(tmp_path, task_dict):
@@ -266,7 +267,7 @@ def test_stiffness_damping_dr_defaults(tmp_path, task_dict):
   dr = load_task_config(_write(tmp_path, task_dict)).domain_randomization
   assert dr.stiffness_damping_enabled is False
   assert dr.stiffness_scale_range == (0.8, 1.2) and dr.damping_scale_range == (0.8, 1.2)
-  assert not load_task_config(DEFAULT_TASK).domain_randomization.stiffness_damping_enabled
+  assert not load_task_config(STANDARD_TASK).domain_randomization.stiffness_damping_enabled
   assert load_task_config(CURRICULUM_TASK).domain_randomization.stiffness_damping_enabled
 
 
@@ -299,7 +300,7 @@ def test_stiffness_damping_dr_invalid_rejected(tmp_path, task_dict, override, ma
 
 
 def test_stiffness_damping_event_absent_when_disabled():
-  cfg = make_grasp_env_cfg(task_path=DEFAULT_TASK)
+  cfg = make_grasp_env_cfg(CUBE_SCENE, STANDARD_TASK)
   assert "randomize_stiffness_damping" not in cfg.events
   assert list(cfg.events) == ["reset_scene_to_default", "reset_cube_xy"]
 
@@ -375,7 +376,7 @@ def test_task_overrides(tmp_path, task_dict):
 
 
 def test_reward_terms_and_weights():
-  cfg = make_grasp_env_cfg()
+  cfg = make_grasp_env_cfg(CUBE_SCENE, STANDARD_TASK)
   assert cfg.scale_rewards_by_dt is False
   assert cfg.decimation == 25
   weights = {name: term.weight for name, term in cfg.rewards.items()}
@@ -391,7 +392,7 @@ def test_reward_terms_and_weights():
   assert set(cfg.rewards["reach"].params) == {"tcp_cfg", "object_cfg", "scale"}
   assert cfg.rewards["reach"].params["scale"] == 5.0
   assert cfg.rewards["stable_hold"].params["lift_threshold"] == 0.01
-  emb = get_embodiment(load_scene_config(DEFAULT_SCENE).robot.embodiment)
+  emb = get_embodiment(load_scene_config(CUBE_SCENE).robot.embodiment)
   arm, gripper = cfg.rewards["arm_speed"].params, cfg.rewards["gripper_speed"].params
   assert arm["asset_cfg"].joint_names == emb.arm_joint_names
   assert gripper["asset_cfg"].joint_names == emb.gripper_joint_names
@@ -405,12 +406,12 @@ def test_reward_terms_and_weights():
 def test_joint_pos_limit_weight_scales_with_normalization(tmp_path, task_dict):
   task_dict.update(w_joint_pos_limits=-4.0, reward_normalization=8.0)
   task = load_task_config(_write(tmp_path, task_dict))
-  cfg = make_grasp_env_cfg_from_configs(load_scene_config(DEFAULT_SCENE), task)
+  cfg = make_grasp_env_cfg_from_configs(load_scene_config(CUBE_SCENE), task)
   assert cfg.rewards["joint_pos_limits"].weight == pytest.approx(-0.5)
 
 
 def test_no_success_reward_counter_or_termination():
-  cfg = make_grasp_env_cfg()
+  cfg = make_grasp_env_cfg(CUBE_SCENE, STANDARD_TASK)
   assert "success" not in cfg.rewards
   assert list(cfg.terminations) == ["time_out"]
   assert cfg.terminations["time_out"].time_out
@@ -427,7 +428,7 @@ def test_no_success_reward_counter_or_termination():
 
 
 def test_mean_hold_score_reuses_stable_hold_reward():
-  cfg = make_grasp_env_cfg()
+  cfg = make_grasp_env_cfg(CUBE_SCENE, STANDARD_TASK)
   metric, reward = cfg.metrics["mean_hold_score"], cfg.rewards["stable_hold"]
   assert metric.func is mdp.rewards.stable_hold is reward.func
   assert metric.reduce == "mean" and not metric.per_substep
@@ -461,7 +462,7 @@ def test_removed_keys_rejected(tmp_path, task_dict, key):
 def test_speed_thresholds_independent(tmp_path, task_dict):
   task_dict.update(arm_speed_threshold=1.25, gripper_speed_threshold=0.02, w_gripper_speed=-0.3)
   task = load_task_config(_write(tmp_path, task_dict))
-  cfg = make_grasp_env_cfg_from_configs(load_scene_config(DEFAULT_SCENE), task)
+  cfg = make_grasp_env_cfg_from_configs(load_scene_config(CUBE_SCENE), task)
   assert cfg.rewards["arm_speed"].params["speed_threshold"] == 1.25
   assert cfg.rewards["gripper_speed"].params["speed_threshold"] == 0.02
   assert cfg.rewards["arm_speed"].weight == pytest.approx(-0.01)
@@ -482,3 +483,20 @@ def test_bad_penalty_weights_rejected(tmp_path, task_dict, key, value):
   task_dict[key] = value
   with pytest.raises(ConfigError, match="finite and nonpositive"):
     load_task_config(_write(tmp_path, task_dict))
+
+
+def test_checked_in_task_lists_every_option():
+  """configs/tasks/grasp_wxai.json is the one task file: every option is written out."""
+  from dataclasses import asdict
+
+  from task_files import MASTER_TASK
+
+  def keys(d: dict, prefix: str = "") -> set[str]:
+    out = set()
+    for k, v in d.items():
+      out |= keys(v, f"{prefix}{k}.") if isinstance(v, dict) else {prefix + k}
+    return out
+
+  written = json.loads(MASTER_TASK.read_text())
+  assert keys(written) == keys(asdict(load_task_config(MASTER_TASK)))
+  assert sorted(p.name for p in MASTER_TASK.parent.glob("*.json")) == [MASTER_TASK.name]
