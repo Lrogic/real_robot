@@ -20,6 +20,9 @@ is two linear AX = ZB solves (Shah's method, plain numpy):
 which needs at least 3 stations with 3 or more board poses each, and rotation about at least two
 different axes in both arms. All three transforms are then refined together by minimising the
 corner reprojection error over every sample (scipy least_squares, robust loss).
+
+With the camera mount X known (from the follower model), only Z and Y are solved: one station
+with 3+ board poses gives the start point, and the refinement keeps X fixed.
 """
 
 from dataclasses import dataclass, field
@@ -97,6 +100,26 @@ def initial_guess(obs: list, min_per_station: int = 3):
     return X, inv_T(Zinv), mean_T(Ys), report
 
 
+def initial_guess_fixed_mount(obs: list, X, min_per_station: int = 3):
+    """Start point (Z, Y) when the camera mount X is known: per-station camera pose, then Z = W F^-1 X^-1."""
+    stations = {}
+    for o in obs:
+        stations.setdefault(o.station, []).append(o)
+    Zs, Ys, report = [], [], {}
+    for k, group in sorted(stations.items()):
+        if len(group) < min_per_station:
+            report[k] = {"samples": len(group), "used": False, "reason": f"fewer than {min_per_station} samples"}
+            continue
+        Y_k, W_k = solve_axzb([o.E for o in group], [o.C for o in group])
+        rot, trans = axzb_residual([o.E for o in group], [o.C for o in group], Y_k, W_k)
+        report[k] = {"samples": len(group), "used": True, "eye_to_hand_rot_deg": rot, "eye_to_hand_trans_mm": trans}
+        Zs.append(W_k @ inv_T(mean_T([o.F for o in group]) @ X))
+        Ys.append(Y_k)
+    if not Zs:
+        raise ValueError(f"need at least one follower pose with {min_per_station}+ board poses")
+    return mean_T(Zs), mean_T(Ys), report
+
+
 def _pack(X, Z, Y):
     return np.concatenate([np.r_[cv2.Rodrigues(T[:3, :3])[0].ravel(), T[:3, 3]] for T in (X, Z, Y)])
 
@@ -116,14 +139,21 @@ def reprojection(o: Obs, X, Z, Y, board_pts) -> np.ndarray:
     return proj.reshape(-1, 2) - o.corners_px
 
 
-def refine(obs: list, X, Z, Y, board_pts, loss: str = "soft_l1", f_scale_px: float = 1.0):
+def refine(obs: list, X, Z, Y, board_pts, loss: str = "soft_l1", f_scale_px: float = 1.0, fix_X: bool = False):
+    """Least-squares on corner reprojection. fix_X keeps the camera mount X and fits only Z and Y."""
+    head = _pack(X, Z, Y)[:6]
+
+    def full(v):
+        return np.r_[head, v] if fix_X else v
+
     def res(v):
-        Xv, Zv, Yv = _unpack(v)
+        Xv, Zv, Yv = _unpack(full(v))
         return np.concatenate([reprojection(o, Xv, Zv, Yv, board_pts).ravel() for o in obs])
-    sol = least_squares(res, _pack(X, Z, Y), loss=loss, f_scale=f_scale_px, x_scale="jac")
-    X, Z, Y = _unpack(sol.x)
+    v0 = _pack(X, Z, Y)[6:] if fix_X else _pack(X, Z, Y)
+    sol = least_squares(res, v0, loss=loss, f_scale=f_scale_px, x_scale="jac")
+    X, Z, Y = _unpack(full(sol.x))
     return X, Z, Y, {"success": bool(sol.success), "message": str(sol.message), "nfev": int(sol.nfev),
-                     "cost": float(sol.cost)}
+                     "cost": float(sol.cost), "fixed_mount": fix_X}
 
 
 def sample_errors(o: Obs, X, Z, Y, board_pts) -> dict:

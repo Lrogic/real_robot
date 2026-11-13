@@ -9,7 +9,8 @@ import cv2
 import numpy as np
 
 from calibration.board import BoardConfig, board_corners_m, load_config, make_board
-from calibration.dual_solver import Obs, initial_guess, refine, sample_errors, solve_axzb, summarize
+from calibration.dual_solver import (Obs, initial_guess, initial_guess_fixed_mount, refine, sample_errors,
+                                     solve_axzb, summarize)
 from calibration.transforms import inv_T, make_T, rotation_between_deg
 
 K = np.array([[655.0, 0, 640.0], [0, 655.0, 360.0], [0, 0, 1]])
@@ -80,6 +81,16 @@ class TestDualSolver(unittest.TestCase):
             self.assertLess(t, 1.0)
         s = summarize([sample_errors(o, Xr, Zr, Yr, pts) for o in obs])
         self.assertLess(s["reproj_rms_px"], 0.4)
+
+    def test_fixed_mount_recovers_base_and_board(self):
+        obs, X, Z, Y, pts = scene(np.random.default_rng(4), stations=1, per_station=6)
+        Z0, Y0, report = initial_guess_fixed_mount(obs, X)                # one station is enough with X known
+        _, Zr, Yr, info = refine(obs, X, Z0, Y0, pts, fix_X=True)
+        self.assertTrue(info["fixed_mount"])
+        for est, true in ((Zr, Z), (Yr, Y)):
+            r, t = pose_error(est, true)
+            self.assertLess(r, 1e-4)
+            self.assertLess(t, 1e-3)
 
     def test_too_few_stations(self):
         obs, *_ = scene(np.random.default_rng(3), stations=2)
