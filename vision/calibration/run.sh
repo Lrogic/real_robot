@@ -7,10 +7,13 @@
 #   ./run.sh review    --session data/sessions/NAME [--list | --redetect [--write]]
 #   ./run.sh calibrate --session data/sessions/NAME [--method auto] [--exclude 3,7]
 #   ./run.sh generate  [--out data/board.png]               # only for a new print
+#   ./run.sh collect-dual --grav-comp normal|board-adjusted [--session NAME]  # camera arm moves too
+#   ./run.sh calibrate-dual --session data/sessions/NAME_dual [--exclude 3,7]  # -> T_follower_camera.json
 #
-# verify/record-follower/collect need trossen_arm + pyrealsense2 (fp_robot env).
+# verify/record-follower/collect/collect-dual need trossen_arm + pyrealsense2 (fp_robot env).
 # review/calibrate/generate run offline in the sam3 env, whose OpenCV 4.x still has calibrateHandEye and
-# calibrateRobotWorldHandEye (OpenCV 5.0 in fp_robot does not).
+# calibrateRobotWorldHandEye (OpenCV 5.0 in fp_robot does not). calibrate-dual needs scipy instead
+# (fp_robot; sam3 has none).
 # Override with HW_ENV=... / OFFLINE_ENV=...
 set -euo pipefail
 
@@ -19,7 +22,7 @@ HW_ENV="${HW_ENV:-fp_robot}"
 OFFLINE_ENV="${OFFLINE_ENV:-sam3}"
 
 usage() {
-    sed -n '2,14p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,17p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 2
 }
 
@@ -33,6 +36,8 @@ case "${cmd}" in
     review)    env="${OFFLINE_ENV}"; module=review ;;
     calibrate) env="${OFFLINE_ENV}"; module=calibrate ;;
     generate)  env="${OFFLINE_ENV}"; module=generate_board ;;
+    collect-dual)    env="${HW_ENV}"; module=collect_dual ;;
+    calibrate-dual)  env="${HW_ENV}"; module=calibrate_dual ;;
     *) usage ;;
 esac
 

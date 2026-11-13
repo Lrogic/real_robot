@@ -135,6 +135,27 @@ class GravityCompManipulator:
         self.driver.set_end_effector(self._original_ee)
         self._original_ee = None
 
+    def hold_position(self, goal_time_s: float = 0.3, mode: str = "position") -> None:
+        """Hold the arm joints where they are (the gripper is left as it is).
+
+        position: position mode at the current reading. idle: the controller's brake mode (a velocity
+        loop with no position target); check_follower_play found it hides less of the gear play, but
+        it starts with no holding torque, so a loaded arm switched into it from gravity compensation
+        drops until the brake builds up. Use idle only for a lightly loaded arm.
+        """
+        if mode == "idle":
+            self.driver.set_arm_modes(trossen_arm.Mode.idle)
+            return
+        q = list(self.driver.get_arm_positions())
+        self.driver.set_arm_modes(trossen_arm.Mode.position)
+        self.driver.set_arm_positions(q, goal_time_s, True)
+
+    def release_arm(self) -> None:
+        """Arm joints back to gravity compensation (the gripper is left as it is)."""
+        n_arm = self.driver.get_num_joints() - 1
+        self.driver.set_arm_modes(trossen_arm.Mode.external_effort)
+        self.driver.set_arm_external_efforts([0.0] * n_arm, 0.0, False)
+
     def enable_gravity_compensation(self, gripper_effort: float = 0.0) -> None:
         """Arm joints in external_effort mode with zero effort; gripper held with gripper_effort (N)."""
         n_arm = self.driver.get_num_joints() - 1
@@ -167,6 +188,90 @@ class GravityCompManipulator:
         motion = joint_motion(states)
         still = motion["max_joint_drift_rad_s"] < vel_thresh and motion["max_joint_range_rad"] < range_thresh
         return still, states, {**motion, "window_s": window_s, "num_states": len(states)}
+
+
+class FollowerArm:
+    """The camera arm, either locked (position mode at its current joints) or free (gravity compensation).
+
+    Connecting locks it where it is. The gripper joint is never commanded (no gripper is fitted).
+    """
+
+    def __init__(self, follower_cfg: dict, hold_mode: str = "position"):
+        if hold_mode not in ("position", "idle"):
+            raise ValueError(f"hold_mode must be position or idle, not {hold_mode!r}")
+        self.cfg = follower_cfg
+        self.hold_mode = hold_mode
+        self.driver = None
+        self.locked = False
+        self.info = {}
+
+    def __enter__(self) -> "FollowerArm":
+        c = self.cfg
+        self.driver = trossen_arm.TrossenArmDriver()
+        self.driver.configure(getattr(trossen_arm.Model, c["model"]),
+                              getattr(trossen_arm.StandardEndEffector, c["end_effector"]), c["ip"], False)
+        try:
+            self.n_arm = self.driver.get_num_joints() - 1
+            self.lock()
+        except Exception:
+            self.driver.cleanup()
+            self.driver = None
+            raise
+        ee = self.driver.get_end_effector()
+        self.info = {"ip": c["ip"], "model": c["model"], "end_effector": c["end_effector"],
+                     "num_arm_joints": self.n_arm,
+                     "t_flange_tool_m_rotvec_rad": [float(v) for v in ee.t_flange_tool],
+                     "driver_version": self.driver.get_driver_version(),
+                     "controller_version": self.driver.get_controller_version(),
+                     "hold_mode": self.hold_mode,
+                     "mode_at_image": f"{self.hold_mode} mode holding its joints (locked)",
+                     "T_fbase_fee_source": "driver get_robot_output().cartesian.positions (FK of measured joints, "
+                                           "for this end_effector configuration)"}
+        print(f"Follower {c['ip']}: locked in {self.hold_mode} mode where it is.")
+        return self
+
+    def lock(self, goal_time_s: float = 0.5) -> None:
+        if self.hold_mode == "idle":
+            self.driver.set_arm_modes(trossen_arm.Mode.idle)
+        else:
+            q = list(self.driver.get_arm_positions())
+            self.driver.set_arm_modes(trossen_arm.Mode.position)
+            self.driver.set_arm_positions(q, goal_time_s, True)
+        self.locked = True
+
+    def free(self) -> None:
+        self.driver.set_arm_modes(trossen_arm.Mode.external_effort)
+        self.driver.set_arm_external_efforts([0.0] * self.n_arm, 0.0, False)
+        self.locked = False
+
+    def read_state(self) -> RobotState:
+        return RobotState.from_output(self.driver.get_robot_output())
+
+    def __exit__(self, *_exc) -> None:
+        if self.driver is None:
+            return
+        try:
+            input("\nThe follower (camera arm) will go idle. SUPPORT IT, then press Enter... ")
+        except (EOFError, KeyboardInterrupt):
+            pass
+        self.driver.cleanup()
+        self.driver = None
+
+
+def wait_still_all(arms: dict, window_s: float, vel_thresh: float, range_thresh: float, rate_hz: float = 100.0):
+    """Sample several arms together for window_s. Returns (all still, {name: states}, {name: stats})."""
+    states = {name: [] for name in arms}
+    end = time.time() + window_s
+    while time.time() < end:
+        for name, arm in arms.items():
+            states[name].append(arm.read_state())
+        time.sleep(1.0 / rate_hz)
+    stats, still = {}, True
+    for name, s in states.items():
+        m = joint_motion(s)
+        stats[name] = {**m, "window_s": window_s, "num_states": len(s)}
+        still &= m["max_joint_drift_rad_s"] < vel_thresh and m["max_joint_range_rad"] < range_thresh
+    return still, states, stats
 
 
 def joint_motion(states) -> dict:
