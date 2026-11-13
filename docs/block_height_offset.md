@@ -5,13 +5,21 @@ the table. In simulation a standing block's centre is at 37.5 mm (the block is 7
 the table is at height 0). This note explains where the 13 to 14 mm difference comes from,
 what it does to the policy, and what can be done about it.
 
+**Update 2026-11-13: the depth part is fixed.** A RealSense tare calibration, written to the
+camera's flash, cut the depth error at the block's distance from -15.8 mm to -0.9 mm. See
+[7. The tare calibration](#7-the-tare-calibration-2026-11-13). Runs tracked before that date
+place the block about 6.5 mm higher and 14 mm further from the robot than runs after it. On a
+tracked block the camera now agrees with a fingertip touch on the block top to 0.7 mm, and the
+standing block's centre reads 44.7 mm ([8. After the tare](#8-the-tracked-block-after-the-tare-foundationpose_runstare_check)).
+The arm's part (about 5.5 to 7 mm at the block's reach) is unchanged.
+
 ## Short version
 
 The 13 to 14 mm is two unrelated errors that happen to add up.
 
 | Source | Size at the usual block position | Does it hurt the grasp? |
 |---|---|---|
-| The D405 depth sensor reads short, which lifts everything the camera sees | 6.5 to 8 mm in height (and about 14 mm further from the robot) | Yes. The gripper ends up that much too high on the block, and reaches too far. |
+| The D405 depth sensor reads short, which lifts everything the camera sees | 6.5 to 8 mm in height (and about 14 mm further from the robot). **Since the 2026-11-13 tare: about 0.4 mm.** | Yes. The gripper ends up that much too high on the block, and reaches too far. |
 | The arm reports its fingertip higher than it is, by an amount that grows with reach, so in the arm's own coordinates the table there is at 5.5 mm, not 0 | 5.5 mm | Mostly no. It applies equally to the block and to the gripper. |
 
 FoundationPose, lens distortion and the hand-eye calibration were each checked and are not
@@ -145,10 +153,13 @@ More table touches, spread over 80 degrees of direction around the robot:
   minus 9 to 12.6 mm. That is about 4 mm of extra height for every 10 cm of reach.
 - **Extrapolated to the base, the table is 9 to 13 mm below the base frame.** That is the
   sign expected from the mounting plate the base sits on. Nobody touched the table there, and
-  the plate has not been measured.
+  the plate has not been measured. **Section 8 has touches at 13 to 14 cm from the base,
+  which read only -2 mm, so this extrapolation overstates the error near the base.**
 - **If the table really is flat and 9 to 13 mm below the base frame,** the arm's reported
   fingertip height is about 15 to 18 mm too high at the block position. The 5.5 mm reading is
-  where the plate (negative) and the reach effect (positive) net out.
+  where the plate (negative) and the reach effect (positive) net out. With the section 8
+  touches the same reasoning gives about 6 mm for the plate and about 13 mm too high at the
+  block, still assuming a straight line in reach.
 
 The cause on the arm side is not known. Candidates:
 
@@ -169,9 +180,81 @@ the camera, so it can only absorb the arm's error as a flat tilt plus a shift. T
 grows with reach in every direction, which is a cone, not a tilt. The two agree near the block
 (the evidence above) and may drift apart elsewhere on the table.
 
+### 7. The tare calibration (2026-11-13)
+
+Run with `python -m calibration.tare` (from `vision/`, env `vision`). The board was at 0.417 m,
+tilted 9 deg, centred. Ground truth along the depth axis was 417.3 mm. The colour and depth
+origins agree to 0.2 mm on the D405, so the colour image's board pose gives the depth camera's
+distance directly. The firmware-mode tare ran without host assistance. Its own health check
+went from -3.58% before to -0.04% after. The new table differs from the old one in one float of
+the left camera's rectification rotation (plus the checksum). It was written to flash and the
+camera was rebooted. Then `check_depth` gave:
+
+| Board distance | Before tare | After tare | Shift in base z after |
+|---|---|---|---|
+| 0.25 m | -4.6 mm | +0.4 mm | -0.3 mm |
+| 0.42 m (block distance, tare pose) | -15.8 mm | -0.9 mm | +0.4 mm |
+| 0.52 m | -19.9 mm | -3.8 mm | +1.3 mm |
+
+- A little of the distance-dependent error remains beyond the tare distance (-3.8 mm along the
+  view at 0.52 m, 1.3 mm of height). A tare at about 0.5 m would move the zero there. It is not
+  needed while objects stay near 0.42 m from the camera.
+- **The D405 (firmware 5.17) ignores a calibration table set in RAM.** After
+  `set_calibration_table`, depth was unchanged to 0.1 mm whether the table was set before a
+  stream started or while one ran. It only took effect after `write_calibration` and a reboot
+  (`hardware_reset` or replugging). So a tare result cannot be checked before it is written.
+  `calibration.tare` writes, reboots, checks, and then offers to write the saved table back.
+- The old table is in `vision/calibration/data/tare/20261113_105800/calibration_before.bin`
+  (git-ignored). Restore it with
+  `python -m calibration.tare --restore calibration/data/tare/20261113_105800/calibration_before.bin`.
+- The hand-eye calibration is unaffected. The board's colour-image pose and reprojection error
+  were the same before and after.
+
+### 8. The tracked block after the tare (`foundationpose_runs/tare_check`)
+
+Run on 2026-11-13 after the tare, with the camera arm parked by `--reset`. The policy ran in
+shadow mode with logging, the arm was in gravity compensation, and the touches were
+hand-guided. The block stood upright (long axis within 1 deg of vertical) at about
+(0.420, 0.007) m.
+
+| | Before tare (section 2) | After tare |
+|---|---|---|
+| Tracked centre z, block still | 51.2 mm | 44.7 mm (std 0.6 mm over 177 ticks; 44.9 after the touches) |
+| Tracked top (centre + 37.5) | 88.7 mm | 82.2 mm |
+| Fingertip touch on the top | 82.2 mm | 81.5 mm (at x 0.420, y 0.005) |
+| Camera minus arm at the top | +6.5 mm | +0.7 mm |
+
+So the camera and the arm now agree at the block, and the grasp is no longer shifted by the
+depth sensor. The block's x cannot be compared with older runs (it was placed by hand), so the
+expected 14 mm move toward the robot was not checked.
+
+Table touches in the same run:
+
+| Where | Reach | Direction from straight ahead | TCP height |
+|---|---|---|---|
+| In front of the base | 0.138 m | -8 deg | -1.7 mm |
+| 90 deg clockwise | 0.130 m | -76 deg | -2.6 mm |
+| Beside the block (1) | 0.460 m | -20 deg | +8.2 mm |
+| Beside the block (2) | 0.485 m | -21 deg | +9.1 mm |
+
+- **Reach, not direction, again.** The two touches near the base are 68 deg apart and differ
+  by 0.9 mm.
+- **A straight line through these four touches:** height = 32 mm per metre of reach, minus
+  6.4 mm. It is shallower than the section 6 fits (36 to 46 mm/m, minus 9 to 12.6 mm), which
+  had no touches closer than 0.3 m. Two clusters of reach cannot show whether the true curve
+  is a line.
+- **The arm checks itself.** The line puts the table at 7.0 mm at the block's reach (0.420 m).
+  The top touch at 81.5 mm then gives a block height of 74.5 mm, against the real 75 mm.
+- **What remains of the original 13.5 mm** is the arm's frame: the block's centre reads
+  44.7 mm against 37.5 mm in sim, because the table at that reach reads about 7 mm. It moves
+  the gripper and the block together.
+
 ## What to do about it
 
 ### The depth sensor (this is the part that hurts the grasp)
+
+Done on 2026-11-13 with option 1 (section 7) and checked on a tracked block (step 3,
+section 8). The steps are kept for a camera swap or recalibration.
 
 1. **RealSense tare calibration.** This is the sensor's own routine for absolute distance
    error: give it the true distance to a flat target and it corrects the stereo calibration
@@ -179,19 +262,19 @@ grows with reach in every direction, which is a cone, not a tilt. The two agree 
    absolute accuracy.
    - Do not move the camera or the follower arm; the hand-eye calibration is only valid at
      the parked pose.
-   - Prop the ChArUco board face-on and centred, 0.30 to 0.40 m away. Run
-     `python -m calibration.check_depth` and take the "board plane on the optical axis" value
-     as the ground truth in millimetres.
-   - Run Tare Calibration in the RealSense Viewer (not installed on the lab machine;
-     `librealsense2-utils`) or through `pyrealsense2`'s `run_tare_calibration`, and write the
-     result to the camera. The same menu can restore the factory calibration.
-   - Rerun `check_depth` at 0.25, 0.42 and 0.52 m. Within 1 to 2 mm at all three means it
-     worked.
-   - Not yet tried on this camera. It assumes the D405's colour and depth images share an
-     origin; if the result is off by a few millimetres at every distance, suspect that.
+   - Prop the ChArUco board centred and roughly face-on (a tilt under about 20 deg is fine) at
+     the objects' distance from the camera, about 0.42 m. One pose is enough.
+   - Run `python -m calibration.tare` from `vision/` (env `vision`). It saves the current
+     table, measures the ground truth with the `check_depth` code, runs the tare, writes the
+     result and reboots the camera, checks the depth again wherever the board is put, and
+     writes the old table back unless told to keep the new one.
+   - Within 1 to 2 mm at 0.25, 0.42 and 0.52 m means it worked. If it is off by a similar few
+     millimetres at every distance, suspect the colour/depth origin assumption (0.2 mm on this
+     camera).
 2. **Or correct the depth in software.** Apply `depth / (1 - 0.076 * depth)` in
    `vision/pipeline/camera.py` before the depth reaches FoundationPose. At the block's
-   distance this leaves about 2 mm along the view, about 1 mm in height. Not implemented.
+   distance this leaves about 2 mm along the view, about 1 mm in height. Not implemented, and
+   not needed after the tare. Do not apply it on top of the tare.
 3. **Check afterwards.** With the block at its usual position the tracked centre should drop
    from about 51 mm to about 43 to 44 mm, and it should sit about 14 mm closer to the robot.
 4. **The hand-eye calibration does not need redoing.** It never used depth.
@@ -201,14 +284,16 @@ grows with reach in every direction, which is a cone, not a tilt. The two agree 
 This part does not shift the grasp, but it matters for anything tied to absolute height.
 
 - **Workspace floor.** `workspace_min` z in `manipulation/policy/jenga/config.yaml` is 5 mm.
-  In the arm's coordinates the real table is at about 5.5 mm at the block position, so that
-  floor is at the table surface there and above it closer in.
+  In the arm's coordinates the real table is at about 5.5 to 7 mm at the block position, so
+  that floor is about at the table surface there. Near the base the table reads about -2 mm,
+  so the floor is about 7 mm above the table there.
 - **Reading logs.** A logged TCP height is not a clearance. Subtract the table reading at
-  that reach: roughly 0.04 x reach(m) x 1000 - 11 mm.
+  that reach: roughly 0.032 x reach(m) x 1000 - 6.4 mm (section 8; the section 6 sessions gave
+  0.036 to 0.046 and -9 to -12.6, with no touches inside 0.3 m).
 - **The policy sees absolute heights.** Its observations include the gripper and block
   heights in the base frame. In sim the table is always at 0 and a standing block's centre at
-  37.5 mm; on the real arm the same block is at 43 mm even with perfect depth. Whether the
-  policy relies on absolute height near the table has not been tested.
+  37.5 mm; on the real arm, after the tare, the same block reads 44.7 mm (section 8). Whether
+  the policy relies on absolute height near the table has not been tested.
 
 Options, none done:
 
@@ -227,5 +312,6 @@ Options, none done:
 | Tool | Purpose |
 |---|---|
 | `vision/calibration/check_depth.py` | Depth image against the board's colour-image distance |
+| `vision/calibration/tare.py` | Tare calibration of the D405 against the board, with backup and restore |
 | `vision/pipeline/view_camera.py` | Plain live camera feed; `--depth` shows the depth at the image centre |
 | `./run.sh --track ... --manipulation policy --policy-control shadow --manipulation-logging` | Logs TCP and tracked block together for hand-guided touches |

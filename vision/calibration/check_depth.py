@@ -17,6 +17,9 @@ Why this exists
     0.31 m, 15.6 mm at 0.42 m and 19.9 mm at 0.52 m, growing roughly with distance squared,
     which is what a drifted stereo calibration gives.
 
+    After the tare calibration of 2026-11-13 (calibration/tare.py, written to the camera's
+    flash): +0.4 mm at 0.25 m, -0.9 mm at 0.42 m and -3.8 mm at 0.52 m.
+
 What it does
     Uses the tracking pipeline's stream (640x480, depth aligned to colour, undistorted). For
     every frame with a board pose, each pixel inside the detected corners gets two depths:
@@ -33,8 +36,8 @@ How to use it
     whole pattern in view. Run it at the object's distance and at one nearer and one farther
     distance: a constant percentage needs a scale, a constant offset an offset, and growth
     with distance squared a disparity correction (corrected = depth / (1 - c * depth)) or a
-    RealSense tare calibration. The "board plane on the optical axis" line is the ground
-    truth to give a tare calibration with the board left where it is.
+    RealSense tare calibration (calibration/tare.py, which uses measure() below for its ground
+    truth and its checks). The "board plane on the optical axis" line is that ground truth.
 
 Reading the output
     negative  the depth image puts the board closer to the camera than the colour image does
@@ -72,25 +75,26 @@ def compare(depth, corners, T_camera_board, K):
     return np.stack([u, v], axis=1), depth[v, u].astype(np.float64), plane_z, rays
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--frames", type=int, default=30, help="frames with a board pose to average")
-    parser.add_argument("--calibration", default=str(DEFAULT_CALIBRATION))
-    parser.add_argument("--save", default=None, help="write the per-frame numbers to this JSON")
-    args = parser.parse_args()
+def load_T_base_camera(path):
+    if path and Path(path).exists():
+        return np.array(json.loads(Path(path).read_text())["T_base_camera"])
+    return None
 
+
+def measure(frames: int = 30, T_base_camera=None):
+    """Open the camera, compare depth with the board plane on `frames` frames. Returns (rows, tried, K).
+
+    Each row also carries the board plane in the colour camera frame (unit normal n and offset d,
+    points p with n . p = d, metres), so callers can re-express it in another camera frame.
+    """
     quiet_opencv()
     cfg = BoardConfig.from_dict(load_config()["board"])
     board = make_board(cfg)
     detector = make_detector(board)
-    T_base_camera = None
-    if args.calibration and Path(args.calibration).exists():
-        T_base_camera = np.array(json.loads(Path(args.calibration).read_text())["T_base_camera"])
-
     rows, tried = [], 0
     with RealSenseStream(CameraSettings(undistort=True)) as stream:
         K, no_dist = stream.K, np.zeros(5)
-        while len(rows) < args.frames and tried < args.frames * 10:
+        while len(rows) < frames and tried < frames * 10:
             tried += 1
             rgb, depth, _ = stream.read()
             gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
@@ -116,16 +120,21 @@ def main() -> None:
                    "board_distance_m": float(np.linalg.norm(centre)),
                    "tilt_deg": float(np.degrees(np.arccos(abs(T[:3, 2] @ centre) / np.linalg.norm(centre)))),
                    "z_diff_mm": float(np.median(diff) * 1e3), "z_diff_spread_mm": float(np.std(diff) * 1e3),
-                   "z_diff_percent": float(np.median(diff / z_plane) * 100)}
+                   "z_diff_percent": float(np.median(diff / z_plane) * 100),
+                   "plane_normal": T[:3, 2].tolist(), "plane_d_m": float(T[:3, 2] @ T[:3, 3])}
             if T_base_camera is not None:
                 shift = (rays * diff[:, None]).mean(axis=0)       # camera-frame move of the points
                 row["shift_base_mm"] = (T_base_camera[:3, :3] @ shift * 1e3).tolist()
                 row["board_centre_base_m"] = (T_base_camera @ np.append(centre, 1.0))[:3].tolist()
             rows.append(row)
+    return rows, tried, K
 
+
+def report(rows, tried, T_base_camera=None) -> bool:
+    """Print the summary of measure(). False if there was no usable frame."""
     if not rows:
         print(f"No usable board pose in {tried} frames (need {MIN_CORNERS} corners and rms under {MAX_RMS_PX} px).")
-        return
+        return False
     med = lambda key: float(np.median([r[key] for r in rows]))
     print(f"{len(rows)} frames of {tried}; {med('corners'):.0f} corners, reprojection rms {med('rms_px'):.2f} px, "
           f"{med('pixels'):.0f} pixels compared")
@@ -143,6 +152,20 @@ def main() -> None:
         print(f"Board centre in the base frame (colour): {np.round(centre, 3).tolist()} m")
         print(f"The depth image moves those points by x {shift[0]:+.1f}, y {shift[1]:+.1f}, z {shift[2]:+.1f} mm "
               "in the base frame")
+    return True
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--frames", type=int, default=30, help="frames with a board pose to average")
+    parser.add_argument("--calibration", default=str(DEFAULT_CALIBRATION))
+    parser.add_argument("--save", default=None, help="write the per-frame numbers to this JSON")
+    args = parser.parse_args()
+
+    T_base_camera = load_T_base_camera(args.calibration)
+    rows, tried, K = measure(args.frames, T_base_camera)
+    if not report(rows, tried, T_base_camera):
+        return
     if args.save:
         Path(args.save).write_text(json.dumps({"kind": "depth_vs_board", "K": K.tolist(), "frames": rows}, indent=2))
         print(f"Saved {args.save}")
