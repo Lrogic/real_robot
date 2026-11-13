@@ -9,8 +9,8 @@ the arm's own height error; this note refers to it.
 
 | Setup | Error at objects ~0.4 m from the camera | Status |
 |---|---|---|
-| Follower parked (`--reset`), October eye-to-hand calibration | about 1 mm (0.7 mm at the block top) | In use |
-| Follower moved anywhere, joint-based two-arm calibration | about 6 mm rms, up to 11 mm, at poses the fit has not seen; 10 mm at the parked pose | Calibrated, not wired into the pipeline |
+| Follower parked (`run.sh --camera parked`), October eye-to-hand calibration | about 1 mm (0.7 mm at the block top) | In use |
+| Follower moved anywhere, joint-based two-arm calibration | about 6 mm rms, up to 11 mm, at poses the fit has not seen; 10 mm at the parked pose | `run.sh --camera move`: guided by hand and locked once per run |
 | Follower moved anywhere, camera located from a marker in the scene | about 1 mm (estimate) | Not built |
 
 The moving calibration is limited by gear play in the follower's joints: the camera can sit

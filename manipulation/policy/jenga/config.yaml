@@ -40,12 +40,9 @@ embodiment:
   ready_joint_pos: [0.0, 1.38, 1.04, -1.26, 0.0, 0.0]
   ready_gripper: 0.026
 
-calibration:
-  # T_base_camera.json; null = newest calibration session that has one.
-  T_base_camera: null
-
 robot:
-  # null = the calibration session's robot, then vision/calibration/config.yaml.
+  # null = the parked calibration session's robot, then vision/calibration/config.yaml.
+  # The camera pose comes from the vision pipeline's --camera (vision/pipeline/camera_arm.yaml).
   ip: null
   model: null
   end_effector: null

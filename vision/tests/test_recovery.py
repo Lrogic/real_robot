@@ -29,7 +29,7 @@ H, W = 48, 64
 
 def parse(*argv):
     with contextlib.redirect_stdout(io.StringIO()):
-        return parse_pipeline_args(pipeline_parser("test"), ["--save-path", "/tmp/x", *argv])
+        return parse_pipeline_args(pipeline_parser("test"), ["--save-path", "/tmp/x", "--camera", "parked", *argv])
 
 
 def parse_error(*argv) -> str:
@@ -116,10 +116,30 @@ class CliTest(unittest.TestCase):
     def test_shared_forwarded_arguments(self):
         # run.sh forwards one flat list (setup, tracking, manipulation flags) to every stage.
         args = parse("--recovery", "--meshes-dir", "/tmp", "--num-seconds", "10", "--save-video",
-                     "--fp-mode", "batched", "--reset", "--manipulation", "basic", "--manipulation-dry-run")
-        self.assertTrue(args.recovery and args.reset)
+                     "--fp-mode", "batched", "--camera", "move", "--manipulation", "basic", "--manipulation-dry-run")
+        self.assertTrue(args.recovery)
+        self.assertEqual(args.camera, "move")
         self.assertEqual(args.manipulation, "basic")
         self.assertEqual(args.fp_mode, "batched")
+
+    def test_camera_is_required_and_reset_is_gone(self):
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), self.assertRaises(SystemExit):
+            parse_pipeline_args(pipeline_parser("test"), ["--save-path", "/tmp/x"])
+        self.assertIn("--camera", err.getvalue())
+        self.assertIn("unrecognized arguments: --reset", parse_error("--reset"))
+        self.assertIn("invalid choice", parse_error("--camera", "free"))
+
+    def test_bundled_camera_arm_config_points_at_calibrations(self):
+        from pipeline.robot_arm.camera_arm import CameraArmConfig, move_calibration, parked_calibration
+
+        cfg = CameraArmConfig.load(None)
+        T, joints = parked_calibration(cfg.parked_calibration)
+        Z, X, _ = move_calibration(cfg.move_calibration)
+        for M in (T, Z, X):
+            self.assertEqual(M.shape, (4, 4))
+            np.testing.assert_allclose(M[:3, :3] @ M[:3, :3].T, np.eye(3), atol=1e-6)
+        self.assertEqual(len(joints), 6)
 
     def test_bundled_config_loads(self):
         cfg = load_recovery_config(None)

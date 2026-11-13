@@ -8,6 +8,7 @@ import argparse
 from pathlib import Path
 
 from .camera import CameraSettings
+from .robot_arm.camera_arm import CAMERA_MODES, DEFAULT_CAMERA_ARM_CONFIG
 from .recovery.recovery_config import DEFAULT_RECOVERY_CONFIG, load_recovery_config
 from .segmentation.sam_model_specs import SAM_MODEL_NAMES
 
@@ -86,16 +87,17 @@ def pipeline_parser(description: str) -> argparse.ArgumentParser:
     recovery.add_argument("--sam-hf-cache", type=Path, default=None,
                           help="Offline HF cache holding the SAM weights (default: from the recovery config)")
 
-    camera_arm = parser.add_argument_group("camera arm (setup_stage.py --reset before capture)")
-    camera_arm.add_argument("--reset", action="store_true",
-                            help="Move the follower arm to the calibration session's recorded joints "
-                                 "before the setup RGB-D frame (fails if unreachable)")
-    camera_arm.add_argument("--calibration", type=Path, default=None,
-                            help="T_base_camera.json (default: newest calibration session that has one)")
+    camera_arm = parser.add_argument_group(
+        "camera arm (pipeline/robot_arm/camera_arm.py; runs before anything else and holds the follower)")
+    camera_arm.add_argument("--camera", choices=CAMERA_MODES, required=True,
+                            help="parked: move the follower to the parked calibration's joints and hold them; "
+                                 "move: guide the follower in gravity compensation, lock it with Enter/space, "
+                                 "and place the camera with the two-arm calibration")
+    camera_arm.add_argument("--camera-config", type=Path, default=None,
+                            help=f"Calibration files and timings (default: {DEFAULT_CAMERA_ARM_CONFIG})")
     camera_arm.add_argument("--calibration-config", type=Path, default=None,
-                            help="Calibration config for follower ip/model (--reset)")
-    camera_arm.add_argument("--follower-reset-move-time", type=float, default=2.0, metavar="SEC",
-                            help="Follower position move duration when using --reset (default: 2)")
+                            help="Calibration config for the follower ip/model and the manipulator fallback "
+                                 "(default: calibration/config.yaml)")
 
     manip = parser.add_argument_group("manipulation (track_stage.py --manipulation MODE)")
     manip.add_argument("--manipulation", choices=MANIPULATION_MODES, default=None,
@@ -150,8 +152,6 @@ def parse_pipeline_args(parser: argparse.ArgumentParser, argv=None) -> argparse.
         parser.error("--policy-control requires --manipulation policy")
     if args.manipulation == "policy" and not args.recovery:
         parser.error("--manipulation policy requires --recovery: pose trust comes from the SAM verdicts")
-    if args.follower_reset_move_time <= 0:
-        parser.error("--follower-reset-move-time must be > 0")
     if args.recovery_cfg is not None:
         if args.recovery_cfg.sam_fps > args.fps:
             parser.error(f"SAM fps {args.recovery_cfg.sam_fps} cannot exceed camera fps {args.fps}")

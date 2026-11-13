@@ -21,7 +21,7 @@ wrist orientation, so the flange position is saved as well.
 
 MOVING THE FOLLOWER MOVES THE CAMERA. Afterwards, re-park it before tracking
 (python -m calibration.reset_follower calibration/data/sessions/20261009_combined from vision/,
-or run.sh --setup-track ... --reset), or T_base_camera no longer holds.
+or run.sh --setup-track ... --camera parked), or T_base_camera no longer holds.
 
 --camera opens a live window of the D405 colour image (stop the tracking pipeline first) with
 the tool position overlaid and any ChArUco corners marked, and saves the frame with each

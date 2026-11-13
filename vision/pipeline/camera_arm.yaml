@@ -1,0 +1,21 @@
+# Camera (follower) arm for run.sh --camera parked | move (pipeline/robot_arm/camera_arm.py).
+# Relative paths resolve against this file. Each calibration entry points at the file the
+# calibration wrote; the transforms and joints are read from there, never copied here.
+
+parked:
+  # Eye-to-hand calibration of the parked follower (calibration/run.sh calibrate). The camera
+  # pose is its T_base_camera; the parked joints are the follower joints recorded in the same
+  # session's session.json.
+  calibration: ../calibration/data/sessions/20261009_combined/T_base_camera.json
+
+move:
+  # Two-arm calibration (calibration/run.sh calibrate-dual):
+  # T_base_camera = T_base_fbase @ F @ T_fee_camera, F the follower's driver Cartesian pose once
+  # it is locked. Its follower block names the model and end effector F must be read with.
+  calibration: ../calibration/data/sessions/20261113_130351_dual/T_follower_camera.json
+  # Wait after locking before reading F, so the hold has settled.
+  lock_settle_s: 0.5
+
+# Follower joint-space move time to the parked joints (both modes) and, in move mode, back to
+# them at exit and to a reused run's locked joints.
+move_time_s: 2.0

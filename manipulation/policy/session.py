@@ -35,8 +35,7 @@ from typing import Optional
 import cv2
 import numpy as np
 
-from calibration.session import find_calibration
-from calibration.transforms import inv_T, load_T_base_camera
+from calibration.transforms import inv_T
 
 from ..common.drawing import draw_point_marker, draw_tool, fmt_vec
 from . import controller as ctl
@@ -500,8 +499,10 @@ class PolicySession:
 
 
 @contextmanager
-def policy_session(args, recovery):
-    """Load the config, policy and calibration, connect the arm (unless dry run), yield a started PolicySession."""
+def policy_session(args, recovery, camera):
+    """Load the config and policy, connect the arm (unless dry run), yield a started PolicySession.
+
+    camera: the held camera arm's CameraPose (vision pipeline/robot_arm/camera_arm.py)."""
     if recovery is None:
         raise ValueError("--manipulation policy requires --recovery")
     cfg = JengaPolicyConfig.load(args.manipulation_config).with_mode(getattr(args, "policy_control", None))
@@ -515,12 +516,8 @@ def policy_session(args, recovery):
         print(f"WARNING: the policy was trained {'with' if trained else 'without'} goal interpolation, but "
               f"sim_ik.interpolate_goal is {str(used).lower()}"
               + ("" if cfg.control.ik_solver == "sim" else " (control.ik_solver: driver cannot interpolate)") + ".")
-    cal_path = find_calibration(args.calibration or cfg.calibration)
-    cal = json.loads(cal_path.read_text())
-    X = load_T_base_camera(cal_path)
-    rms = cal.get("results", {}).get(cal.get("method"), {}).get("residuals", {}).get("corner_rms_mm")
-    print(f"Calibration {cal_path} ({cal.get('method')}, corner RMS {rms} mm); camera at "
-          f"{np.round(X[:3, 3], 3)} m in the base frame. The camera arm must be at its calibrated parked pose.")
+    cal_path, cal, X = camera.calibration, camera.manipulator_calibration_json(), camera.T_base_camera
+    print(f"Camera {camera.mode}: T_base_camera from {cal_path}; camera at {np.round(X[:3, 3], 3)} m in the base frame.")
     ik = None
     if cfg.control.ik_solver == "sim":
         k = cfg.sim_ik
@@ -540,6 +537,7 @@ def policy_session(args, recovery):
         with arm:
             session = PolicySession(cfg, X, arm, actor, recovery, log, args.save_path, args.stats_every, ik)
             session.start({"config": cfg.describe(), "calibration": str(cal_path), "T_base_camera": X.tolist(),
+                           "camera": camera.to_json(),
                            "robot": arm.info, "dry_run": bool(args.manipulation_dry_run),
                            "policy": actor.info, "obs_layout": [list(t) for t in obs.ACTOR_TERMS]})
             try:

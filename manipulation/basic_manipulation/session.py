@@ -31,8 +31,7 @@ from typing import Optional
 import cv2
 import numpy as np
 
-from calibration.session import find_calibration
-from calibration.transforms import inv_T, load_T_base_camera
+from calibration.transforms import inv_T
 
 from ..common.drawing import box_hull, draw_label, draw_tool, fmt_vec
 from .controller import HOLD, KILLED, FollowController
@@ -255,17 +254,14 @@ class ManipulationSession:
 
 
 @contextmanager
-def manipulation_session(args):
+def manipulation_session(args, camera):
     """Connect the arm (or the dry-run stand-in) and yield a started ManipulationSession."""
     from .manipulator_arm import DryRunArm, ManipulatorArm
 
     cfg = ManipulationConfig.load(args.manipulation_config)
-    cal_path = find_calibration(args.calibration)
-    cal = json.loads(cal_path.read_text())
-    X = load_T_base_camera(cal_path)
-    rms = cal.get("results", {}).get(cal.get("method"), {}).get("residuals", {}).get("corner_rms_mm")
-    print(f"Calibration {cal_path} ({cal.get('method')}, corner RMS {rms} mm); camera at "
-          f"{np.round(X[:3, 3], 3)} m in the base frame. The camera arm must be at its calibrated parked pose.")
+    cal, X = camera.manipulator_calibration_json(), camera.T_base_camera
+    print(f"Camera {camera.mode}: T_base_camera from {camera.calibration}; camera at "
+          f"{np.round(X[:3, 3], 3)} m in the base frame.")
     if args.manipulation_dry_run:
         arm = DryRunArm()
     else:

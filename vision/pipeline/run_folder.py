@@ -3,6 +3,7 @@
     <run>/camera_intrinsics.json
     <run>/depth.npy                aligned depth in metres (undistorted only with --undistort)
     <run>/rgb.png
+    <run>/camera_pose.json         the --camera mode and T_base_camera the frame was taken with
     <run>/obj1/mask_overlay.png
     <run>/obj1/mask.png            one-channel uint8 0/255, as format_foundationpose_mask.py
     <run>/obj1/<mesh_folder>/...   only if a mesh was selected
@@ -32,6 +33,7 @@ OVERLAY_FILE = "mask_overlay.png"
 VIDEO_FILE = "tracking.mp4"
 POSE_VARIATION_FILE = "pose_variation.txt"
 RECOVERY_LOG_FILE = "recovery_log.jsonl"
+CAMERA_POSE_FILE = "camera_pose.json"
 MESH_SUFFIXES = (".obj", ".stl", ".ply")
 _OBJ_DIR = re.compile(r"obj(\d+)")
 
@@ -77,10 +79,11 @@ def _write_image(path: Path, image: np.ndarray) -> None:
 
 
 class RunWriter:
-    def __init__(self, root: Path, capture: Capture):
+    def __init__(self, root: Path, capture: Capture, camera_pose: Optional[dict] = None):
         ensure_empty_dir(root)
         self.root = root
         self.capture = capture
+        self.camera_pose = camera_pose
         self.num_objects = 0
 
     def _write_scene(self) -> None:
@@ -92,6 +95,8 @@ class RunWriter:
             indent=2) + "\n")
         np.save(self.root / DEPTH_FILE, self.capture.depth)
         _write_image(self.root / RGB_FILE, self.capture.rgb)
+        if self.camera_pose is not None:
+            (self.root / CAMERA_POSE_FILE).write_text(json.dumps(self.camera_pose, indent=2) + "\n")
 
     def save_object(self, mask: np.ndarray, mesh_dir: Optional[Path]) -> Path:
         """Save one object's files into the next obj{i} folder and return it."""
@@ -118,6 +123,12 @@ def find_mesh_file(obj_dir: Path) -> Optional[Path]:
         raise ValueError(f"{obj_dir} has several mesh files, expected one: "
                          + ", ".join(str(p.relative_to(obj_dir)) for p in candidates))
     return candidates[0] if candidates else None
+
+
+def load_camera_pose(root: Path) -> Optional[dict]:
+    """The run's camera_pose.json, or None for runs set up before --camera existed (parked)."""
+    path = root / CAMERA_POSE_FILE
+    return json.loads(path.read_text()) if path.is_file() else None
 
 
 def load_run(root: Path) -> SavedRun:

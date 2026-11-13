@@ -42,8 +42,6 @@ def _config(tmp_path: Path, scene, task, checkpoint) -> Path:
     raw["sim"] = {"scene": scene and str(scene), "task": task and str(task)}
     raw["policy"] = {"checkpoint": checkpoint and str(checkpoint)}
     raw["sim_ik"]["model"] = str((CONFIG_DIR / raw["sim_ik"]["model"]).resolve())
-    if (raw.get("calibration") or {}).get("T_base_camera"):
-        raw["calibration"]["T_base_camera"] = str((CONFIG_DIR / raw["calibration"]["T_base_camera"]).resolve())
     path = tmp_path / "config.yaml"
     path.write_text(yaml.safe_dump(raw))
     return path

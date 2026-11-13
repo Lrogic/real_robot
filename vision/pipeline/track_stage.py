@@ -5,7 +5,7 @@ RGB-D frame using its mask, then tracks all of them sequentially on each live fr
 Objects without a mesh are skipped. Run from real_robot/vision in the vision env
 (run.sh --track does all of this).
 
-    python -m pipeline.track_stage --save-path foundationpose_runs/run1
+    python -m pipeline.track_stage --save-path foundationpose_runs/run1 --camera parked
     python -m pipeline.track_stage --save-path foundationpose_runs/run1 --num-seconds 30 --save-video
     python -m pipeline.track_stage --save-path foundationpose_runs/run1 --fp-mode batched
     python -m pipeline.track_stage --save-path foundationpose_runs/run1 --manipulation basic [--manipulation-dry-run]
@@ -20,8 +20,9 @@ silhouette mismatches; see pipeline/recovery/sam_recovery.py and pipeline/recove
 real_robot/manipulation/basic_manipulation/session.py for keys); it needs real_robot/ on
 PYTHONPATH, which run.sh sets.
 
-Use --reset on setup (or --setup-track) so the follower arm is parked before the mask frame.
-Do not move the camera or objects between setup and the start of tracking.
+--camera must match the run's setup (camera_pose.json): parked re-parks the follower, move
+returns it to the joints the setup locked; it is held until tracking ends. Do not move the
+objects between setup and the start of tracking.
 Press q or Esc in the window to stop.
 """
 
@@ -31,8 +32,22 @@ import time
 
 from .camera import RealSenseStream
 from .pipeline_args import camera_settings, parse_pipeline_args, pipeline_parser
-from .run_folder import RECOVERY_LOG_FILE, RGB_FILE, load_run
+from .robot_arm.camera_arm import held_camera
+from .run_folder import RECOVERY_LOG_FILE, RGB_FILE, load_camera_pose, load_run
 from .tracking_loop import check_live_camera, track_live, trackable_objects
+
+
+def saved_camera_pose(args):
+    """The run's camera_pose.json; raises ValueError if --camera disagrees with how the run was set up."""
+    saved = load_camera_pose(args.save_path)
+    if saved is None:
+        if args.camera == "move":
+            raise ValueError(f"{args.save_path} has no camera_pose.json (set up before --camera, so parked); "
+                             "track it with --camera parked")
+        print(f"Note: {args.save_path} has no camera_pose.json; assuming it was set up parked.")
+    elif saved["mode"] != args.camera:
+        raise ValueError(f"{args.save_path} was set up with --camera {saved['mode']}, not {args.camera}")
+    return saved
 
 
 def main():
@@ -40,12 +55,15 @@ def main():
     args = parse_pipeline_args(parser)
     try:
         run = load_run(args.save_path)
+        saved = saved_camera_pose(args)
     except (FileNotFoundError, ValueError) as error:
         parser.error(str(error))
-    if getattr(args, "reset", False):
-        print("Note: --reset runs before setup capture (setup stage / run.sh --setup-track), "
-              "not during tracking; re-run setup if masks were captured with the camera arm misaligned.")
+    with held_camera(args, camera_settings(args), saved) as camera:
+        return run_track(args, run, camera)
 
+
+def run_track(args, run, camera) -> int:
+    """Track the run's objects live with the camera arm already held at camera (a CameraPose)."""
     objects = trackable_objects(run)
     if not objects:
         print(f"Nothing to track in {args.save_path}: no saved object has a usable mesh")
@@ -75,7 +93,7 @@ def main():
                 check_live_camera(run.capture.K, run.capture.depth.shape, run.capture.undistorted, stream)
                 if args.manipulation:
                     from .robot_arm.manipulation_hooks import manipulation_hooks
-                    with manipulation_hooks(args, recovery) as session:
+                    with manipulation_hooks(args, recovery, camera) as session:
                         track_live(args, tracker, stream, hooks=session, recovery=recovery)
                 else:
                     track_live(args, tracker, stream, recovery=recovery)

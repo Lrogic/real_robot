@@ -179,7 +179,6 @@ class JengaPolicyConfig:
     ee_pos_scale: float           # task ActionConfig
     ee_rot_scale: float
     checkpoint: Optional[Path]
-    calibration: Optional[Path]
     robot: dict
     episode_key: str
     control: ControlConfig
@@ -279,7 +278,6 @@ class JengaPolicyConfig:
             ee_pos_scale=float(action.get("ee_pos_scale", 0.01)),
             ee_rot_scale=float(action.get("ee_rot_scale", 0.05)),
             checkpoint=checkpoint,
-            calibration=_path(base, raw.get("calibration", {}).get("T_base_camera")),
             robot={k: v for k, v in (raw.get("robot") or {}).items() if v},
             episode_key=episode_key,
             control=control,

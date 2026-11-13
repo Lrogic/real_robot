@@ -48,16 +48,17 @@ Each script parses its own flags first. The remaining flags go to mjlab's `Train
 
 ```bash
 cd vision
-./run.sh --setup-track --save-path foundationpose_runs/run1 --recovery [--reset]   # mask objects on one frame, then track live
-./run.sh --track --save-path foundationpose_runs/run1 --recovery --manipulation policy \
+./run.sh --setup-track --save-path foundationpose_runs/run1 --camera parked --recovery   # mask objects on one frame, then track live
+./run.sh --setup-track --save-path foundationpose_runs/run1 --camera move --recovery     # guide the camera arm by hand first
+./run.sh --track --save-path foundationpose_runs/run1 --camera parked --recovery --manipulation policy \
     --policy-control shadow [--manipulation-logging]
 ```
 
-`run.sh` activates the env, sets `PYTHONPATH=real_robot:real_robot/vision`, and forwards every flag to `pipeline.setup_stage` and/or `pipeline.track_stage`. Its header comment is the flag reference. `--manipulation policy` requires `--recovery`, because pose trust comes from the SAM verdicts. Run folders (`vision/foundationpose_runs/`) are git-ignored. Their layout is in `pipeline/run_folder.py`. With `--manipulation-logging`, the run folder also gets `policy_log.jsonl`, which `sim2real/experiments/smooth_control_test` analyzes.
+`run.sh` activates the env, sets `PYTHONPATH=real_robot:real_robot/vision`, and forwards every flag to `pipeline.run_stages`, which runs the setup and/or track stage in one process. Its header comment is the flag reference. `--camera` is required and runs before anything else (`pipeline/robot_arm/camera_arm.py`). The follower is then held in position mode until the process exits. `parked` moves it to the parked calibration's joints. `move` puts it in gravity compensation with a live camera window; Enter or space locks it, and `T_base_camera = T_base_fbase @ F @ T_fee_camera` comes from the two-arm calibration. At exit, `move` returns the follower to the parked joints before it goes idle. `pipeline/camera_arm.yaml` points at both calibration files. The run folder's `camera_pose.json` records the mode and `T_base_camera`; `--track` must use the same mode, and `move` drives the follower back to the setup's joints. The manipulation sessions take `T_base_camera` from this pose. `--manipulation policy` requires `--recovery`, because pose trust comes from the SAM verdicts. Run folders (`vision/foundationpose_runs/`) are git-ignored. Their layout is in `pipeline/run_folder.py`. With `--manipulation-logging`, the run folder also gets `policy_log.jsonl`, which `sim2real/experiments/smooth_control_test` analyzes.
 
 ### Calibration (`vision/calibration/run.sh`)
 
-This is a ChArUco eye-to-hand calibration of the D405 against the manipulator base. `verify`, `record-follower` and `collect` touch hardware and run in `fp_robot`. `review`, `calibrate` and `generate` run offline in `sam3`. The result is `data/sessions/<name>/T_base_camera.json`. The pipeline and the policy use the newest session that has one, unless `--calibration` is passed. Only `sessions/20261009_combined/session.json` is tracked in git.
+This is a ChArUco eye-to-hand calibration of the D405 against the manipulator base. `verify`, `record-follower` and `collect` touch hardware and run in `fp_robot`. `review`, `calibrate` and `generate` run offline in `sam3`. The result is `data/sessions/<name>/T_base_camera.json` (parked) or, from `collect-dual`/`calibrate-dual`, `T_follower_camera.json` (moving follower). The pipeline uses the two files named in `vision/pipeline/camera_arm.yaml`. Only `sessions/20261009_combined/session.json` is tracked in git.
 
 ### Other tests
 
@@ -81,7 +82,7 @@ The repo has no lint or format config. Don't run `ruff format` on `sim/mujoco`: 
 
 ### Real-robot loop
 
-Everything runs in one process: `pipeline.track_stage` → `pipeline.tracking_loop.track_live`. Each loop iteration does the following:
+Everything runs in one process: `pipeline.run_stages` (camera arm setup, then setup and/or `pipeline.track_stage`) → `pipeline.tracking_loop.track_live`. Each loop iteration does the following:
 
 1. Read the newest RealSense frameset.
 2. FoundationPose tracks every object (`multi_object_fp_tracker`: one estimator per object, shared networks; `--fp-mode` picks sequential or batched).
