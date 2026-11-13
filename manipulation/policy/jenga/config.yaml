@@ -60,7 +60,7 @@ control:
   # slow    policy at control_hz / slow_time_dilation, each step sent over that many periods
   # full    policy at control_hz, each step sent over one period (as in training)
   # --policy-control overrides it.
-  mode: full
+  mode: slow
   # How each TCP goal reaches the arm (step / slow / full):
   # driver  set_cartesian_positions; the driver's own IK, interpolated over the goal time
   # sim     the training IK (sim_ik below) re-solved from the measured joints at
@@ -102,7 +102,7 @@ sim_ik:
   inner_hz: 500.0
   # set_arm_positions (joint) goal time of each solve; 0 applies the target immediately.
   # Training has no model of it. The original policy ran smoothest on the arm at 0.05.
-  goal_time_s: 0.05
+  goal_time_s: 0.2
   # false  every solve aims at the policy step's TCP goal
   # true   the solves aim at a subgoal that moves linearly from the TCP at the start of the
   #        policy step to its goal, over one step (full: 1 / control_hz, slow:
