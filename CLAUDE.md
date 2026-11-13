@@ -132,7 +132,8 @@ These are standalone scripts. Each docstring says which env to launch from. `joi
 ## Findings to read first
 
 - `docs/sim2real_control.md`: what was tried to get smooth full-speed control on the real arm, the joint-step measurements (joint friction, command delay, goal-time behaviour), which policies worked, and definitions of the control settings (joint versus Cartesian goal time, IK goal interpolation, re-sent versus send-once commands).
-- `docs/block_height_offset.md`: why the tracked block reads about 13 mm high. The D405 depth reads short (about 7 mm of height at the block; check with `python -m calibration.check_depth` from `vision/`), and the arm reports its fingertip higher as reach grows, so the table is not at z = 0 in the arm's coordinates.
+- `docs/camera_calibration.md`: how the follower-mounted camera is calibrated. The parked calibration is about 1 mm. Letting the follower move (`run.sh collect-dual` / `calibrate-dual`) gives about 6 to 10 mm, because gear play in its joints moves the camera 0.5 to 1 deg without the joint readings changing. Idle mode drops a loaded arm.
+- `docs/block_height_offset.md`: why the tracked block read about 13 mm high. The D405 depth read short, about 7 mm of height at the block. A tare calibration on 2026-11-13 (`python -m calibration.tare`, written to the camera's flash) fixed that to under 1 mm; check with `python -m calibration.check_depth` from `vision/`. The arm still reports its fingertip higher as reach grows, so the table is not at z = 0 in the arm's coordinates.
 
 `python -m pipeline.view_camera` (from `vision/`, env `vision`) shows the plain live camera feed.
 
