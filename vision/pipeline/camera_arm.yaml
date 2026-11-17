@@ -12,7 +12,10 @@ move:
   # Two-arm calibration (calibration/run.sh calibrate-dual):
   # T_base_camera = T_base_fbase @ F @ T_fee_camera, F the follower's driver Cartesian pose once
   # it is locked. Its follower block names the model and end effector F must be read with.
-  calibration: ../calibration/data/sessions/20261113_130351_dual/T_follower_camera.json
+  # Session 20261113_130351_dual refit with the camera mount from the follower model
+  # (calibrate-dual --mount model --holdout-every 0): 5.45 mm rms at unseen follower poses,
+  # against 6.03 mm with the mount solved.
+  calibration: ../calibration/data/sessions/20261113_130351_dual_model_all/T_follower_camera.json
   # Wait after locking before reading F, so the hold has settled.
   lock_settle_s: 0.5
 
