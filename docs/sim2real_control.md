@@ -4,6 +4,7 @@ Written 2026-11-12. This records what was tried between 2026-11-10 and 2026-11-1
 jenga grasp policy move smoothly at full speed on the real WidowX AI arm, what was measured,
 and what was kept. The companion note [block_height_offset.md](block_height_offset.md) covers
 the block-height error found along the way.
+[Holding a position](#holding-a-position-the-friction-deadband) was added on 2026-11-16.
 
 ## Bottom line
 
@@ -118,8 +119,17 @@ Read from the driver API and the Trossen docs.
 - **The gains match the sim model.** Position gains 16/16/16/80/40/40 and velocity gains
   8/8/8/1/1/1 (joints 0 to 5), no integral or derivative. The model's single position
   actuator uses their product, 128/128/128/80/40/40, with the same velocity gains.
-- **Friction compensation is by velocity sign,** so there is none at standstill.
+- **Friction compensation is by velocity sign.** `friction_transition_velocity` is 0 on every
+  joint, so at standstill the friction term flips with the sign of the velocity noise and
+  averages to about zero (a few tenths of a Nm either way; read 2026-11-16).
 - **The shoulder holds 3.4 Nm at the ready pose and 7.4 Nm at the reach pose.**
+- **The compensation effort is fed forward in position mode too,** and at standstill it is the
+  sim model's gravity torque. See [Holding a position](#holding-a-position-the-friction-deadband).
+- **Joint characteristics read on 2026-11-16** (`get_joint_characteristics`, manipulator):
+  `effort_correction` 1.20 / 1.12 / 1.17 / 1.10 / 1.11 / 1.20, `position_offset` 0 on every
+  joint, and small friction terms (constant -0.28 to 0.24 Nm, Coulomb 0 to 0.14 of the gravity
+  effort). The Trossen docs say `effort_correction` is tuned against links being pulled down by
+  gravity; they do not say whether it also scales the friction term.
 
 ## The joint-step experiment
 
@@ -256,6 +266,64 @@ all six joints, both poses, all step sizes and directions. 0.19 means sim and re
   against 0.13 on the real arm, and only 19% of episodes held the block. The one policy
   trained with all three effects learned the knock-down behaviour.
 
+## Holding a position: the friction deadband
+
+Measured 2026-11-16 with `sim2real/sag_test/hold_z_sweep.py`
+(`results/hold_z_20261116_134852.json`). The arm held the tool straight down at z = 100 mm
+and stepped along +x from 0.25 m to 0.43 m and back in 45 mm steps. The joint targets came
+from IK on the MuJoCo model and were sent with `set_arm_positions` (2 s goal time, so the
+driver's quintic). Each stop was read after a 1 s settle, averaged over 0.5 s. The same run
+measured the arm's height error ([block_height_offset.md](block_height_offset.md), section 9).
+
+**The joints stop short of their targets in the direction they were moving.** Measured minus
+target, in degrees:
+
+| Reach | Shoulder, out | Elbow, out | Shoulder, back | Elbow, back |
+|---|---|---|---|---|
+| 0.250 m | -0.37 | -0.61 | +0.53 | +0.84 |
+| 0.295 m | -0.62 | -0.74 | +0.63 | +0.64 |
+| 0.340 m | -0.69 | -0.74 | +0.80 | +0.82 |
+| 0.385 m | -0.58 | -0.71 | +0.80 | +0.64 |
+
+Going out both angles increase, coming back both decrease, so the sign flip means the error
+opposes the motion. Gravity would give the same sign on both legs; this is friction.
+
+**Why they stay there.** Position mode has no integral term (above), so a held joint is pushed
+by 128 Nm/rad x its error and nothing else. Once that is less than the joint's dry friction,
+it stops for good. With the joint-step friction (1.85 Nm shoulder, 1.92 Nm elbow) the band is
+about +-0.85 deg; the stops were 0.4 to 0.8 deg short. A joint that is not commanded to move
+stays wherever it last stopped: the base read -0.23 deg for the whole run, its position after
+the arm was guided by hand. The fingertip barely moved during the readings (at most 0.2 mm in
+0.5 s), so nothing was creeping toward the target.
+
+**What it does to the fingertip** (from the model's Jacobian at each stop; it adds up to the
+logged pose errors to a few tenths of a millimetre):
+
+- **x, along the motion: about 3 mm short,** on both legs. Only the elbow moves the tip in x
+  at these poses (about 4.5 mm per degree).
+- **z: within about +-2 mm, with no fixed sign.** A shoulder that stops short leaves the tip
+  1.5 to 4 mm high, an elbow that stops short leaves it 2.5 to 3.5 mm low, and the two mostly
+  cancel.
+- **y: -1 to -2 mm,** growing with reach: the base's -0.23 deg.
+
+The joint readings see all of this, so it shows in the policy's TCP and joint observations.
+
+**The compensation is fed forward in position mode.** The driver reports the effort, the
+compensation effort and the external effort (effort minus compensation). At every stop the
+external effort had the sign of 128 Nm/rad x the error and 0.82 to 0.92 of its size, so the
+motor torque is the compensation plus the position loop's correction. The remaining 10 to 18%
+is not explained; joint velocity was not logged, so the velocity term was assumed zero.
+
+**The compensation is the sim model's gravity.** At standstill the driver's compensation
+effort matched the gravity torque of `wxai_base_real_robot.xml` (MuJoCo, at the logged joints)
+to 0.03 Nm on the shoulder and elbow at every stop: shoulder -4.7 to -9.6 Nm with reach. The
+elbow's stayed at 5.4 Nm because holding the tool straight down at a fixed height kept the
+forearm's tilt almost constant (4 to 17 deg); the model agrees.
+
+**In the sim.** The base model's 0.1 Nm friction gives a band of about +-0.05 deg. The fitted
+model (`wxai_base_real_robot_friction.xml`) has the measured friction and so the real band
+width. The original policy was trained on the base model.
+
 ## What is in the simulator now
 
 All off in `configs/tasks/grasp_wxai.json`.
@@ -336,3 +404,14 @@ The sim tests build their variants the same way, in `sim/mujoco/tests/task_files
 - **Send-once** would need a guard on the real arm that re-sends the last target when no new
   goal arrives, and a matching sim option. Not built.
 - **A larger action scale at 10 Hz** to restore arm speed. Not tried.
+- **Velocity feed-forward is real-only.** With a goal time above 0.001 s the driver feeds the
+  planned joint velocity into its velocity loop, so the velocity term damps the difference from
+  the plan. The MuJoCo position actuator damps the absolute velocity, which makes a joint
+  moving at speed v lag by v / 16 rad (128 x lag = 8 x v). With goal time 0 the real arm has no
+  feed-forward and behaves like the sim. How much this matters for the policy's moves has not
+  been checked.
+- **Inertia feed-forward.** The driver's compensation is "inverse dynamics", which at speed
+  includes the torque to accelerate the links; the docs do not say whether it uses the planned
+  or the measured acceleration. Logging the compensation effort through a fast joint move would
+  show it (a rise before the joint starts moving means planned). The sim compensates gravity
+  only.

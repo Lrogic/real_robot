@@ -171,9 +171,9 @@ The cause on the arm side is not known. Candidates:
   per-joint `position_offset` for homing error, and the Trossen docs describe a homing
   procedure with jigs.
 
-These touches were hand-guided in gravity compensation. Under position control the motors
-hold the arm more stiffly, so droop could be smaller during a policy run. That has not been
-measured.
+These touches were hand-guided in gravity compensation. Section 9 repeats the measurement
+with the motors holding the arm in position mode: the error is the same size, the same in both
+directions of travel, and the joint zeros read correctly, which leaves droop.
 
 One limit on "the camera inherits the arm's error": a calibration is one rigid placement of
 the camera, so it can only absorb the arm's error as a flat tilt plus a shift. The arm's error
@@ -249,6 +249,54 @@ Table touches in the same run:
   44.7 mm against 37.5 mm in sim, because the table at that reach reads about 7 mm. It moves
   the gripper and the block together.
 
+### 9. Under position control (`sim2real/sag_test`, 2026-11-16)
+
+`hold_z_sweep.py` holds the arm in position mode with the tool pointing straight down at a
+commanded z of 100 mm, and steps it out along +x and back. At each stop the height of the tool
+point above the table was measured with a ruler (1 mm resolution), with the gripper open 10 mm
+so the ruler could sit between the fingertips. The arm's own reading (FK of the joints) is
+logged alongside.
+
+**Run 2** (`results/hold_z_20261116_134852.json`): joint targets from IK on the MuJoCo model,
+sent with `set_arm_positions`, out from 0.25 m to 0.43 m and back. Reported height minus
+measured height:
+
+| Reach | Going out | Coming back |
+|---|---|---|
+| 0.250 m | 2.8 mm | 2.6 mm |
+| 0.295 m | 3.7 mm | 3.8 mm |
+| 0.340 m | 4.6 mm | 5.1 mm |
+| 0.385 m | 5.6 mm | 6.7 mm |
+| 0.430 m | 7.3 mm | |
+
+A straight line through all nine: **+25.7 mm per metre of reach, residual 0.3 mm rms.**
+Run 1 (`results/hold_z_20261116_133146.json`, the driver's Cartesian IK, outward only) gave
++29 mm/m. The touches in sections 6 and 8 gave 32 to 46 mm/m.
+
+- **The error is there with the motors holding.** The arm still reads its tip higher than it
+  is, by about as much as in gravity compensation.
+- **It does not depend on the direction of travel.** At each reach the two legs agree to
+  about 1 mm, the ruler's resolution, although the joints stopped on opposite sides of their
+  targets (next point). So it is not gear play or hysteresis: it is a fixed function of the
+  pose, and could be modelled.
+- **The measured height itself was not flat.** Under a held position command the shoulder and
+  elbow stop up to 0.8 deg short of their targets in the direction they were moving (friction
+  with no integral term; see [sim2real_control.md](sim2real_control.md#holding-a-position-the-friction-deadband)).
+  At 0.385 m the tip was 95 mm above the table going out and 91 mm coming back. The joint
+  readings see this, so it moves the reading and the tip together and cancels from the
+  difference above. In run 1 (outward only) the measured height stayed at 95 mm at every
+  stop: the outward shortfall held the arm up by about as much as the droop pulled it down.
+- **Only the slopes compare between sessions.** The intercepts hold the offset between the
+  arm's z = 0 and the table, and between the point the ruler touched and the driver's tool
+  point. Run 2's line is -3.8 mm at zero reach; section 8's is -6.4 mm.
+- **The joint zeros read correctly.** At the folded rest pose on 2026-11-16 the shoulder read
+  0.033 deg and the elbow 0.033 deg, and the driver's `position_offset` is 0 on every joint. A
+  zero error large enough to explain the slope would be about 2.3 deg. That leaves droop:
+  bending in the links or gearboxes after the encoders.
+- **Limits.** One direction (straight ahead), one height and one tool orientation. With the
+  tool straight down at 100 mm, 0.45 m is out of reach: joint 3 hits its -90 deg limit, and
+  run 1's 0.45 m stop was clipped there.
+
 ## What to do about it
 
 ### The depth sensor (this is the part that hurts the grasp)
@@ -297,10 +345,10 @@ This part does not shift the grasp, but it matters for anything tied to absolute
 
 Options, none done:
 
-- **Measure it properly.** Measure the mounting plate. Touch the table under position control
-  (command the tip down slowly until contact) to see how much of the effect remains when the
-  motors are holding. Touch at more reaches, including close to the base.
-- **Check the joint zeros** with the homing jigs if a zero error is suspected.
+- **Measure it properly.** Measure the mounting plate. Touch at more reaches, including close
+  to the base, and in other directions. (Under position control the error remains; section 9.)
+- **Check the joint zeros** with the homing jigs. The rest-pose reading and the driver's
+  `position_offset` of 0 (section 9) make a zero error unlikely.
 - **Model it.** Either correct the real side (subtract the reach-dependent height from the
   TCP and block heights before the policy sees them, so the table is at 0 as in training), or
   make training tolerate it (randomize the table height or an offset on the height
@@ -315,3 +363,4 @@ Options, none done:
 | `vision/calibration/tare.py` | Tare calibration of the D405 against the board, with backup and restore |
 | `vision/pipeline/view_camera.py` | Plain live camera feed; `--depth` shows the depth at the image centre |
 | `./run.sh --track ... --manipulation policy --policy-control shadow --manipulation-logging` | Logs TCP and tracked block together for hand-guided touches |
+| `sim2real/sag_test/hold_z_sweep.py` | Holds a commanded height in position mode along +x (and back); logs joints, joint targets and efforts, and asks for the measured height at each stop |
