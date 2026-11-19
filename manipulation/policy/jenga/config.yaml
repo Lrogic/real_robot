@@ -26,7 +26,7 @@ policy:
 object:
   # Tracked object to build observations for. null finds the one whose saved mesh is the
   # scene's manipulated-object mesh; otherwise a vision run object folder name (obj0, ...).
-  tracked_name: null
+  tracked_name: obj1
   # 180 deg turns about the mesh's local axes leave the block unchanged. The jenga mesh
   # origin is its box centre and its axes are the box axes (object_frame experiment).
   symmetry: box
