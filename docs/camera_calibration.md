@@ -1,8 +1,9 @@
 # Camera calibration: parked and moving follower (November 2026)
 
-Written 2026-11-13. The D405 sits on the follower (camera) arm. This note covers how its pose
-in the manipulator base frame is calibrated, how accurate that is, and what happened when we
-tried to let the follower move. Read `docs/block_height_offset.md` first for the depth error and
+Written 2026-11-13; the camera mount and the fitted transforms were added on 2026-11-16. The
+D405 sits on the follower (camera) arm. This note covers how its pose in the manipulator base
+frame is calibrated, how accurate that is, and what happened when we tried to let the follower
+move. Read `docs/block_height_offset.md` first for the depth error and
 the arm's own height error; this note refers to it.
 
 ## Short version
@@ -10,7 +11,7 @@ the arm's own height error; this note refers to it.
 | Setup | Error at objects ~0.4 m from the camera | Status |
 |---|---|---|
 | Follower parked (`run.sh --camera parked`), October eye-to-hand calibration | about 1 mm (0.7 mm at the block top) | In use |
-| Follower moved anywhere, joint-based two-arm calibration | about 6 mm rms, up to 11 mm, at poses the fit has not seen; 10 mm at the parked pose | `run.sh --camera move`: guided by hand and locked once per run |
+| Follower moved anywhere, joint-based two-arm calibration (camera mount from the follower model) | about 5.5 mm rms, up to 9 mm, at poses the fit has not seen; 10 mm at the parked pose | `run.sh --camera move`: guided by hand and locked once per run |
 | Follower moved anywhere, camera located from a marker in the scene | about 1 mm (estimate) | Not built |
 
 The moving calibration is limited by gear play in the follower's joints: the camera can sit
@@ -127,6 +128,72 @@ Metrics it prints:
 
 A good fit would be well under 1 px.
 
+### The camera mount: from the model, not solved (2026-11-16)
+
+`calibrate-dual --mount model` takes `X` from the follower's MuJoCo model
+(`wxai_follower.xml`, the `wrist_cam` camera in the `ee_gripper_link` site, which matches the
+driver's tool frame to 0.000 deg and 0.00 mm) and solves only `Z` and `Y`. Both fits on all 83
+samples (`--holdout-every 0`):
+
+| | Mount solved | Mount from the model |
+|---|---|---|
+| Fit: reprojection, corners | 8.8 px, 4.6 mm rms | 9.1 px, 4.5 mm rms |
+| Leave one station out | 6.0 mm rms | **5.5 mm rms** (worst station 9.2 mm) |
+| October parked pose vs the October calibration | 1.4 deg; objects 9.1 mm mean | 1.7 deg; objects 10.2 mm mean |
+
+- **The solved mount differs from the model by 0.9 deg and 5 mm** (4.6 mm of it along the tool z
+  axis). `Z` and `Y` move with it (0.26 deg / 3.2 mm and 0.9 deg / 3.1 mm), so part of that
+  difference is the fit trading parameters against the play in the data, not a real mount error.
+- **The final camera pose barely changes.** Over the 16 stations `T_base_camera` differs by 0.85
+  deg and 2.6 mm at the camera; objects 0.3 to 0.5 m in front move 2.4 mm on average (4.8 mm at
+  most), much of the rotation being about the optical axis.
+- **The model mount predicts unseen poses slightly better** with six fewer parameters. The
+  difference is well inside the 6 to 10 mm set by the play.
+
+`pipeline/camera_arm.yaml` uses the model mount on all samples:
+`data/sessions/20261113_130351_dual_model_all/T_follower_camera.json` (session.json copied, `samples`
+a link to the original session's).
+
+### What the solved transforms are, and why the follower base is tilted
+
+The values in use (model mount, all samples). Angles are roll, pitch, yaw (`R = Rz Ry Rx`):
+
+| Transform | Translation (mm) | Rotation (deg) |
+|---|---|---|
+| `Z = T_base_fbase`, follower base in the manipulator base | (982.1, 23.9, 37.0) | (0.65, **4.76**, -178.8) |
+| `Y = T_ee_board`, board in the manipulator's gripper | (22.4, 86.3, -69.2) | (91.1, -1.6, -92.0) |
+| `X = T_fee_camera`, camera on the follower's tool (model) | (-97.4, 9.0, 54.3) | (-110.0, 0.0, -90.0) |
+
+The follower base is 0.98 m away, facing the manipulator to within 1.2 deg. The camera looks along
+the fingers, pitched 20 deg toward the tool's -z (down at the parked pose), from about 10 cm behind
+and 5 cm above the tool point. The 4.8 deg pitch of `Z` is mostly the two arms' reach errors:
+
+- **Each arm reads as if its base were tilted.** The manipulator reads a level table as rising
+  about 32 mm per metre of reach (`block_height_offset.md`, sections 8 and 9), the follower about
+  31 mm/m (section 6 below). Those readings are what an arm without that error would give if its
+  base were tilted forward and down by about 1.8 deg. The bases are not tilted; the error (most
+  likely droop) produces the same readings.
+- **`Z` relates those two "as-if" bases, not the real ones.** The calibration only sees each
+  arm's readings, so it finds the transform that makes them agree.
+- **Facing each other, the two tilts add.** A table point moved toward the follower gets further
+  from the manipulator (its reading rises) and closer to the follower (its reading falls), so the
+  difference between the readings changes by 32 + 31 = 63 mm/m: a 3.6 deg tilt, with the follower's
+  forward axis pointing down in the manipulator's frame. The fit found 4.8 deg that way; the rest is
+  a real tilt or a reach error that is not exactly linear. Arms facing the same way would cancel.
+- **The height is mostly the same effect.** At the follower's base, 0.98 m away, the manipulator's
+  frame reads about 31 mm high, so `Z`'s 37 mm is not the mounting height difference.
+- **Why it still works.** `Z` contains "undo the follower's error, apply the manipulator's", so
+  `Z @ F(q) @ X` puts the camera in the manipulator's reported frame at any follower pose, as the
+  parked calibration does. That holds only as far as each arm's error is one fixed tilt. It grows
+  with reach in every direction around the base (a cone) and follows the gravity load, so a single
+  `Z` matches it best along the line between the bases. The leftover is probably a few tenths of a
+  degree, under the play.
+
+The parked calibration absorbs the manipulator's error the same way: `T_base_camera` is tilted by
+about 1.8 deg against the camera's true pose, so the camera reports positions as the arm does. That
+is why a fingertip touch and the tracked block agree to 0.7 mm although the table is not at z = 0 in
+the arm's coordinates.
+
 ### What was ruled out
 
 | Suspect | Test | Result |
@@ -172,6 +239,10 @@ pose, but the camera is fixed and 70 samples average it down. With a moving foll
 the camera's own pose, each placement gets one random error that nothing averages, and the camera's
 tilt is multiplied by the 0.4 m to the objects.
 
+More stations, or moving the follower after every capture, would give more independent play
+errors and so a better estimate of `X` and `Z`. It would not help at run time: each new placement
+still lands with its own 0.5 to 1 deg that the joints do not register.
+
 ## 5. Options for later
 
 1. **Locate the camera from the scene.** Fix a ChArUco board or ArUco markers on the table, measure
@@ -180,10 +251,11 @@ tilt is multiplied by the 0.4 m to the objects.
    follower's joints. A marker only has to be visible when the camera re-localizes after a move.
    The manipulator's own play remains, as it does today.
 2. **Fixed approach direction.** Scripted moves that always finish the same way, so the play
-   settles the same way, for a few saved follower poses (as `--reset` does for the parked pose).
+   settles the same way, for a few saved follower poses (as `--camera parked` does for the parked
+   pose).
    Each saved pose would still need its own check.
-3. **Use the joint-based result as is** (about 6 to 10 mm) where that is good enough. The runtime part
-   (read the follower's joints, compute `T_base_camera = Z @ F(q) @ X`) is not written.
+3. **Use the joint-based result as is** (about 6 to 10 mm) where that is good enough. This is
+   `run.sh --camera move`.
 
 Not tried: idle for both arms (drops), and a joint-offset or compliance model in the final
 calibration (no gain at unseen poses).
@@ -196,7 +268,9 @@ three reaches (`sim2real/experiments/follower_reach/capture_touches.py`, result
 That is close to the manipulator's 32 mm/m (`block_height_offset.md`, section 8), so both arms show
 the same pattern. Three touches only; the third, at another direction, was 2 mm off the line.
 `results/workspace_follower.json` holds 18 hand-placed workspace poses with images: reach 0.25 to
-0.67 m, base angle -29 to +50 deg, camera height 0.10 to 0.38 m.
+0.67 m, base angle -29 to +50 deg, camera height 0.10 to 0.38 m. The manipulator's error stays the
+same under position control and in both directions of travel (`block_height_offset.md`, section 9);
+the follower was not measured that way.
 
 ## Tools
 
@@ -206,7 +280,7 @@ All in `vision/calibration/` unless noted. Hardware tools need the tracking pipe
 |---|---|---|
 | `run.sh collect` / `calibrate` | fp_robot / sam3 | Parked eye-to-hand calibration |
 | `run.sh collect-dual` | fp_robot | Two-arm collection in stations (`--follower-hold`, `--manipulator-hold`, both position by default) |
-| `run.sh calibrate-dual` | fp_robot | Solves `X`, `Z`, `Y`; writes `<session>/T_follower_camera.json` with the per-station and leave-one-station-out errors |
+| `run.sh calibrate-dual` | fp_robot | Solves `X`, `Z`, `Y` (or `Z`, `Y` with `--mount model`); writes `<session>/T_follower_camera.json` with the per-station and leave-one-station-out errors |
 | `dual_solver.py` | | The solve (start point and refinement); tests in `vision/tests/test_dual_solver.py` |
 | `reset_follower.py` | vision | Drive the follower to the session's parked joints, then idle |
 | `check_follower_hold.py` | vision | Camera pose idle against held, from a still board |
