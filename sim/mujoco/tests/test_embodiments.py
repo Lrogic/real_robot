@@ -1,6 +1,9 @@
+import json
 from dataclasses import replace
+from pathlib import Path
 
 import mujoco
+import numpy as np
 import pytest
 
 from tabletop_sim.embodiments import EMBODIMENTS, StiffnessDampingTargets, get_embodiment
@@ -117,3 +120,69 @@ def test_friction_model_changes_only_the_arm_joint_friction():
   assert fric.dof_frictionloss[rest].tolist() == base.dof_frictionloss[rest].tolist()
   for name in ("dof_armature", "dof_damping", "actuator_gainprm", "actuator_biasprm", "jnt_range", "body_mass"):
     assert (getattr(fric, name) == getattr(base, name)).all(), name
+
+
+def _model(name):
+  return mujoco.MjModel.from_xml_path(str(get_embodiment(name).xml_path))
+
+
+def _finger_geoms(model):
+  bodies = {mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, b) for b in ("carriage_left", "carriage_right")}
+  return [
+    g for g in range(model.ngeom)
+    if model.geom_bodyid[g] in bodies and (model.geom_contype[g] or model.geom_conaffinity[g])
+  ]
+
+
+def test_grip_embodiment_is_the_friction_one_with_elliptic_cones():
+  friction = get_embodiment("trossen_wxai_base_real_friction")
+  grip = get_embodiment("trossen_wxai_base_real_friction_grip")
+  assert grip.xml_path.name == "wxai_base_real_robot_friction_grip.xml"
+  assert grip.cone == "elliptic" and grip.impratio == 10.0
+  assert friction.cone == "pyramidal" and friction.impratio == 1.0
+  same = replace(grip, name=friction.name, xml_path=friction.xml_path, cone=friction.cone, impratio=friction.impratio)
+  assert same == friction
+
+
+def test_grip_model_changes_only_the_gripper():
+  fric, grip = _model("trossen_wxai_base_real_friction"), _model("trossen_wxai_base_real_friction_grip")
+  # Gripper actuator: kp 1e4, kv 85, clamped at the real gripper's 100 N / 1.2 effort limit.
+  a = mujoco.mj_name2id(grip, mujoco.mjtObj.mjOBJ_ACTUATOR, "left_gripper")
+  assert grip.actuator_gainprm[a, 0] == 10000.0
+  assert grip.actuator_biasprm[a, :3].tolist() == [0.0, -10000.0, -85.0]
+  assert grip.actuator_forcerange[a].tolist() == [-83.3, 83.3]
+  arm = [i for i in range(grip.nu) if i != a]
+  for f in ("actuator_gainprm", "actuator_biasprm", "actuator_forcerange", "actuator_ctrlrange"):
+    assert (getattr(grip, f)[arm] == getattr(fric, f)[arm]).all(), f
+  carriages = [mujoco.mj_name2id(grip, mujoco.mjtObj.mjOBJ_JOINT, f"{s}_carriage_joint") for s in ("left", "right")]
+  assert grip.jnt_actfrcrange[carriages].tolist() == [[-83.3, 83.3]] * 2
+  others = [j for j in range(grip.njnt) if j not in carriages]
+  assert (grip.jnt_actfrcrange[others] == fric.jnt_actfrcrange[others]).all()
+  # Finger pads stiffer, with priority so their contacts use these; every other geom unchanged.
+  fingers = _finger_geoms(grip)
+  assert fingers == _finger_geoms(fric) and len(fingers) == 6
+  assert (grip.geom_priority[fingers] == 1).all()
+  assert grip.geom_solref[fingers].tolist() == [[0.01, 1.0]] * 6
+  assert np.allclose(grip.geom_solimp[fingers, :3], [0.95, 0.99, 0.001])
+  rest = [g for g in range(grip.ngeom) if g not in fingers]
+  for f in ("geom_priority", "geom_solref", "geom_solimp"):
+    assert (getattr(grip, f)[rest] == getattr(fric, f)[rest]).all(), f
+  for f in ("geom_friction", "geom_condim", "geom_size", "geom_pos", "geom_quat"):
+    assert (getattr(grip, f) == getattr(fric, f)).all(), f
+  # The carriage mimic, stiffened.
+  assert grip.neq == fric.neq == 1
+  assert grip.eq_solref.tolist() == [[0.005, 1.0]]
+  assert np.allclose(grip.eq_solimp[0, :3], [0.95, 0.99, 0.001])
+  assert (grip.eq_data == fric.eq_data).all()
+  # Everything else, including the fitted arm joint friction, as the friction model.
+  for f in ("dof_frictionloss", "dof_armature", "dof_damping", "jnt_range", "body_mass", "body_inertia"):
+    assert (getattr(grip, f) == getattr(fric, f)).all(), f
+
+
+def test_grip_scene_is_the_friction_scene():
+  scenes = Path(__file__).resolve().parents[1] / "configs" / "scenes"
+  grip = json.loads((scenes / "tabletop_jenga_wxai_friction_grip.json").read_text())
+  fric = json.loads((scenes / "tabletop_jenga_wxai_friction.json").read_text())
+  assert grip["robot"].pop("embodiment") == "trossen_wxai_base_real_friction_grip"
+  assert fric["robot"].pop("embodiment") == "trossen_wxai_base_real_friction"
+  assert grip == fric

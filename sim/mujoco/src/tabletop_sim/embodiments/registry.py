@@ -4,6 +4,7 @@ from tabletop_sim.embodiments.trossen_wxai import (
   TROSSEN_WXAI_BASE,
   TROSSEN_WXAI_BASE_REAL,
   TROSSEN_WXAI_BASE_REAL_FRICTION,
+  TROSSEN_WXAI_BASE_REAL_FRICTION_GRIP,
 )
 
 EMBODIMENTS: dict[str, EmbodimentCfg] = {
@@ -14,6 +15,7 @@ EMBODIMENTS: dict[str, EmbodimentCfg] = {
     TROSSEN_WXAI_BASE,
     TROSSEN_WXAI_BASE_REAL,
     TROSSEN_WXAI_BASE_REAL_FRICTION,
+    TROSSEN_WXAI_BASE_REAL_FRICTION_GRIP,
   )
 }
 

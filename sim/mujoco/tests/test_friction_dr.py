@@ -587,3 +587,18 @@ def test_contacts_use_pair_coefficients(tmp_path, embodiment, variants):
   finally:
     for env in envs:
       env.close()
+
+
+@needs_jenga
+def test_grip_embodiment_pairs_take_the_finger_solver_params(tmp_path):
+  """The grip model's finger pads have priority 1, so the gripper-object pairs get
+  their solref/solimp outright instead of a mix with the object's defaults; the
+  table pairs keep the defaults. The env runs elliptic cones with impratio 10."""
+  cfg, m = _compiled(_jenga_scene(tmp_path, "trossen_wxai_base_real_friction_grip"), _task(tmp_path))
+  assert cfg.sim.mujoco.cone == "elliptic" and cfg.sim.mujoco.impratio == 10.0
+  gripper, table = _pair_ids(m, "gripper_object"), _pair_ids(m, "table_object")
+  assert len(gripper) == 6 and table
+  np.testing.assert_allclose(m.pair_solref[gripper], [[0.01, 1.0]] * 6)
+  np.testing.assert_allclose(m.pair_solimp[gripper, :3], [[0.95, 0.99, 0.001]] * 6)
+  np.testing.assert_allclose(m.pair_solref[table], [[0.02, 1.0]] * len(table))
+  np.testing.assert_allclose(m.pair_solimp[table, :3], [[0.9, 0.95, 0.001]] * len(table))

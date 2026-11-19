@@ -4,7 +4,8 @@ Written 2026-11-12. This records what was tried between 2026-11-10 and 2026-11-1
 jenga grasp policy move smoothly at full speed on the real WidowX AI arm, what was measured,
 and what was kept. The companion note [block_height_offset.md](block_height_offset.md) covers
 the block-height error found along the way.
-[Holding a position](#holding-a-position-the-friction-deadband) was added on 2026-11-16.
+[Holding a position](#holding-a-position-the-friction-deadband) was added on 2026-11-16, and
+[The gripper's grip](#the-grippers-grip-squeeze-force-and-contact-softness) on 2026-11-18.
 
 ## Bottom line
 
@@ -324,6 +325,82 @@ forearm's tilt almost constant (4 to 17 deg); the model agrees.
 model (`wxai_base_real_robot_friction.xml`) has the measured friction and so the real band
 width. The original policy was trained on the base model.
 
+## The gripper's grip: squeeze force and contact softness
+
+Measured 2026-11-18. On the real arm a held block does not slip down in the gripper, and
+pushing down on a gripped block resting on the table does not slide the fingers down it. In
+the training model both happen. Scripted tests in the Warp training env
+(`sim2real/experiments/gripper_force/run_sim.py`,
+`results/gripper_sim_20261118_185255.json`; medians over 32 envs, every block size variant):
+
+| Model | Squeeze | Block slip, 4 s hold | Fingers slide when pushing 2 / 5 / 10 mm per tick for 1.5 s |
+|---|---|---|---|
+| `trossen_wxai_base_real` (original policy) | 4.0 N | 7.4 mm | 6.4 / 13.1 / 17.0 mm |
+| `trossen_wxai_base_real_friction` | 4.0 N | 7.0 mm | 3.4 / 7.0 / 11.5 mm |
+| `trossen_wxai_base_real_friction_grip` | 83.3 N | 0.07 mm | 0.1 / -0.1 / -0.7 mm |
+
+**The real gripper squeezes at its effort limit.** `sim2real/experiments/gripper_force/run_hardware.py`
+(`results/gripper_force_20261118_181829.json`) closed the gripper on a jenga block held across
+its 25 mm face, at targets of 2, 6 and 10 mm (half the jaw gap). Every close reported the same
+-83.49 N from about 20 ms after contact to the end of the 3 s log, even at the 10 mm target
+where only 0.9 to 1.5 mm of position error was left. That is the limit 100 N /
+`effort_correction` 1.2 = 83.3 N (the WXAI spec: the motor effort is the effort in N times
+`effort_correction`, and the motor is capped at 100); the reported effort comes in steps of
+about 0.47 N. Closing on nothing, the gripper reached its target and reported -7.7 N there, a
+no-load baseline; the squeeze on the block is the 83 N (about 76 N if the baseline is an offset
+in the reading). The 83 N is the driver's estimate from motor current; nothing measured the
+force at the fingers.
+
+The gripper's position-mode gains (position 20, velocity 1) are per motor radian. Through the
+8.75 mm pinion radius they are a stiffness of 20 x 1 / r^2 = 2.6e5 N/m and a damping of
+1.3e4 N s/m; the no-block close (32.6 um short of target at 7.7 N, against 8.5 N predicted)
+agrees. The sim gripper was kp 339 N/m: 3.8 N on the block, about 22 times less.
+
+**Why the sim slipped.** Two things, and raising friction fixes neither: sliding friction
+0.5, 1.0 and 1.5 gave the same slip.
+
+- **Friction creep.** MuJoCo friction is a soft constraint, so a steady sideways load gives a
+  steady slip velocity even well inside the friction cone. With pyramidal cones (mjlab's
+  default) friction is as soft as the contact. Elliptic cones give friction its own
+  constraint rows, and `impratio` makes them that many times stiffer. Hold-test creep on CPU:
+  6.7 mm (pyramidal, impratio 1), 0.27 mm (elliptic, 10), 0.03 mm (elliptic, 100).
+- **The weak squeeze.** With 3.8 N a downward push slides the fingers or twists the block in
+  the grip.
+
+**Raising the squeeze alone breaks the grasp.** At 83 N with default contacts (solref 0.02,
+solimp 0.9 to 0.95) the fingers sink about 9 mm into the 22.5 mm block, the actuator never
+reaches its clamp, and the soft carriage mimic lets the fingers drift 3.6 mm apart; with the
+pyramidal cone the block was dropped. So the finger contacts and the mimic are stiffened too.
+
+**The grip model** (`wxai_base_real_robot_friction_grip.xml`, embodiment
+`trossen_wxai_base_real_friction_grip`, scene `tabletop_jenga_wxai_friction_grip.json`) is the
+joint-friction model with:
+
+| Change | Value | Source |
+|---|---|---|
+| Gripper actuator | kp 1e4, kv 85, force range +-83.3 N | the measured limit; kp reaches it 8.3 mm past contact, which the closed target 0 always is on the block |
+| Finger collision boxes | priority 1, solref 0.01 1, solimp 0.95 0.99 0.001 | solref of the Menagerie WXAI and ALOHA grippers, solimp of the Menagerie Robotiq 2F-85 pads; priority makes the pads' values win over the object's instead of averaging |
+| Carriage mimic equality | solref 0.005 1, solimp 0.95 0.99 0.001 | the Menagerie Panda and Robotiq finger equalities |
+| Solver | elliptic cone, impratio 10 | the Menagerie WXAI, ALOHA and Robotiq models |
+
+With these, at 83 N the fingers sink 0.75 mm and sit 0.44 mm apart. The stiffer mimic only
+centres the block (2.5 mm finger offset without it); it does not change the slip.
+
+- **kp is not the real 2.6e5.** That also ran stable and gave the same hold and push results,
+  because the clamp keeps the force low while the gripper moves; 1e4 was kept as the milder
+  value. The real damping cannot be copied: the driver damps against its planned velocity, a
+  position actuator against the absolute one, and 1.3e4 N s/m oscillated at the 2 ms step.
+- **Use it with `action.gripper_goal_time_s: 0.5`** (the real `control.gripper_goal_time_s`).
+  Without it the 83 N gripper shuts in about 20 ms and hits the block at up to about 340 N
+  (CPU test); with it the fingers reach the block about 0.3 s after the command, where the
+  real gripper reached its limit 0.30 to 0.42 s after it.
+- **Cost:** about 10% fewer env steps per second (90k against 100k at 4096 envs).
+- **Stiffness randomization** scales the gripper kp by 0.8 to 1.2 too; 8000 N/m still reaches
+  the clamp on the smallest block variant.
+- **Not tested:** whether a policy trained on it behaves better on the real arm. The push
+  tests rotate the gripper 10 to 55 degrees because the script holds no orientation; the
+  block turns 1 to 4 degrees in the grip.
+
 ## What is in the simulator now
 
 All off in `configs/tasks/grasp_wxai.json`.
@@ -343,6 +420,10 @@ The fitted friction values live in the robot model
 `wxai_base_real_robot_friction.xml` (embodiment `trossen_wxai_base_real_friction`), selected by
 the scene `configs/scenes/tabletop_jenga_wxai_friction.json`. The randomization option scales
 whatever friction the scene's model has, so it only means something with that scene.
+
+The grip model `wxai_base_real_robot_friction_grip.xml` (embodiment
+`trossen_wxai_base_real_friction_grip`, scene `tabletop_jenga_wxai_friction_grip.json`) is that
+model with the gripper changes in [The gripper's grip](#the-grippers-grip-squeeze-force-and-contact-softness).
 
 **Removed on 2026-11-12:** `action.joint_goal_time_s`, the sim model of the re-sent 50 ms
 joint goal time. The only policy trained with it learned the knock-down behaviour, and the

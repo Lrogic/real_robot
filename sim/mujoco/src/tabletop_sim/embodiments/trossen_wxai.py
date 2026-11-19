@@ -47,3 +47,22 @@ TROSSEN_WXAI_BASE_REAL_FRICTION = replace(
   / "wxai"
   / "wxai_base_real_robot_friction.xml",
 )
+
+# The friction model with the gripper matched to the real one
+# (sim2real/experiments/gripper_force): the gripper closes on an object at the driver's
+# 83.3 N effort limit, the finger pads and the carriage mimic are stiffened so that squeeze
+# neither sinks the fingers into the object nor pulls them apart, and elliptic friction
+# cones with impratio 10 (as the Menagerie WXAI, ALOHA and Robotiq models use) stop a held
+# object creeping out of the grip. Pair it with task action.gripper_goal_time_s 0.5, the
+# real control.gripper_goal_time_s; without it the gripper slams shut in ~20 ms.
+TROSSEN_WXAI_BASE_REAL_FRICTION_GRIP = replace(
+  TROSSEN_WXAI_BASE_REAL_FRICTION,
+  name="trossen_wxai_base_real_friction_grip",
+  xml_path=ASSETS_DIR
+  / "robots"
+  / "trossen_wxai_base"
+  / "wxai"
+  / "wxai_base_real_robot_friction_grip.xml",
+  impratio=10.0,
+  cone="elliptic",
+)

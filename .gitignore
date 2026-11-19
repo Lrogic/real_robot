@@ -20,3 +20,5 @@ sim2real/experiments/hardware_control/results/
 sim2real/experiments/joint_step/results/*.npz
 # Follower reach experiment: keep scripts and result JSONs; the per-capture images are regenerated.
 sim2real/experiments/follower_reach/results/*/
+# Gripper force experiment: keep scripts and result JSONs; render_sim.py regenerates the videos.
+sim2real/experiments/gripper_force/videos/
