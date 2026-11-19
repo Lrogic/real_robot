@@ -10,6 +10,8 @@
     <run>/tracking.mp4             written by track_stage.py --save-video
     <run>/pose_variation.txt       written by track_stage.py --log-variation
     <run>/recovery_log.jsonl       appended by track_stage.py --recovery (one JSON event per line)
+    <run>/policy_log.jsonl         appended by --manipulation policy --manipulation-logging
+    <run>/configs/<time>_<stage>/  every config one run.sh invocation used (pipeline/run_configs.py)
 """
 
 import json

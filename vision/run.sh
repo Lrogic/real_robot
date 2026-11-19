@@ -35,6 +35,9 @@
 # --num-seconds expires, writes save-path/pose_variation.txt (mean, std,
 # percentiles, and a pose about once per second).
 #
+# Every invocation copies the configs it used (command line, git state, camera arm, recovery and
+# manipulation configs, the policy checkpoint and its params) to save-path/configs/<time>_<stage>/.
+#
 # Exactly one mode flag is required; every other argument is forwarded to pipeline/run_stages.py,
 # which runs the setup and/or track stage in one process, so the follower stays held between
 # them (options: python -m pipeline.setup_stage --help). Runs in the vision env.
@@ -44,7 +47,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV="vision"
 
 usage() {
-    sed -n '2,43p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,46p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 2
 }
 

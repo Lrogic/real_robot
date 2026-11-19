@@ -5,12 +5,15 @@
 The camera arm is set up first (pipeline/robot_arm/camera_arm.py) and held until the process
 exits, so with setup-track the follower never lapses to idle between masking and tracking.
 Every option after the stage is the shared pipeline option set (pipeline/pipeline_args.py).
+Each invocation copies the configs it uses into <save-path>/configs/ (pipeline/run_configs.py):
+before the camera arm moves when tracking a saved run, and after setup has written the folder.
 """
 
 import sys
 
 from .pipeline_args import camera_settings, parse_pipeline_args, pipeline_parser
 from .robot_arm.camera_arm import held_camera
+from .run_configs import snapshot_run_configs
 from .run_folder import load_run
 from .setup_stage import check_setup_args, run_setup
 from .track_stage import run_track, saved_camera_pose
@@ -22,6 +25,7 @@ def main(argv=None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if not argv or argv[0] not in STAGES:
         sys.exit(f"usage: python -m pipeline.run_stages {{{','.join(STAGES)}}} [options]")
+    full_argv = list(argv)
     stage, argv = argv[0], argv[1:]
     parser = pipeline_parser(__doc__)
     args = parse_pipeline_args(parser, argv)
@@ -35,12 +39,14 @@ def main(argv=None) -> int:
             saved = saved_camera_pose(args)
         except (FileNotFoundError, ValueError) as error:
             parser.error(str(error))
+        snapshot_run_configs(args, stage, full_argv)
 
     with held_camera(args, camera_settings(args), saved) as camera:
         if setup:
             print("[setup] pipeline.setup_stage")
             if not run_setup(args, camera):
                 return 0
+            snapshot_run_configs(args, stage, full_argv)
         if track:
             if setup:
                 run = load_run(args.save_path)
