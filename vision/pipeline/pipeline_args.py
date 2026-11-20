@@ -17,7 +17,7 @@ DEFAULT_MESHES_DIR = RESEARCH_DIR / "assets" / "meshes"
 DEFAULT_FOUNDATIONPOSE_DIR = RESEARCH_DIR / "FoundationPose"
 # Camera defaults without --recovery; --recovery takes them from the recovery config.
 DEFAULT_WIDTH, DEFAULT_HEIGHT, DEFAULT_FPS = 640, 480, 30
-MANIPULATION_MODES = ("basic", "policy")
+MANIPULATION_MODES = ("basic", "policy", "crazyflie")
 POLICY_CONTROL_MODES = ("shadow", "step", "slow", "full")
 RECOVERY_ONLY_FLAGS = {"sam_model": "--sam-model", "sam_fps": "--sam-fps",
                        "iou_threshold": "--iou-threshold", "failure_limit": "--failure-limit",
@@ -102,18 +102,24 @@ def pipeline_parser(description: str) -> argparse.ArgumentParser:
     manip = parser.add_argument_group("manipulation (track_stage.py --manipulation MODE)")
     manip.add_argument("--manipulation", choices=MANIPULATION_MODES, default=None,
                        help="basic: click a tracked object to make the manipulator move to and follow it; "
-                            "policy: build the sim policy's observations at its control rate (needs --recovery)")
+                            "policy: build the sim policy's observations at its control rate (needs --recovery); "
+                            "crazyflie: send the tracked Crazyflie's position to it over a Crazyradio "
+                            "(foundationpose env, which run.sh picks for this mode)")
     manip.add_argument("--manipulation-dry-run", action="store_true",
-                       help="With --manipulation: draw and log without connecting to the arm")
+                       help="With --manipulation: draw and log without connecting to the arm (crazyflie: the radio)")
     manip.add_argument("--manipulation-config", type=Path, default=None,
                        help="Manipulation config (default: basic_manipulation/config.yaml for basic, "
-                            "policy/jenga/config.yaml for policy, under real_robot/manipulation)")
+                            "policy/jenga/config.yaml for policy, crazyflie/config.yaml for crazyflie, "
+                            "under real_robot/manipulation)")
     manip.add_argument("--manipulation-logging", action="store_true",
                        help="With --manipulation policy: write save-path/policy_log.jsonl")
     manip.add_argument("--policy-control", choices=POLICY_CONTROL_MODES, default=None,
                        help="With --manipulation policy: override control.mode of the policy config "
                             "(shadow: never command the arm; step: one step per key; slow: time-dilated; "
                             "full: training rate)")
+    manip.add_argument("--crazyflie-fly", action="store_true",
+                       help="With --manipulation crazyflie: enable the hover test (t takes off, l lands, "
+                            "Space kills; needs --recovery and the radio)")
     return parser
 
 
@@ -150,6 +156,12 @@ def parse_pipeline_args(parser: argparse.ArgumentParser, argv=None) -> argparse.
         parser.error("--manipulation-logging requires --manipulation policy")
     if args.policy_control and args.manipulation != "policy":
         parser.error("--policy-control requires --manipulation policy")
+    if args.crazyflie_fly and args.manipulation != "crazyflie":
+        parser.error("--crazyflie-fly requires --manipulation crazyflie")
+    if args.crazyflie_fly and args.manipulation_dry_run:
+        parser.error("--crazyflie-fly cannot fly without the radio (--manipulation-dry-run)")
+    if args.crazyflie_fly and not args.recovery:
+        parser.error("--crazyflie-fly requires --recovery: a lost track's poses must not reach a flying drone")
     if args.manipulation == "policy" and not args.recovery:
         parser.error("--manipulation policy requires --recovery: pose trust comes from the SAM verdicts")
     if args.recovery_cfg is not None:

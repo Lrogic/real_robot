@@ -31,6 +31,12 @@
 # s moves to the ready pose and arms an episode (or stops), r sends commands, n steps (step mode),
 # k kills to gravity compensation. --policy-control overrides the config's control.mode (shadow
 # never commands the arm). --manipulation-logging writes save-path/policy_log.jsonl.
+# --manipulation crazyflie streams the tracked Crazyflie's position (manipulator base frame) to it
+# over a Crazyradio as an external position, and draws the drone's own estimate; it never sends a
+# setpoint unless --crazyflie-fly (needs --recovery) enables the hover test: t takes off, l lands,
+# Space kills. p pauses sending, e resets the drone's Kalman filter. It runs in the foundationpose env
+# (VISION_ENV=... overrides the env). manipulation/crazyflie/README.md has the radio setup.
+#   ./run.sh --track --save-path foundationpose_runs/drone1 --camera move --recovery --manipulation crazyflie
 # --log-variation keeps every tracked pose and, when the window closes or
 # --num-seconds expires, writes save-path/pose_variation.txt (mean, std,
 # percentiles, and a pose about once per second).
@@ -40,20 +46,26 @@
 #
 # Exactly one mode flag is required; every other argument is forwarded to pipeline/run_stages.py,
 # which runs the setup and/or track stage in one process, so the follower stays held between
-# them (options: python -m pipeline.setup_stage --help). Runs in the vision env.
+# them (options: python -m pipeline.setup_stage --help). Runs in the vision env (crazyflie: foundationpose).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV="vision"
+# --manipulation crazyflie runs in the foundationpose env (it has cflib); VISION_ENV overrides.
+ENV="${VISION_ENV:-}"
 
 usage() {
-    sed -n '2,46p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,49p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 2
 }
 
 mode=""
 forward=()
+previous=""
+crazyflie=0
 for arg in "$@"; do
+    [[ "${previous}" == "--manipulation" && "${arg}" == "crazyflie" ]] && crazyflie=1
+    [[ "${arg}" == "--manipulation=crazyflie" ]] && crazyflie=1
+    previous="${arg}"
     case "${arg}" in
         --setup|--setup-track|--track)
             [[ -z "${mode}" ]] || { echo "Only one mode flag allowed" >&2; usage; }
@@ -63,6 +75,9 @@ for arg in "$@"; do
     esac
 done
 [[ -n "${mode}" ]] || usage
+if [[ -z "${ENV}" ]]; then
+    if (( crazyflie )); then ENV="foundationpose"; else ENV="vision"; fi
+fi
 
 CONDA_BASE="$(conda info --base 2>/dev/null || echo /opt/anaconda3)"
 # shellcheck source=/dev/null

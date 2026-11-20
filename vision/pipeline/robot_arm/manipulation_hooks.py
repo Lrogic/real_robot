@@ -16,4 +16,8 @@ def manipulation_hooks(args, recovery=None, camera=None):
         from manipulation.policy.session import policy_session
 
         return policy_session(args, recovery, camera)
+    if args.manipulation == "crazyflie":
+        from manipulation.crazyflie.session import crazyflie_session
+
+        return crazyflie_session(args, recovery, camera)
     raise ValueError(f"Unknown manipulation mode {args.manipulation!r}")

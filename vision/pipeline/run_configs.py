@@ -114,6 +114,13 @@ def _snapshot_basic(args, out: Path, sources: dict) -> None:
                                            out / "config.yaml")
 
 
+def _snapshot_crazyflie(args, out: Path, sources: dict) -> None:
+    from manipulation.crazyflie.session import CrazyflieConfig
+
+    cfg = CrazyflieConfig.load(args.manipulation_config)
+    sources["manipulation_config"] = _copy(cfg.path, out / "config.yaml")
+
+
 def snapshot_run_configs(args, stage: str, argv, now: Optional[datetime] = None) -> Path:
     """Write <save-path>/configs/<time>_<stage>/ for this invocation and return it."""
     now = now or datetime.now()
@@ -133,6 +140,8 @@ def snapshot_run_configs(args, stage: str, argv, now: Optional[datetime] = None)
         _snapshot_policy(args, out / "manipulation", sources)
     elif args.manipulation == "basic":
         _snapshot_basic(args, out / "manipulation", sources)
+    elif args.manipulation == "crazyflie":
+        _snapshot_crazyflie(args, out / "manipulation", sources)
 
     repo = git_state(REPO_DIR)
     if repo is not None and repo["dirty"]:

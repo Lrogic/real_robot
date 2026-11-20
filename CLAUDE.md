@@ -26,6 +26,7 @@ No single environment runs everything. Each script's docstring or `run.sh` names
 | `wxai_mjlab_hw` | `wxai_mjlab` + `trossen-arm` | `sim2real/experiments/hardware_control`, `test_ik_arm.py` |
 | `vision` | FoundationPose, HF SAM, pyrealsense2, trossen_arm, mujoco. **No mjlab, no pytest.** | `vision/run.sh` (camera pipeline and on-robot policy), vision unittests |
 | `fp_robot` | trossen_arm, pyrealsense2, OpenCV 5 | Calibration capture, hardware-side sim2real experiments |
+| `foundationpose` | `vision`'s packages + `cflib` | `vision/run.sh --manipulation crazyflie` (run.sh picks it) |
 | `sam3` | OpenCV 4.x | Offline calibration (`review`/`calibrate` need `calibrateHandEye`, which OpenCV 5 dropped) |
 
 ## Commands
@@ -88,7 +89,7 @@ Everything runs in one process: `pipeline.run_stages` (camera arm setup, then se
 2. FoundationPose tracks every object (`multi_object_fp_tracker`: one estimator per object, shared networks; `--fp-mode` picks sequential or batched).
 3. The optional `before_recovery` manipulation hook. The policy ticks here, so a SAM stall cannot age the frame it observes.
 4. Optionally, SAM recovery (`pipeline/recovery/`) runs at `sam_fps`. It compares each SAM mask with the FP mesh silhouette and re-registers an object after `failure_limit` consecutive mismatches. Both block the loop (SAM about 60 ms, re-registration about 550 ms).
-5. The other manipulation hooks (`pipeline/robot_arm/manipulation_hooks.py`: `on_mouse`, `after_recovery`, `on_key`, `draw`, `close`) plug in `manipulation/basic_manipulation` (click-to-follow test) or `manipulation/policy`. The policy's `after_recovery` takes the frame's SAM verdict into the pose trust that the next tick uses.
+5. The other manipulation hooks (`pipeline/robot_arm/manipulation_hooks.py`: `on_mouse`, `after_recovery`, `on_key`, `draw`, `close`) plug in `manipulation/basic_manipulation` (click-to-follow test), `manipulation/policy`, or `manipulation/crazyflie` (streams a tracked Crazyflie's base-frame position to it as a cflib external position; and with `--crazyflie-fly` a guarded hover, `flight.py`; `manipulation/crazyflie/README.md`). The policy's `after_recovery` takes the frame's SAM verdict into the pose trust that the next tick uses.
 
 `manipulation/policy/session.py` runs the policy at the training control rate (20 Hz). Each tick goes through these modules:
 

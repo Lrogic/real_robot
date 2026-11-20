@@ -1,0 +1,46 @@
+# Stream the FoundationPose position of a Crazyflie to it as an external position
+# (--manipulation crazyflie; manipulation/crazyflie/session.py). Positions are in the
+# manipulator base frame (z up) from the camera arm setup's T_base_camera.
+
+# Crazyradio link. Find it with: python -m manipulation.crazyflie.scan
+uri: radio://0/80/2M/E7E7E7E7E7
+
+# Tracked object to send; null picks the one whose mesh file name contains "crazyflie",
+# or the only tracked object.
+tracked_name: null
+
+# Point sent, in the tracked mesh's frame (m). The crazyflie mesh is centered on its bounding
+# box, z up, so a z offset here moves the point toward the PCB/IMU and is independent of yaw.
+origin_offset_m: [0.0, 0.0, 0.0]
+
+# Kalman measurement noise for the external position (param locSrv.extPosStdDev).
+ext_pos_std_dev_m: 0.01
+
+# Do not send a pose whose camera frame is older than this when it would be sent.
+max_frame_age_s: 0.15
+
+# With --recovery: also send poses that SAM has not confirmed (a mismatch, a re-registration,
+# or no match yet). Without --recovery every tracked pose is sent.
+send_untrusted: false
+
+# Reset the Kalman filter after this many poses have been sent (0: never automatically).
+# The e key resets it at any time.
+reset_after_sends: 10
+
+# Rate at which the drone's state estimate is logged back over the radio.
+log_hz: 50
+
+# Hover test (--crazyflie-fly, which needs --recovery). flight.py has the states and checks.
+flight:
+  hover_height_m: 0.1           # above the takeoff point
+  takeoff_time_s: 2.5
+  land_time_s: 2.5
+  bounds_xy_m: 0.20              # KILL if the estimate or tracked position goes further sideways
+  max_height_m: 0.45             # KILL above this height over the takeoff point
+  pose_timeout_s: 0.3            # land when no position has been sent for this long
+  max_estimate_error_m: 0.04     # takeoff gate; in the air, land beyond it
+  max_position_variance_m2: 0.0004  # takeoff gate on kalman.varX/Y/Z (2 cm std)
+  min_battery_v: 3.5             # takeoff gate (resting voltage)
+  min_send_hz: 15                # takeoff gate
+  max_heading_error_deg: 10      # takeoff gate (session.py): FP heading vs the drone's, after confirming the front
+  watchdog_period_s: 0.1         # firmware emergency-stop watchdog feed (it times out after 1 s)
