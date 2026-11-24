@@ -1,7 +1,7 @@
 """Capture one RealSense RGB-D frame and interactively segment objects with an HF SAM tracker.
 
 Each saved object gets its own obj{i} folder under --save-path, optionally with a
-copy of a mesh folder from --meshes-dir. See pipeline/run_folder.py for the layout.
+copy of a mesh folder from --meshes-dir, or one made with "Create mesh" (pipeline/mesh_reconstruction). See pipeline/run_folder.py for the layout.
 Masks come from sam3 by default; with --recovery they come from the recovery config's
 model (--sam-model), the same model that tracks the objects later. The camera arm is set up
 first (--camera parked | move, pipeline/robot_arm/camera_arm.py) and its pose is saved as
@@ -62,8 +62,10 @@ def run_setup(args, camera) -> int:
     score_label = f"{sam_model} presence"
 
     writer = RunWriter(args.save_path, capture, camera.to_json())
+    from .mesh_reconstruction.create_mesh import create_mesh
     app = SegmentationApp(capture.rgb, predict, writer.save_object,
-                          mesh_folders(args.meshes_dir), score_label=score_label)
+                          mesh_folders(args.meshes_dir), score_label=score_label,
+                          create_mesh=partial(create_mesh, args=args, camera=camera, capture=capture, tracker=tracker))
     saved = app.run()
     if saved:
         print(f"Saved {saved} object(s) under {args.save_path}")

@@ -1,0 +1,26 @@
+# Mesh creation from the setup stage's "Create mesh" button (pipeline/mesh_reconstruction/).
+# Relative paths resolve against this file.
+
+views:
+  look_down_deg: 45.0        # front view: camera elevation above the object's centroid, looking at it
+  side_angle_deg: 35.0       # side views: front view rotated +/- this about the vertical through the centroid
+  bbox_fraction: 0.5         # front view distance: larger mask bounding-box side / that frame dimension
+  bbox_tolerance: 0.05       # one distance correction if the front view's fraction is off by more than this
+  min_distance_m: 0.07       # D405 minimum depth
+  max_distance_m: 0.5
+  max_reach_error_m: 0.02    # abort if the driver's IK leaves the camera further than this from a goal
+
+arm:
+  goal_time_s: 2.0           # every follower move: front -> side -> front -> side -> front -> home
+
+model:                       # MV-SAM3D, run in the sam3d env by worker.py
+  python: /opt/conda-envs/sam3d/bin/python
+  mvsam3d_dir: ../../../../MV-SAM3D
+  hf_hub_cache: /bigdata/luka/models/hf
+  torch_home: /bigdata/luka/cache/torch
+  seed: 42
+  depth_edge_px: 3          # drop depth this many pixels inside the mask edge (bleed, flying pixels)
+  stage1_steps: 25
+  stage2_steps: 25
+
+preview_tile_px: 320

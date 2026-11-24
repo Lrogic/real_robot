@@ -7,6 +7,7 @@
     <run>/obj1/mask_overlay.png
     <run>/obj1/mask.png            one-channel uint8 0/255, as format_foundationpose_mask.py
     <run>/obj1/<mesh_folder>/...   only if a mesh was selected
+    <run>/mesh_reconstruction/<k>/ views, MV-SAM3D output and mesh of each "Create mesh" (create_mesh.py)
     <run>/tracking.mp4             written by track_stage.py --save-video
     <run>/pose_variation.txt       written by track_stage.py --log-variation
     <run>/recovery_log.jsonl       appended by track_stage.py --recovery (one JSON event per line)

@@ -76,12 +76,19 @@ class Prompts:
 
 class SegmentationApp:
     def __init__(self, rgb: np.ndarray, predict: PredictFn, save: SaveFn,
-                 mesh_dirs: Sequence[Path], score_label: str = "Mask score"):
+                 mesh_dirs: Optional[Sequence[Path]], score_label: str = "Mask score",
+                 create_mesh: Optional[Callable[[np.ndarray], Optional[Path]]] = None,
+                 box: Optional[Tuple[float, float, float, float]] = None, window: str = WINDOW):
+        """mesh_dirs=None: one mask, saved without a mesh, then the window closes.
+        create_mesh: adds a mesh-screen button that builds a mesh folder for the mask (None: cancelled).
+        box: initial box prompt."""
         self.rgb = rgb
         self.predict = predict
         self.score_label = score_label
         self.save = save
-        self.mesh_dirs = list(mesh_dirs)
+        self.mesh_dirs = None if mesh_dirs is None else list(mesh_dirs)
+        self.create_mesh = create_mesh
+        self.window = window
         self.height, self.width = rgb.shape[:2]
 
         self.screen = "segment"
@@ -97,21 +104,27 @@ class SegmentationApp:
         self._pending_action: Optional[str] = None
         self._drag_start: Optional[Tuple[int, int]] = None
         self._drag_end: Optional[Tuple[int, int]] = None
+        if box is not None:
+            self.prompts.set_box(tuple(float(v) for v in box))
+            self._dirty = True
+
+    def _open_window(self) -> None:
+        cv2.namedWindow(self.window, cv2.WINDOW_AUTOSIZE)
+        cv2.setMouseCallback(self.window, self._on_mouse)
 
     def run(self) -> int:
         """Show the window until the user finishes or quits; return objects saved."""
-        cv2.namedWindow(WINDOW, cv2.WINDOW_AUTOSIZE)
-        cv2.setMouseCallback(WINDOW, self._on_mouse)
+        self._open_window()
         try:
             while not self.done:
                 if self._dirty:
                     self._update_mask()
-                cv2.imshow(WINDOW, cv2.cvtColor(self._render(), cv2.COLOR_RGB2BGR))
+                cv2.imshow(self.window, cv2.cvtColor(self._render(), cv2.COLOR_RGB2BGR))
                 self._on_key(cv2.waitKey(20) & 0xFF)
                 if self._pending_action is not None:
                     action, self._pending_action = self._pending_action, None
                     self._dispatch(action)
-                if cv2.getWindowProperty(WINDOW, cv2.WND_PROP_VISIBLE) < 1:
+                if cv2.getWindowProperty(self.window, cv2.WND_PROP_VISIBLE) < 1:
                     break
         finally:
             cv2.destroyAllWindows()
@@ -131,6 +144,8 @@ class SegmentationApp:
             ], ["Left click: object", "Right click: background", "Left drag: box"])
         if self.screen == "mesh":
             buttons = [Button(d.name, f"mesh:{i}") for i, d in enumerate(self.mesh_dirs)]
+            if self.create_mesh is not None:
+                buttons.append(Button("Create mesh (MV-SAM3D)", "create"))
             buttons.append(Button("No mesh", "no_mesh", primary=True))
             buttons.append(Button("Back  [Esc]", "back"))
             return (f"Mesh for {obj}", buttons, [])
@@ -141,7 +156,10 @@ class SegmentationApp:
 
     def _dispatch(self, action: str) -> None:
         if self.screen == "segment":
-            if action == "save" and self.mask is not None:
+            if action == "save" and self.mask is not None and self.mesh_dirs is None:
+                self._save(None)
+                self.done = self.screen == "next"
+            elif action == "save" and self.mask is not None:
                 self.screen, self.status = "mesh", ""
             elif action == "undo":
                 self.prompts.undo()
@@ -154,6 +172,13 @@ class SegmentationApp:
         elif self.screen == "mesh":
             if action == "back":
                 self.screen = "segment"
+            elif action == "create":
+                mesh_dir = self.create_mesh(self.mask)
+                self._open_window()  # the mesh views' windows close every window
+                if mesh_dir is None:
+                    self.status = "Mesh not created"
+                else:
+                    self._save(mesh_dir)
             elif action == "no_mesh" or action.startswith("mesh:"):
                 mesh_dir = (None if action == "no_mesh"
                             else self.mesh_dirs[int(action.split(":")[1])])

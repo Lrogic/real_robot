@@ -18,6 +18,7 @@ import json
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from functools import cached_property
 from pathlib import Path
 from typing import Optional
 
@@ -28,7 +29,7 @@ import yaml
 from calibration.board import load_config
 from calibration.reset_follower import session_follower_joints
 from calibration.session import read_json
-from calibration.transforms import inv_T, load_T_base_camera, rotation_angle_deg
+from calibration.transforms import inv_T, load_T_base_camera, rotation_angle_deg, rvec_from_R
 
 CAMERA_MODES = ("parked", "move")
 DEFAULT_CAMERA_ARM_CONFIG = Path(__file__).resolve().parents[1] / "camera_arm.yaml"
@@ -75,6 +76,7 @@ class CameraPose:
     follower_joints_rad: Optional[list] = None
     T_fbase_fee: Optional[np.ndarray] = None  # move only: the follower's locked Cartesian pose
     extra: dict = field(default_factory=dict)
+    arm: Optional["CameraMover"] = field(default=None, repr=False, compare=False)  # not saved
 
     def to_json(self) -> dict:
         return {"mode": self.mode, "T_base_camera": self.T_base_camera.tolist(),
@@ -104,6 +106,13 @@ def move_calibration(path: Path):
     except KeyError as error:
         raise ValueError(f"{path} is not a two-arm calibration (no {error})") from error
     return Z, X, data.get("follower") or {}
+
+
+def check_follower_identity(identity: dict, follower_cfg: dict, path: Path) -> None:
+    for key in ("model", "end_effector"):
+        if identity.get(key) and identity[key] != follower_cfg[key]:
+            raise ValueError(f"follower {key} {follower_cfg[key]!r} differs from the two-arm calibration's "
+                             f"{identity[key]!r} ({path}); F would be read in another frame")
 
 
 def pose_difference(Ta: np.ndarray, Tb: np.ndarray) -> str:
@@ -147,6 +156,40 @@ class _Follower:
         if self.arm.driver is not None:
             self.arm.driver.cleanup()
             self.arm.driver = None
+
+
+class CameraMover:
+    """Moves the held camera to goal poses and back to the joints it was held at (mesh_reconstruction).
+
+    A goal T_base_camera becomes the follower pose F = T_base_fbase^-1 @ T_base_camera @ T_fee_camera^-1
+    from the two-arm calibration, reached with the driver's Cartesian IK interpolated in joint space.
+    """
+
+    def __init__(self, follower: _Follower, cfg: CameraArmConfig, follower_cfg: dict, home_joints):
+        self.follower, self.cfg, self.follower_cfg, self.home_joints = follower, cfg, follower_cfg, home_joints
+
+    @cached_property
+    def calibration(self):
+        Z, X, identity = move_calibration(self.cfg.move_calibration)
+        check_follower_identity(identity, self.follower_cfg, self.cfg.move_calibration)
+        return Z, X
+
+    def move_camera(self, T_base_camera: np.ndarray, goal_time_s: float) -> np.ndarray:
+        """Blocking move; returns the T_base_camera reached (from the measured F)."""
+        import trossen_arm
+
+        Z, X = self.calibration
+        F = inv_T(Z) @ T_base_camera @ inv_T(X)
+        driver = self.follower.arm.driver
+        driver.set_arm_modes(trossen_arm.Mode.position)
+        driver.set_cartesian_positions([float(v) for v in (*F[:3, 3], *rvec_from_R(F[:3, :3]))],
+                                       trossen_arm.InterpolationSpace.joint,
+                                       goal_time_s, True)
+        self.follower.arm.locked = True
+        return Z @ _locked_F(self.follower, self.cfg.lock_settle_s)[0] @ X
+
+    def home(self, goal_time_s: float) -> None:
+        self.follower.move_to(self.home_joints, goal_time_s)
 
 
 def guide_follower(follower: _Follower, settings) -> bool:
@@ -193,10 +236,7 @@ def held_camera(args, settings, saved: Optional[dict] = None):
     T_parked, parked_joints = parked_calibration(cfg.parked_calibration)
     if args.camera == "move":
         Z, X, identity = move_calibration(cfg.move_calibration)
-        for key in ("model", "end_effector"):
-            if identity.get(key) and identity[key] != follower_cfg[key]:
-                raise ValueError(f"follower {key} {follower_cfg[key]!r} differs from the two-arm calibration's "
-                                 f"{identity[key]!r} ({cfg.move_calibration}); F would be read in another frame")
+        check_follower_identity(identity, follower_cfg, cfg.move_calibration)
     print(f"Camera arm ({args.camera}): follower {follower_cfg['ip']}, config {cfg.path}")
 
     follower = _Follower(follower_cfg).__enter__()
@@ -226,6 +266,7 @@ def held_camera(args, settings, saved: Optional[dict] = None):
                 print(f"Camera pose vs the run's setup: "
                       f"{pose_difference(np.asarray(saved['T_base_camera']), pose.T_base_camera)}")
         print(f"T_base_camera from {pose.calibration}: camera at {np.round(pose.T_base_camera[:3, 3], 3)} m.")
+        pose.arm = CameraMover(follower, cfg, follower_cfg, pose.follower_joints_rad)
         yield pose
     finally:
         try:
