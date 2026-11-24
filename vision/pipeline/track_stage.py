@@ -94,7 +94,12 @@ def run_track(args, run, camera) -> int:
                 if args.manipulation:
                     from .robot_arm.manipulation_hooks import manipulation_hooks
                     with manipulation_hooks(args, recovery, camera) as session:
-                        track_live(args, tracker, stream, hooks=session, recovery=recovery)
+                        mirror = None
+                        if args.sim_mirror:
+                            from .sim_mirror import SimMirror
+                            mirror = SimMirror(session, objects, [t.color for t in tracker.objects],
+                                               camera.T_base_camera, stream.K, args.width, args.height)
+                        track_live(args, tracker, stream, hooks=session, recovery=recovery, mirror=mirror)
                 else:
                     track_live(args, tracker, stream, recovery=recovery)
         finally:

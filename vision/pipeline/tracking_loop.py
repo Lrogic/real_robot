@@ -3,6 +3,8 @@
 track_live reads the newest RealSense frameset, tracks every object, draws the window, and
 reports timing; hooks (--manipulation) and recovery (--recovery) plug into each iteration:
 FoundationPose, hooks.before_recovery (optional), recovery.after_fp, hooks.after_recovery.
+With --sim-mirror, mirror (sim_mirror.SimMirror) replays each FoundationPose update in MuJoCo,
+drawn to the right of the camera view.
 """
 
 import time
@@ -119,7 +121,7 @@ def show_now(vis) -> int:
     return cv2.waitKey(1) & 0xFF
 
 
-def track_live(args, tracker, stream, hooks=None, recovery=None):
+def track_live(args, tracker, stream, hooks=None, recovery=None, mirror=None):
     cv2.namedWindow(WINDOW, cv2.WINDOW_NORMAL)
     if hooks is not None:
         cv2.setMouseCallback(WINDOW, hooks.on_mouse)
@@ -149,6 +151,7 @@ def track_live(args, tracker, stream, hooks=None, recovery=None):
             frame = LiveFrame(rgb, depth, stream.K, timing.frame_number,
                               timing.camera_timestamp_ms, time.monotonic())
             fp_per_object = tracker.track(rgb, depth, stream.K, args.track_refine_iter)
+            sim_vis = mirror.update(tracker) if mirror is not None else None
             if pose_log is not None:
                 pose_log.record(time.monotonic() - started_at, tracker)
             # Before recovery, which can block for a SAM request or a re-registration.
@@ -162,6 +165,8 @@ def track_live(args, tracker, stream, hooks=None, recovery=None):
                 vis = hooks.draw(vis)
             if recovery is not None:
                 vis = recovery.draw(vis, frame)
+            if sim_vis is not None:  # padded below to the recovery strip's height
+                vis = np.hstack([vis, _fit_frame(sim_vis, vis.shape[0], sim_vis.shape[1])])
             if hooks is not None and hasattr(hooks, "draw_strip"):
                 vis = np.vstack([vis, hooks.draw_strip(vis.shape[1])])
             display_frame = cv2.cvtColor(vis, cv2.COLOR_RGB2BGR)
@@ -193,6 +198,8 @@ def track_live(args, tracker, stream, hooks=None, recovery=None):
     finally:
         if hooks is not None:
             hooks.close()
+        if mirror is not None:
+            mirror.close()
         elapsed_seconds = time.monotonic() - started_at
         cv2.destroyAllWindows()
         print_stats("overall", all_samples, elapsed_seconds, args.fps)

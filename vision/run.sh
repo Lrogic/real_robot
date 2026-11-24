@@ -31,6 +31,8 @@
 # s moves to the ready pose and arms an episode (or stops), r sends commands, n steps (step mode),
 # k kills to gravity compensation. --policy-control overrides the config's control.mode (shadow
 # never commands the arm). --manipulation-logging writes save-path/policy_log.jsonl.
+# --sim-mirror (with --manipulation policy) replays the measured joints and tracked poses in MuJoCo,
+# rendered from the camera's pose and intrinsics beside the camera view (and in --save-video).
 # --log-variation keeps every tracked pose and, when the window closes or
 # --num-seconds expires, writes save-path/pose_variation.txt (mean, std,
 # percentiles, and a pose about once per second).
@@ -47,7 +49,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV="vision"
 
 usage() {
-    sed -n '2,46p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,45p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 2
 }
 

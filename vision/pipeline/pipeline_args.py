@@ -114,6 +114,9 @@ def pipeline_parser(description: str) -> argparse.ArgumentParser:
                        help="With --manipulation policy: override control.mode of the policy config "
                             "(shadow: never command the arm; step: one step per key; slow: time-dilated; "
                             "full: training rate)")
+    manip.add_argument("--sim-mirror", action="store_true",
+                       help="With --manipulation policy: show (and with --save-video, save) a MuJoCo replay of "
+                            "the measured joints and tracked poses beside the camera view, from the camera's viewpoint")
     return parser
 
 
@@ -148,6 +151,8 @@ def parse_pipeline_args(parser: argparse.ArgumentParser, argv=None) -> argparse.
         parser.error("--manipulation-dry-run requires --manipulation")
     if args.manipulation_logging and args.manipulation != "policy":
         parser.error("--manipulation-logging requires --manipulation policy")
+    if args.sim_mirror and args.manipulation != "policy":
+        parser.error("--sim-mirror requires --manipulation policy")
     if args.policy_control and args.manipulation != "policy":
         parser.error("--policy-control requires --manipulation policy")
     if args.manipulation == "policy" and not args.recovery:
