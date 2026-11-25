@@ -12,11 +12,17 @@ from calibration.transforms import make_T, transform_points
 
 
 def masked_points(depth, K, mask, T_base_camera) -> np.ndarray:
-    """(N, 3) base-frame points of the mask's pixels that have depth."""
+    """(N, 3) base-frame points of the mask's pixels that have depth, without outliers.
+
+    Edge and background pixels inside the mask carry depth well behind the object (up to 1 m on
+    mesh_test3); from a side view they spread along the setup camera's rays and blow up the
+    projected box, so points over 3x the median distance from the median are dropped.
+    """
     v, u = np.nonzero(mask & (depth > 0))
     z = depth[v, u]
-    pts = np.stack([(u - K[0, 2]) * z / K[0, 0], (v - K[1, 2]) * z / K[1, 1], z], 1)
-    return transform_points(T_base_camera, pts)
+    pts = transform_points(T_base_camera, np.stack([(u - K[0, 2]) * z / K[0, 0], (v - K[1, 2]) * z / K[1, 1], z], 1))
+    r = np.linalg.norm(pts - np.median(pts, 0), axis=1)
+    return pts[r <= 3 * np.median(r)]
 
 
 def look_at(eye, target) -> np.ndarray:
@@ -46,8 +52,9 @@ def mask_box(mask):
 
 
 def plan(points, T_setup, K, shape, cfg, distance=None):
-    """(front, side +, side -) T_base_camera goals and the front distance used.
+    """(pose(angle_deg, distance) -> T_base_camera, front distance) around the points' centroid.
 
+    Angle 0 is the front view, on the setup camera's side; the side views are +/- side_angle_deg.
     distance=None sizes the front view from the points' projection (cfg bbox_fraction).
     """
     centre = np.median(points, 0)
@@ -56,15 +63,22 @@ def plan(points, T_setup, K, shape, cfg, distance=None):
     horizontal /= np.linalg.norm(horizontal)
     down = np.radians(cfg["look_down_deg"])
     direction = np.cos(down) * horizontal + [0, 0, np.sin(down)]  # from the centroid to the camera
+
+    def pose(angle_deg, d):
+        c, s = np.cos(np.radians(angle_deg)), np.sin(np.radians(angle_deg))
+        return look_at(centre + d * np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]]) @ direction, centre)
+
     if distance is None:  # the projected size scales roughly as 1 / distance; refine a few times
         distance = 0.3
         for _ in range(5):
-            pose = look_at(centre + distance * direction, centre)
-            distance *= box_fraction(project_box(points, pose, K, shape, 0), shape) / cfg["bbox_fraction"]
-    distance = float(np.clip(distance, cfg["min_distance_m"], cfg["max_distance_m"]))
-    poses = []
-    for angle in (0.0, cfg["side_angle_deg"], -cfg["side_angle_deg"]):
-        c, s = np.cos(np.radians(angle)), np.sin(np.radians(angle))
-        rotated = np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]]) @ direction
-        poses.append(look_at(centre + distance * rotated, centre))
-    return poses, distance
+            distance *= box_fraction(project_box(points, pose(0, distance), K, shape, 0), shape) / cfg["bbox_fraction"]
+    return pose, float(np.clip(distance, cfg["min_distance_m"], cfg["max_distance_m"]))
+
+
+def transit(pose, distance, a0, a1, cfg):
+    """Waypoints from the view at angle a0 to the one at a1: back out by retreat_m, follow the arc
+    at that radius in steps of at most arc_step_deg, and come in again (each step is a joint-space
+    move, so short arcs keep it from cutting toward the object)."""
+    steps = max(1, int(np.ceil(abs(a1 - a0) / cfg["arc_step_deg"])))
+    far = distance + cfg["retreat_m"]
+    return [pose(a, far) for a in np.linspace(a0, a1, steps + 1)] + [pose(a1, distance)]

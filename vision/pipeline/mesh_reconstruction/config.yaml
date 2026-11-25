@@ -3,15 +3,17 @@
 
 views:
   look_down_deg: 45.0        # front view: camera elevation above the object's centroid, looking at it
-  side_angle_deg: 35.0       # side views: front view rotated +/- this about the vertical through the centroid
+  side_angle_deg: 70.0       # side views: front view rotated +/- this about the vertical through the centroid
   bbox_fraction: 0.5         # front view distance: larger mask bounding-box side / that frame dimension
   bbox_tolerance: 0.05       # one distance correction if the front view's fraction is off by more than this
   min_distance_m: 0.07       # D405 minimum depth
   max_distance_m: 0.5
+  retreat_m: 0.05            # between views: back out this much from the view distance before going round
+  arc_step_deg: 35.0         # ... in joint-space moves of at most this angle about the centroid
   max_reach_error_m: 0.02    # abort if the driver's IK leaves the camera further than this from a goal
 
 arm:
-  goal_time_s: 2.0           # every follower move: front -> side -> front -> side -> front -> home
+  goal_time_s: 2.0           # every follower move, view or waypoint
 
 model:                       # MV-SAM3D, run in the sam3d env by worker.py
   python: /opt/conda-envs/sam3d/bin/python

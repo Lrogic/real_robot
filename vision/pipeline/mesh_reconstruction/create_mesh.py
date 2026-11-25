@@ -4,8 +4,9 @@
    the front view looks down at the centroid from the setup camera's side, at the distance where
    the object fills bbox_fraction of the frame; the side views rotate it +/- side_angle_deg about
    the vertical through the centroid.
-2. After Enter, the follower moves front -> side + -> front -> side - -> front -> home, each move
-   taking goal_time_s, and captures at the three views. Home is where the camera arm was held (the
+2. After Enter, the follower moves to the front view, then each side view, and home from the
+   front view's stand-off, each move taking goal_time_s, and captures at the three views. Between
+   views it backs out by retreat_m and goes round in arcs of at most arc_step_deg (views.transit). Home is where the camera arm was held (the
    locked move joints or the parked joints), so the run's camera pose stays valid. If the front
    view's automatic mask misses the target size by more than bbox_tolerance, the front view is
    moved once to correct it.
@@ -49,10 +50,10 @@ def load_config(path: Path = CONFIG) -> dict:
 
 
 def capture_views(arm, plan, points, settings, tracker, cfg):
-    """Visit front -> side + -> front -> side - -> front; returns [(Capture, reached T_base_camera)].
+    """Front, side +, side -, then back to the front stand-off; returns [(Capture, reached T_base_camera)].
 
-    plan(distance=None) -> ([front, side +, side -] goals, distance); points: the object's, base frame.
-    The caller homes the arm.
+    plan(distance=None) -> (pose(angle, distance), front distance); points: the object's, base frame.
+    Between views the camera backs out and goes round (views.transit). The caller homes the arm.
     """
     t, view_cfg = cfg["arm"]["goal_time_s"], cfg["views"]
 
@@ -67,20 +68,25 @@ def capture_views(arm, plan, points, settings, tracker, cfg):
         reached = visit(goal)
         return capture_frame(settings), reached
 
-    goals, distance = plan()
-    front = shoot(goals[0])
+    pose, distance = plan()
+    front = shoot(pose(0, distance))
     capture, reached = front
     auto = tracker.preview(capture.rgb, [], [], views.project_box(points, reached, capture.K, capture.rgb.shape))
     if auto is not None and auto[0].any():
         fraction = views.box_fraction(views.mask_box(auto[0]), capture.rgb.shape)
         if abs(fraction - view_cfg["bbox_fraction"]) > view_cfg["bbox_tolerance"]:
             print(f"Front view fills {fraction:.0%} of the frame; moving to correct it once.")
-            goals, _ = plan(distance * fraction / view_cfg["bbox_fraction"])
-            front = shoot(goals[0])
-    shots = [front]
-    for side in goals[1:]:
-        shots.append(shoot(side))
-        visit(goals[0])  # back through the front view, never straight from one side to the other
+            pose, distance = plan(distance * fraction / view_cfg["bbox_fraction"])
+            front = shoot(pose(0, distance))
+    shots, angle = [front], 0.0
+    for side in (view_cfg["side_angle_deg"], -view_cfg["side_angle_deg"]):
+        *waypoints, goal = views.transit(pose, distance, angle, side, view_cfg)
+        for waypoint in waypoints:
+            visit(waypoint)
+        shots.append(shoot(goal))
+        angle = side
+    for waypoint in views.transit(pose, distance, angle, 0.0, view_cfg)[:-1]:  # out and round to the front
+        visit(waypoint)
     return shots
 
 
