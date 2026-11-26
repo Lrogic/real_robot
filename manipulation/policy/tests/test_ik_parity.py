@@ -137,15 +137,23 @@ def test_interpolated_substeps_match_mjlab_action(cfg, ik, tmp_path):
         ik.set_goal(np.eye(4))
 
 
-def test_matches_mjlab_action(cfg, ik):
+def test_matches_mjlab_action(cfg, ik, tmp_path):
     from mjlab.envs import ManagerBasedRlEnv
     from tabletop_sim.tasks.grasp.env_cfg import make_grasp_env_cfg
 
-    env = ManagerBasedRlEnv(make_grasp_env_cfg(cfg.scene_path, cfg.task_path, None, 1), device=DEVICE)
+    # Every substep solves toward the full goal only with goal interpolation off, which is the
+    # case compared here whatever the configured task uses (the interpolated case is
+    # test_interpolated_substeps_match_mjlab_action).
+    task = json.loads(cfg.task_path.read_text())
+    task.setdefault("action", {})["ee_goal_interpolation"] = False
+    task_path = tmp_path / "task.json"
+    task_path.write_text(json.dumps(task))
+    env = ManagerBasedRlEnv(make_grasp_env_cfg(cfg.scene_path, task_path, None, 1), device=DEVICE)
     try:
         env.reset()
         term = env.action_manager.get_term("arm")
         assert type(term).__name__ == "ClippedDifferentialIKAction"
+        assert term.cfg.interpolate_goal is False
         robot = env.scene["robot"]
         ids = term._joint_ids
         assert [robot.joint_names[i] for i in ids.tolist()] == list(ARM_JOINTS)

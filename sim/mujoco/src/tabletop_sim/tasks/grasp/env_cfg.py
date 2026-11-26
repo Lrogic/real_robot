@@ -7,7 +7,7 @@ import math
 from pathlib import Path
 
 from mjlab.envs import ManagerBasedRlEnvCfg
-from mjlab.envs.mdp import joint_pos_limits, time_out
+from mjlab.envs.mdp import joint_pos_limits, nan_detection, time_out
 from mjlab.envs.mdp.events import reset_scene_to_default
 from mjlab.managers.action_manager import ActionTermCfg
 from mjlab.managers.command_manager import CommandTermCfg
@@ -276,7 +276,14 @@ def _rewards(task: TaskConfig, ent: _Entities) -> dict[str, RewardTermCfg]:
 
 
 def _terminations() -> dict[str, TerminationTermCfg]:
-  return {"time_out": TerminationTermCfg(func=time_out, time_out=True)}
+  # nan_detection resets an env whose physics state went non-finite (a rare contact blow-up).
+  # Without it one such env out of thousands ends training with a NaN observation; with it the
+  # env gets a zero reward (the reward manager zeroes NaN), is reset before its observation is
+  # computed, and is counted in Episode_Termination/nan_detection. It never fires otherwise.
+  return {
+    "time_out": TerminationTermCfg(func=time_out, time_out=True),
+    "nan_detection": TerminationTermCfg(func=nan_detection),
+  }
 
 
 def _metrics(task: TaskConfig, ent: _Entities) -> dict[str, MetricsTermCfg]:

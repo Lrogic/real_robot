@@ -413,7 +413,7 @@ def test_joint_pos_limit_weight_scales_with_normalization(tmp_path, task_dict):
 def test_no_success_reward_counter_or_termination():
   cfg = make_grasp_env_cfg(CUBE_SCENE, STANDARD_TASK)
   assert "success" not in cfg.rewards
-  assert list(cfg.terminations) == ["time_out"]
+  assert list(cfg.terminations) == ["time_out", "nan_detection"]
   assert cfg.terminations["time_out"].time_out
   assert set(cfg.metrics) == {
     "mean_hold_score",

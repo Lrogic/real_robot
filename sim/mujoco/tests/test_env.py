@@ -253,7 +253,7 @@ def _scripted_grasp(env, steps=110):
 
 def test_no_success_machinery(ee_env):
   assert "success" not in ee_env.reward_manager.active_terms
-  assert ee_env.termination_manager.active_terms == ["time_out"]
+  assert ee_env.termination_manager.active_terms == ["time_out", "nan_detection"]
   assert "success" not in ee_env.metrics_manager.active_terms
 
 
