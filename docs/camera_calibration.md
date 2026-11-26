@@ -4,7 +4,7 @@ Written 2026-11-13; the camera mount and the fitted transforms were added on 202
 D405 sits on the follower (camera) arm. This note covers how its pose in the manipulator base
 frame is calibrated, how accurate that is, and what happened when we tried to let the follower
 move. Read `docs/block_height_offset.md` first for the depth error and
-the arm's own height error; this note refers to it.
+`docs/arm_joint_offsets.md` for the arm's own height error; this note refers to both.
 
 ## Short version
 
@@ -169,10 +169,12 @@ the fingers, pitched 20 deg toward the tool's -z (down at the parked pose), from
 and 5 cm above the tool point. The 4.8 deg pitch of `Z` is mostly the two arms' reach errors:
 
 - **Each arm reads as if its base were tilted.** The manipulator reads a level table as rising
-  about 32 mm per metre of reach (`block_height_offset.md`, sections 8 and 9), the follower about
+  about 32 mm per metre of reach (`arm_joint_offsets.md`, sections 1 and 2), the follower about
   31 mm/m (section 6 below). Those readings are what an arm without that error would give if its
-  base were tilted forward and down by about 1.8 deg. The bases are not tilted; the error (most
-  likely droop) produces the same readings.
+  base were tilted forward and down by about 1.8 deg. The bases are not tilted; the error (a
+  constant shoulder and elbow angle error on both arms, `arm_joint_offsets.md`) produces the same
+  readings. Re-solved with the offsets on both arms, `Z` comes out 1.1 deg from level, 970 mm away
+  and 6 mm higher, which matches the bases' measured layout (`arm_joint_offsets.md`, section 5).
 - **`Z` relates those two "as-if" bases, not the real ones.** The calibration only sees each
   arm's readings, so it finds the transform that makes them agree.
 - **Facing each other, the two tilts add.** A table point moved toward the follower gets further
@@ -257,19 +259,21 @@ still lands with its own 0.5 to 1 deg that the joints do not register.
 3. **Use the joint-based result as is** (about 6 to 10 mm) where that is good enough. This is
    `run.sh --camera move`.
 
-Not tried: idle for both arms (drops), and a joint-offset or compliance model in the final
-calibration (no gain at unseen poses).
+Not tried: idle for both arms (drops). A joint-offset model was tried on 2026-11-25
+(`arm_joint_offsets.md`, section 4): the shoulder and elbow offsets on both arms improve the
+leave-one-station-out error only from 5.09 to 4.82 mm, since the play dominates, but they give
+the follower base its real layout.
 
 ## 6. The follower's reach error
 
 With the follower in gravity compensation and its carriage touching the top of the upright block at
 three reaches (`sim2real/experiments/follower_reach/capture_touches.py`, result
 `results/touches_follower_20261113_113913.json`), the reading rose about 31 mm per metre of reach.
-That is close to the manipulator's 32 mm/m (`block_height_offset.md`, section 8), so both arms show
+That is close to the manipulator's 32 mm/m (`arm_joint_offsets.md`, section 1), so both arms show
 the same pattern. Three touches only; the third, at another direction, was 2 mm off the line.
 `results/workspace_follower.json` holds 18 hand-placed workspace poses with images: reach 0.25 to
 0.67 m, base angle -29 to +50 deg, camera height 0.10 to 0.38 m. The manipulator's error stays the
-same under position control and in both directions of travel (`block_height_offset.md`, section 9);
+same under position control and in both directions of travel (`arm_joint_offsets.md`, section 2);
 the follower was not measured that way.
 
 ## Tools

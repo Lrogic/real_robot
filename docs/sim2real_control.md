@@ -2,8 +2,9 @@
 
 Written 2026-11-12. This records what was tried between 2026-11-10 and 2026-11-12 to make the
 jenga grasp policy move smoothly at full speed on the real WidowX AI arm, what was measured,
-and what was kept. The companion note [block_height_offset.md](block_height_offset.md) covers
-the block-height error found along the way.
+and what was kept. The companion notes [block_height_offset.md](block_height_offset.md) and
+[arm_joint_offsets.md](arm_joint_offsets.md) cover the block-height error found along the way: the
+depth camera's part and the arm's part.
 [Holding a position](#holding-a-position-the-friction-deadband) was added on 2026-11-16, and
 [The gripper's grip](#the-grippers-grip-squeeze-force-and-contact-softness) on 2026-11-18.
 
@@ -274,7 +275,7 @@ Measured 2026-11-16 with `sim2real/sag_test/hold_z_sweep.py`
 and stepped along +x from 0.25 m to 0.43 m and back in 45 mm steps. The joint targets came
 from IK on the MuJoCo model and were sent with `set_arm_positions` (2 s goal time, so the
 driver's quintic). Each stop was read after a 1 s settle, averaged over 0.5 s. The same run
-measured the arm's height error ([block_height_offset.md](block_height_offset.md), section 9).
+measured the arm's height error ([arm_joint_offsets.md](arm_joint_offsets.md), section 2).
 
 **The joints stop short of their targets in the direction they were moving.** Measured minus
 target, in degrees:
@@ -481,7 +482,8 @@ The sim tests build their variants the same way, in `sim/mujoco/tests/task_files
   is a small sample.
 - **The depth sensor reads short,** which makes the policy grip about 7 mm high and reach
   about 14 mm far. See [block_height_offset.md](block_height_offset.md). Fixing that may
-  matter more for grasp success than anything in this note.
+  matter more for grasp success than anything in this note. (Fixed by a tare calibration on
+  2026-11-13.)
 - **Send-once** would need a guard on the real arm that re-sends the last target when no new
   goal arrives, and a matching sim option. Not built.
 - **A larger action scale at 10 Hz** to restore arm speed. Not tried.

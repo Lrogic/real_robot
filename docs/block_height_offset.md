@@ -11,7 +11,8 @@ camera's flash, cut the depth error at the block's distance from -15.8 mm to -0.
 place the block about 6.5 mm higher and 14 mm further from the robot than runs after it. On a
 tracked block the camera now agrees with a fingertip touch on the block top to 0.7 mm, and the
 standing block's centre reads 44.7 mm ([8. After the tare](#8-the-tracked-block-after-the-tare-foundationpose_runstare_check)).
-The arm's part (about 5.5 to 7 mm at the block's reach) is unchanged.
+The arm's part (about 5.5 to 7 mm at the block's reach) is unchanged; it is a separate problem,
+covered in [arm_joint_offsets.md](arm_joint_offsets.md) since 2026-11-26.
 
 ## Short version
 
@@ -20,7 +21,7 @@ The 13 to 14 mm is two unrelated errors that happen to add up.
 | Source | Size at the usual block position | Does it hurt the grasp? |
 |---|---|---|
 | The D405 depth sensor reads short, which lifts everything the camera sees | 6.5 to 8 mm in height (and about 14 mm further from the robot). **Since the 2026-11-13 tare: about 0.4 mm.** | Yes. The gripper ends up that much too high on the block, and reaches too far. |
-| The arm reports its fingertip higher than it is, by an amount that grows with reach, so in the arm's own coordinates the table there is at 5.5 mm, not 0 | 5.5 mm | Mostly no. It applies equally to the block and to the gripper. |
+| The arm reports its fingertip higher than it is, by an amount that grows with reach, so in the arm's own coordinates the table there is at 5.5 mm, not 0. It is a constant shoulder and elbow angle error ([arm_joint_offsets.md](arm_joint_offsets.md)) | 5.5 mm | Mostly no. It applies equally to the block and to the gripper. |
 
 FoundationPose, lens distortion and the hand-eye calibration were each checked and are not
 the cause.
@@ -133,52 +134,12 @@ alone, which is the measurement the hand-eye calibration is built from.
 - With the depth error removed, camera and arm agree at the block top: 88.7 - 6.4 = 82.3 mm
   against the touched 82.2 mm. So the hand-eye calibration is not the problem.
 
-### 6. The arm's side (`foundationpose_runs/offset_check_undistort_test3`)
+### 6. The arm's side
 
-More table touches, spread over 80 degrees of direction around the robot:
-
-| Direction from straight ahead | Reach | TCP height at contact |
-|---|---|---|
-| -17 deg | 0.306 m | 2.1 mm |
-| -27 deg | 0.471 m | 8.7 mm |
-| -77 deg | 0.495 m | 9.3 mm |
-| -95 deg | 0.468 m | 7.7 mm |
-| -106 deg | 0.500 m | 9.1 mm |
-| -108 deg | 0.482 m | 7.6 mm |
-
-- **The reading depends on reach, not direction.** A table tilted relative to the base would
-  read higher on one side and lower on the other; a tilted-plane fit to the first session
-  predicted -3 to -7 mm for the sideways touches, and they read +8 to +9 mm.
-- **Both sessions fit a straight line in reach:** height = 36 to 46 mm per metre of reach,
-  minus 9 to 12.6 mm. That is about 4 mm of extra height for every 10 cm of reach.
-- **Extrapolated to the base, the table is 9 to 13 mm below the base frame.** That is the
-  sign expected from the mounting plate the base sits on. Nobody touched the table there, and
-  the plate has not been measured. **Section 8 has touches at 13 to 14 cm from the base,
-  which read only -2 mm, so this extrapolation overstates the error near the base.**
-- **If the table really is flat and 9 to 13 mm below the base frame,** the arm's reported
-  fingertip height is about 15 to 18 mm too high at the block position. The 5.5 mm reading is
-  where the plate (negative) and the reach effect (positive) net out. With the section 8
-  touches the same reasoning gives about 6 mm for the plate and about 13 mm too high at the
-  block, still assuming a straight line in reach.
-
-The cause on the arm side is not known. Candidates:
-
-- **Droop:** links bending and play in the joints under the arm's weight, which the joint
-  sensors do not see. The sign matches (the real tip is lower than computed).
-- **A joint zero error:** a shoulder zero off by about 2.3 degrees would give this pattern.
-  That is large, and the shoulder and elbow read within 0.005 rad of zero when the arm is at
-  rest, so this is less likely if that rest pose is the mechanical zero. The driver has a
-  per-joint `position_offset` for homing error, and the Trossen docs describe a homing
-  procedure with jigs.
-
-These touches were hand-guided in gravity compensation. Section 9 repeats the measurement
-with the motors holding the arm in position mode: the error is the same size, the same in both
-directions of travel, and the joint zeros read correctly, which leaves droop.
-
-One limit on "the camera inherits the arm's error": a calibration is one rigid placement of
-the camera, so it can only absorb the arm's error as a flat tilt plus a shift. The arm's error
-grows with reach in every direction, which is a cone, not a tilt. The two agree near the block
-(the evidence above) and may drift apart elsewhere on the table.
+Moved to [arm_joint_offsets.md](arm_joint_offsets.md), section 1. Table touches over 90 deg of
+direction read higher with reach, not with direction. The cause turned out to be a constant error
+in the shoulder and elbow angles, which the camera calibration partly absorbs: a calibration is one
+rigid placement of the camera, so it absorbs the arm's error near the block but not everywhere.
 
 ### 7. The tare calibration (2026-11-13)
 
@@ -228,74 +189,18 @@ So the camera and the arm now agree at the block, and the grasp is no longer shi
 depth sensor. The block's x cannot be compared with older runs (it was placed by hand), so the
 expected 14 mm move toward the robot was not checked.
 
-Table touches in the same run:
+Table touches in the same run (two near the base, two beside the block) put the table at about
+7.0 mm in the arm's coordinates at the block's reach; they are listed in
+[arm_joint_offsets.md](arm_joint_offsets.md), section 1. With that, the top touch at 81.5 mm gives a
+74.5 mm block, against the real 75 mm.
 
-| Where | Reach | Direction from straight ahead | TCP height |
-|---|---|---|---|
-| In front of the base | 0.138 m | -8 deg | -1.7 mm |
-| 90 deg clockwise | 0.130 m | -76 deg | -2.6 mm |
-| Beside the block (1) | 0.460 m | -20 deg | +8.2 mm |
-| Beside the block (2) | 0.485 m | -21 deg | +9.1 mm |
-
-- **Reach, not direction, again.** The two touches near the base are 68 deg apart and differ
-  by 0.9 mm.
-- **A straight line through these four touches:** height = 32 mm per metre of reach, minus
-  6.4 mm. It is shallower than the section 6 fits (36 to 46 mm/m, minus 9 to 12.6 mm), which
-  had no touches closer than 0.3 m. Two clusters of reach cannot show whether the true curve
-  is a line.
-- **The arm checks itself.** The line puts the table at 7.0 mm at the block's reach (0.420 m).
-  The top touch at 81.5 mm then gives a block height of 74.5 mm, against the real 75 mm.
 - **What remains of the original 13.5 mm** is the arm's frame: the block's centre reads
   44.7 mm against 37.5 mm in sim, because the table at that reach reads about 7 mm. It moves
   the gripper and the block together.
 
-### 9. Under position control (`sim2real/sag_test`, 2026-11-16)
+### 9 and 10. The arm under position control, and over direction, height and tool pitch
 
-`hold_z_sweep.py` holds the arm in position mode with the tool pointing straight down at a
-commanded z of 100 mm, and steps it out along +x and back. At each stop the height of the tool
-point above the table was measured with a ruler (1 mm resolution), with the gripper open 10 mm
-so the ruler could sit between the fingertips. The arm's own reading (FK of the joints) is
-logged alongside.
-
-**Run 2** (`results/hold_z_20261116_134852.json`): joint targets from IK on the MuJoCo model,
-sent with `set_arm_positions`, out from 0.25 m to 0.43 m and back. Reported height minus
-measured height:
-
-| Reach | Going out | Coming back |
-|---|---|---|
-| 0.250 m | 2.8 mm | 2.6 mm |
-| 0.295 m | 3.7 mm | 3.8 mm |
-| 0.340 m | 4.6 mm | 5.1 mm |
-| 0.385 m | 5.6 mm | 6.7 mm |
-| 0.430 m | 7.3 mm | |
-
-A straight line through all nine: **+25.7 mm per metre of reach, residual 0.3 mm rms.**
-Run 1 (`results/hold_z_20261116_133146.json`, the driver's Cartesian IK, outward only) gave
-+29 mm/m. The touches in sections 6 and 8 gave 32 to 46 mm/m.
-
-- **The error is there with the motors holding.** The arm still reads its tip higher than it
-  is, by about as much as in gravity compensation.
-- **It does not depend on the direction of travel.** At each reach the two legs agree to
-  about 1 mm, the ruler's resolution, although the joints stopped on opposite sides of their
-  targets (next point). So it is not gear play or hysteresis: it is a fixed function of the
-  pose, and could be modelled.
-- **The measured height itself was not flat.** Under a held position command the shoulder and
-  elbow stop up to 0.8 deg short of their targets in the direction they were moving (friction
-  with no integral term; see [sim2real_control.md](sim2real_control.md#holding-a-position-the-friction-deadband)).
-  At 0.385 m the tip was 95 mm above the table going out and 91 mm coming back. The joint
-  readings see this, so it moves the reading and the tip together and cancels from the
-  difference above. In run 1 (outward only) the measured height stayed at 95 mm at every
-  stop: the outward shortfall held the arm up by about as much as the droop pulled it down.
-- **Only the slopes compare between sessions.** The intercepts hold the offset between the
-  arm's z = 0 and the table, and between the point the ruler touched and the driver's tool
-  point. Run 2's line is -3.8 mm at zero reach; section 8's is -6.4 mm.
-- **The joint zeros read correctly.** At the folded rest pose on 2026-11-16 the shoulder read
-  0.033 deg and the elbow 0.033 deg, and the driver's `position_offset` is 0 on every joint. A
-  zero error large enough to explain the slope would be about 2.3 deg. That leaves droop:
-  bending in the links or gearboxes after the encoders.
-- **Limits.** One direction (straight ahead), one height and one tool orientation. With the
-  tool straight down at 100 mm, 0.45 m is out of reach: joint 3 hits its -90 deg limit, and
-  run 1's 0.45 m stop was clipped there.
+Moved to [arm_joint_offsets.md](arm_joint_offsets.md), sections 2 and 3.
 
 ## What to do about it
 
@@ -329,31 +234,9 @@ section 8). The steps are kept for a camera swap or recalibration.
 
 ### The arm
 
-This part does not shift the grasp, but it matters for anything tied to absolute height.
-
-- **Workspace floor.** `workspace_min` z in `manipulation/policy/jenga/config.yaml` is 5 mm.
-  In the arm's coordinates the real table is at about 5.5 to 7 mm at the block position, so
-  that floor is about at the table surface there. Near the base the table reads about -2 mm,
-  so the floor is about 7 mm above the table there.
-- **Reading logs.** A logged TCP height is not a clearance. Subtract the table reading at
-  that reach: roughly 0.032 x reach(m) x 1000 - 6.4 mm (section 8; the section 6 sessions gave
-  0.036 to 0.046 and -9 to -12.6, with no touches inside 0.3 m).
-- **The policy sees absolute heights.** Its observations include the gripper and block
-  heights in the base frame. In sim the table is always at 0 and a standing block's centre at
-  37.5 mm; on the real arm, after the tare, the same block reads 44.7 mm (section 8). Whether
-  the policy relies on absolute height near the table has not been tested.
-
-Options, none done:
-
-- **Measure it properly.** Measure the mounting plate. Touch at more reaches, including close
-  to the base, and in other directions. (Under position control the error remains; section 9.)
-- **Check the joint zeros** with the homing jigs. The rest-pose reading and the driver's
-  `position_offset` of 0 (section 9) make a zero error unlikely.
-- **Model it.** Either correct the real side (subtract the reach-dependent height from the
-  TCP and block heights before the policy sees them, so the table is at 0 as in training), or
-  make training tolerate it (randomize the table height or an offset on the height
-  observations by 10 mm or so).
-- **Leave it.** It mostly cancels for the grasp. Fix the depth first and see what remains.
+See [arm_joint_offsets.md](arm_joint_offsets.md). It does not shift the grasp, since the camera is
+calibrated against the arm, but it sets where the table and block sit in the arm's frame, which the
+policy sees.
 
 ## Tools
 
@@ -363,4 +246,5 @@ Options, none done:
 | `vision/calibration/tare.py` | Tare calibration of the D405 against the board, with backup and restore |
 | `vision/pipeline/view_camera.py` | Plain live camera feed; `--depth` shows the depth at the image centre |
 | `./run.sh --track ... --manipulation policy --policy-control shadow --manipulation-logging` | Logs TCP and tracked block together for hand-guided touches |
-| `sim2real/sag_test/hold_z_sweep.py` | Holds a commanded height in position mode along +x (and back); logs joints, joint targets and efforts, and asks for the measured height at each stop |
+
+The arm's measurement tools are listed in [arm_joint_offsets.md](arm_joint_offsets.md).

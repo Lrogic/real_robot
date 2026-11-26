@@ -28,7 +28,16 @@ What it reports
 The corner disagreement (mm) is the closest number to a tracked object's error: the board corners
 placed through the camera chain Z F X C against the manipulator's Y E.
 
-Runs in the vision env: needs scipy and OpenCV (not the hand-eye functions), and MuJoCo for --mount model.
+--manipulator-offsets-deg / --follower-offsets-deg (e.g. "1:1.71,2:-0.55") solve as if each arm's
+joints read true = reading + offset (docs/arm_joint_offsets.md): each sample's E and F are taken from
+the MuJoCo model's tool site at the corrected joints instead of the recorded driver poses (checked
+against them first). The result is valid only once the arms report corrected joints, i.e. with the
+driver's position_offset set to minus these values (calibration/joint_offsets.py). Use them only on
+sessions recorded BEFORE the offsets were set on the arms: a session recorded after already has
+corrected joints and poses, and the flags would correct it twice.
+
+Runs in the vision env: needs scipy and OpenCV (not the hand-eye functions), and MuJoCo for --mount model
+or joint offsets.
 Writes <session>/T_follower_camera.json.
 """
 
@@ -67,7 +76,8 @@ def load_obs(session: Session, exclude: set) -> list:
                        K=np.asarray(s["intrinsics"]["K"]), dist=np.asarray(s["intrinsics"]["dist"]),
                        corners_px=np.asarray(det["charuco_corners_px"]), corner_ids=np.asarray(det["charuco_ids"]),
                        C=np.asarray(det["T_camera_board"]),
-                       meta={"follower_q": s["follower"]["state_after_image"]["arm_positions_rad"]}))
+                       meta={"follower_q": s["follower"]["state_after_image"]["arm_positions_rad"],
+                             "manipulator_q": s["robot"]["state_after_image"]["arm_positions_rad"]}))
     if skipped:
         print(f"Skipping samples whose detection is rejected: {skipped}")
     return obs
@@ -95,6 +105,10 @@ class FollowerModel:
         T_cam = make_T(d.cam_xmat[self.camera].reshape(3, 3) @ np.diag([1.0, -1.0, -1.0]), d.cam_xpos[self.camera].copy())
         return T_site, T_cam
 
+    def site_pose(self, q) -> np.ndarray:
+        """T of the tool site (the driver's tool frame) at joints q."""
+        return self._poses(q)[0]
+
     def mount(self) -> np.ndarray:
         """T_fee_camera: the camera in the tool-site frame (a rigid offset, the same at any joints)."""
         T_site, T_cam = self._poses(np.zeros(6))
@@ -108,6 +122,52 @@ class FollowerModel:
             rot.append(rotation_between_deg(np.eye(3), D[:3, :3]))
             trans.append(float(np.linalg.norm(D[:3, 3]) * 1000))
         return max(rot), max(trans)
+
+
+def parse_offsets_deg(text: str) -> dict:
+    """"1:1.71,2:-0.55" -> {1: 1.71, 2: -0.55} (joint index: degrees, true = reading + offset)."""
+    out = {}
+    for item in filter(None, (t.strip() for t in text.split(","))):
+        j, v = item.split(":")
+        if not 0 <= int(j) <= 5:
+            raise SystemExit(f"joint index {j} outside 0..5")
+        out[int(j)] = float(v)
+    return out
+
+
+def apply_joint_offsets(obs, model: "FollowerModel", manipulator_deg: dict, follower_deg: dict) -> dict:
+    """Replace E and F by the model's tool site at the corrected joints. Returns a record for the output."""
+    def vec(d):
+        v = np.zeros(6)
+        for j, deg in d.items():
+            v[j] = np.radians(deg)
+        return v
+
+    om, of = vec(manipulator_deg), vec(follower_deg)
+    worst = {"manipulator": [0.0, 0.0], "follower": [0.0, 0.0]}
+    for o in obs:
+        for name, q, T in (("manipulator", o.meta["manipulator_q"], o.E), ("follower", o.meta["follower_q"], o.F)):
+            D = inv_T(model.site_pose(np.asarray(q))) @ T
+            worst[name][0] = max(worst[name][0], rotation_between_deg(np.eye(3), D[:3, :3]))
+            worst[name][1] = max(worst[name][1], float(np.linalg.norm(D[:3, 3]) * 1000))
+    for name, (rot, trans) in worst.items():
+        if rot > MAX_TOOL_FRAME_MISMATCH[0] or trans > MAX_TOOL_FRAME_MISMATCH[1]:
+            raise SystemExit(f"{model.path}: site {model.site_name} differs from the {name}'s recorded tool pose by "
+                             f"up to {rot:.3f} deg, {trans:.2f} mm; joint offsets cannot be applied through it")
+    for o in obs:
+        o.E = model.site_pose(np.asarray(o.meta["manipulator_q"]) + om)
+        o.F = model.site_pose(np.asarray(o.meta["follower_q"]) + of)
+    print(f"Joint offsets (true = reading + offset): manipulator {manipulator_deg or 'none'} deg, follower "
+          f"{follower_deg or 'none'} deg; E and F from {model.path.name} at the corrected joints (model matched the "
+          f"recorded tool poses to {max(w[0] for w in worst.values()):.3f} deg, "
+          f"{max(w[1] for w in worst.values()):.2f} mm).")
+    return {"convention": "true joint angle = reading + offset; the arms must report corrected joints "
+                          "(driver position_offset = -offset)",
+            "manipulator_deg": {str(k): v for k, v in manipulator_deg.items()},
+            "follower_deg": {str(k): v for k, v in follower_deg.items()},
+            "fk_source": f"{model.path} site {model.site_name} at the corrected joints",
+            "model_vs_recorded_tool_pose_max": {k: {"rot_deg": v[0], "trans_mm": v[1]} for k, v in worst.items()},
+            "reference": "docs/arm_joint_offsets.md"}
 
 
 def fit(obs, board_pts, X_fixed=None):
@@ -174,6 +234,10 @@ def main():
     p.add_argument("--holdout-every", type=int, default=5, help="hold out every Nth sample for testing (0: none)")
     p.add_argument("--no-station-check", action="store_true", help="skip the leave-one-station-out refits")
     p.add_argument("--compare", type=Path, default=DEFAULT_CALIBRATION, help="parked eye-to-hand T_base_camera.json")
+    p.add_argument("--manipulator-offsets-deg", default="",
+                   help='joint offsets of the manipulator, "1:1.71,2:-0.55" (true = reading + offset); only for sessions '
+                        'recorded before the offsets were set on the arm')
+    p.add_argument("--follower-offsets-deg", default="", help="the same for the follower")
     p.add_argument("--out", type=Path, default=None, help="default <session>/T_follower_camera.json")
     args = p.parse_args()
 
@@ -212,6 +276,11 @@ def main():
                       "site_vs_driver_tool_max": {"rot_deg": rot, "trans_mm": trans}}
         print(f"Camera mount from {model.path.name} ({model.camera_name} in {model.site_name}); model site matches the "
               f"driver's tool pose to {rot:.3f} deg, {trans:.2f} mm. Solving the follower base and board mount only.")
+    joint_offsets = None
+    if args.manipulator_offsets_deg or args.follower_offsets_deg:
+        joint_offsets = apply_joint_offsets(obs, FollowerModel(args.follower_model),
+                                            parse_offsets_deg(args.manipulator_offsets_deg),
+                                            parse_offsets_deg(args.follower_offsets_deg))
     X, Z, Y, init_report, info = fit(used, board_pts, X_fixed)
     errs_fit = [sample_errors(o, X, Z, Y, board_pts) for o in used]
     errs_held = [sample_errors(o, X, Z, Y, board_pts) for o in held]
@@ -248,6 +317,7 @@ def main():
             "T_base_fbase": Z.tolist(),
             "T_ee_board": Y.tolist(),
             "mount": mount_info,
+            "joint_offsets": joint_offsets,
             "usage": "T_base_camera = T_base_fbase @ F @ T_fee_camera, F = the follower's driver Cartesian pose "
                      "(T_fbase_fee) with the same model and end_effector configuration; then "
                      "T_base_object = T_base_camera @ T_camera_object",

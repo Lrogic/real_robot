@@ -6,7 +6,14 @@ parked:
   # Eye-to-hand calibration of the parked follower (calibration/run.sh calibrate). The camera
   # pose is its T_base_camera; the parked joints are the follower joints recorded in the same
   # session's session.json.
-  calibration: ../calibration/data/sessions/20261009_combined/T_base_camera.json
+  #
+  # Since 2026-11-26: re-solved for arms that report corrected shoulder and elbow angles
+  # (true = reading + 1.71 deg / - 0.55 deg on both arms, docs/arm_joint_offsets.md). Valid ONLY
+  # while both arms' driver position_offset is set (python -m calibration.joint_offsets --apply);
+  # its session.json holds the parked follower joints converted to corrected readings. To go back:
+  # restore the offsets (--restore) AND swap the two calibration lines.
+  # calibration: ../calibration/data/sessions/20261009_combined/T_base_camera.json
+  calibration: ../calibration/data/sessions/20261009_combined_joint_offsets_both_arms/T_base_camera.json
 
 move:
   # Two-arm calibration (calibration/run.sh calibrate-dual):
@@ -15,7 +22,12 @@ move:
   # Session 20261113_130351_dual refit with the camera mount from the follower model
   # (calibrate-dual --mount model --holdout-every 0): 5.45 mm rms at unseen follower poses,
   # against 6.03 mm with the mount solved.
-  calibration: ../calibration/data/sessions/20261113_130351_dual_model_all/T_follower_camera.json
+  #
+  # Since 2026-11-26: the same solve with the joint offsets on both arms (README.md in its folder):
+  # follower base 970 mm away, level and at the same height, as measured on the table. Valid ONLY
+  # with both arms' position_offset set; swap back together with --restore.
+  # calibration: ../calibration/data/sessions/20261113_130351_dual_model_all/T_follower_camera.json
+  calibration: ../calibration/data/sessions/20261113_130351_dual_model_all_joint_offsets_both_arms/T_follower_camera.json
   # Wait after locking before reading F, so the hold has settled.
   lock_settle_s: 0.5
 

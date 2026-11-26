@@ -2,7 +2,7 @@
 against reach.
 
 The manipulator reads the table about 4 mm higher for every 10 cm of reach
-(docs/block_height_offset.md, sections 6 and 8). This checks whether another arm (by default the
+(docs/arm_joint_offsets.md, section 1). This checks whether another arm (by default the
 follower, which carries the D405) shows the same pattern. Touch the top of the upright jenga
 block (or anything else of fixed height) at different reaches. If the arm were exact, every touch
 would read the same height. A trend in reach is the same error as the manipulator's.
@@ -235,7 +235,7 @@ def summarize(samples: list[dict]) -> dict | None:
                      "residual_rms_mm": float(np.sqrt((res ** 2).mean())), "spread_mm": float(np.ptp(z))}
         print(f"{key:>6} z vs reach: {slope:+.1f} mm per metre, intercept {intercept:.1f} mm, "
               f"residual rms {fits[key]['residual_rms_mm']:.1f} mm, spread {np.ptp(z):.1f} mm")
-    print("The manipulator gave about +32 to +46 mm per metre (docs/block_height_offset.md).")
+    print("The manipulator gave about +32 to +46 mm per metre (docs/arm_joint_offsets.md).")
     return fits
 
 

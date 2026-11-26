@@ -127,7 +127,9 @@ logging:
 
 safety:
   # Commanded TCP positions outside this box (robot base frame) stop control until the ready
-  # key. The table top is base z = 0.
-  workspace_min: [0.10, -0.35, 0.005]
+  # key. Since the joint offsets were set (2026-11-26, docs/arm_joint_offsets.md) the real table
+  # top is at base z = -8.1 mm at every reach, so z min -3 mm keeps the floor 5 mm above it, as
+  # the 5 mm floor was when the table read about 0 (it was 0.005 until then).
+  workspace_min: [0.10, -0.35, -0.003]
   workspace_max: [0.60, 0.35, 0.45]
   

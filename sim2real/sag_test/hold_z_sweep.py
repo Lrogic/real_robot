@@ -2,7 +2,7 @@
 measure how high the fingertip really is at each stop.
 
 The manipulator reports its fingertip higher than it is by about 30 mm per metre of reach
-(docs/block_height_offset.md, section 8, hand-guided in gravity compensation; the first run of
+(docs/arm_joint_offsets.md, section 1, hand-guided in gravity compensation; the first run of
 this script, results/hold_z_20261116_133146.json, found +29 mm/m under position control). In that
 run the driver's Cartesian command (its own IK) left the joints settled where FK read up to 5 mm
 above the goal, while the measured height stayed flat. This version sends the joint targets
@@ -75,7 +75,7 @@ MAX_REACH_M = 0.60                           # refuse plans further out than thi
 MIN_Z_M = 0.03                               # refuse plans closer to the table than this
 MAX_FK_MISMATCH = (0.05, 0.5)                # deg, mm: model FK against the driver's tool pose
 MAX_STEP_JOINT_RAD = 0.6                     # refuse an IK plan with a larger joint change between stops
-REFERENCE_SLOPE_MM_PER_M = 32.0              # gravity-compensation touches, block_height_offset.md section 8
+REFERENCE_SLOPE_MM_PER_M = 32.0              # gravity-compensation touches, arm_joint_offsets.md section 1
 REFERENCE_INTERCEPT_MM = -6.4
 
 
@@ -238,7 +238,7 @@ def summarize(samples: list[dict]) -> dict:
             print(f"{key:>26} vs reach: {f['slope_mm_per_m']:+.1f} mm per metre, intercept "
                   f"{f['intercept_mm']:.1f} mm, residual rms {f['residual_rms_mm']:.1f} mm ({f['points']} stops)")
     print(f"Gravity-compensation touches gave reported - true = {REFERENCE_SLOPE_MM_PER_M:+.0f} mm per metre "
-          "(docs/block_height_offset.md, section 8). Only the slopes compare: the intercepts hold the offset "
+          "(docs/arm_joint_offsets.md, section 1). Only the slopes compare: the intercepts hold the offset "
           "between the arm's z = 0 and the table, and the measured point against the tool frame.")
     return fits
 
