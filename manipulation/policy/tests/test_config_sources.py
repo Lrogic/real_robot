@@ -16,8 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from manipulation.policy.jenga.config import DEFAULT_CONFIG, JengaPolicyConfig  # noqa: E402
 
 CONFIG_DIR = Path(DEFAULT_CONFIG).resolve().parent
-SCENE = (CONFIG_DIR / "../../../sim/mujoco/configs/scenes/tabletop_jenga_wxai.json").resolve()
-TASK = (CONFIG_DIR / "../../../sim/mujoco/configs/tasks/grasp_wxai.json").resolve()
+SCENE = (CONFIG_DIR / "../../../sim/mujoco/configs/grasp/scenes/tabletop_jenga_wxai.json").resolve()
+TASK = (CONFIG_DIR / "../../../sim/mujoco/configs/grasp/tasks/grasp_wxai.json").resolve()
 
 
 def _run(tmp_path: Path, scene: bool = True, task: bool = True, source: bool = True) -> Path:

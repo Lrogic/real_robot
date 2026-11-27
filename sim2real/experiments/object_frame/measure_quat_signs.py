@@ -10,8 +10,8 @@ import torch
 from mjlab.envs import ManagerBasedRlEnv
 from tabletop_sim.tasks.grasp.env_cfg import CONFIGS_DIR, make_grasp_env_cfg
 
-SCENE = CONFIGS_DIR / "scenes" / "tabletop_jenga_wxai.json"
-TASK = CONFIGS_DIR / "tasks" / "grasp_wxai.json"
+SCENE = CONFIGS_DIR / "grasp" / "scenes" / "tabletop_jenga_wxai.json"
+TASK = CONFIGS_DIR / "grasp" / "tasks" / "grasp_wxai.json"
 EE_Q, OBJ_Q = slice(19, 23), slice(27, 31)
 steps = int(sys.argv[1]) if len(sys.argv) > 1 else 300
 

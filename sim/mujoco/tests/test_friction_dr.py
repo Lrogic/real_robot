@@ -600,5 +600,6 @@ def test_grip_embodiment_pairs_take_the_finger_solver_params(tmp_path):
   assert len(gripper) == 6 and table
   np.testing.assert_allclose(m.pair_solref[gripper], [[0.01, 1.0]] * 6)
   np.testing.assert_allclose(m.pair_solimp[gripper, :3], [[0.95, 0.99, 0.001]] * 6)
-  np.testing.assert_allclose(m.pair_solref[table], [[0.02, 1.0]] * len(table))
+  # Table pairs mix the table's and the block's solref, both [0.004, 1] in every scene.
+  np.testing.assert_allclose(m.pair_solref[table], [[0.004, 1.0]] * len(table))
   np.testing.assert_allclose(m.pair_solimp[table, :3], [[0.9, 0.95, 0.001]] * len(table))

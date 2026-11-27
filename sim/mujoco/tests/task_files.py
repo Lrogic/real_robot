@@ -1,4 +1,4 @@
-"""Task files for the tests, derived from the one checked-in task (configs/tasks/grasp_wxai.json).
+"""Task files for the tests, derived from the one checked-in task (configs/grasp/tasks/grasp_wxai.json).
 
 The checked-in task has every option; the options that model the real loop are off.
 Each variant here is that file with a few values changed, written to a temp folder
@@ -15,8 +15,8 @@ from pathlib import Path
 
 from tabletop_sim.tasks.grasp.env_cfg import CONFIGS_DIR, DEFAULT_TASK
 
-CUBE_SCENE = CONFIGS_DIR / "scenes" / "tabletop_cube_wxai.json"
-JENGA_SCENE = CONFIGS_DIR / "scenes" / "tabletop_jenga_wxai.json"
+CUBE_SCENE = CONFIGS_DIR / "grasp" / "scenes" / "tabletop_cube_wxai.json"
+JENGA_SCENE = CONFIGS_DIR / "grasp" / "scenes" / "tabletop_jenga_wxai.json"
 MASTER_TASK = DEFAULT_TASK
 
 _LATENCY = {

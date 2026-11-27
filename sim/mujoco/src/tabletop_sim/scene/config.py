@@ -113,6 +113,10 @@ class ObjectConfig:
   ``collision_size`` replaces that hull with a box of those full extents, in the
   mesh frame. Optional ``texture_path`` is a diffuse image for the visual mesh.
   When it is set it replaces ``color``; otherwise the geom uses ``color``.
+  Optional ``solref`` / ``solimp`` set the collision geom's MuJoCo contact
+  parameters (None keeps MuJoCo's defaults, solref [0.02, 1], whose ~20 ms time
+  constant lets a light object sink several mm into what it lands on). Explicit
+  contact pairs mix them from the two geoms like dynamic contacts.
   """
 
   name: str
@@ -130,6 +134,8 @@ class ObjectConfig:
   mass: float | None = None
   friction: tuple[float, float, float] = (1.0, 0.005, 0.0001)
   color: tuple[float, float, float, float] = (0.6, 0.6, 0.6, 1.0)
+  solref: tuple[float, float] | None = None
+  solimp: tuple[float, float, float, float, float] | None = None
 
   @classmethod
   def from_dict(cls, data: dict[str, Any], base_dir: Path) -> ObjectConfig:
@@ -206,6 +212,17 @@ class ObjectConfig:
       else _vec(f"{where}.friction", friction_raw, 3)
     )
     mass = data.get("mass")
+    solref = solimp = None
+    if data.get("solref") is not None:
+      solref = _vec(f"{where}.solref", data["solref"], 2)
+      if not ((solref[0] > 0 and solref[1] > 0) or (solref[0] < 0 and solref[1] <= 0)):
+        raise ConfigError(
+          f"{where}.solref must be [timeconst > 0, dampratio > 0] or [-stiffness, -damping], got {list(solref)}"
+        )
+    if data.get("solimp") is not None:
+      solimp = _vec(f"{where}.solimp", data["solimp"], 5)
+      if not (0 < solimp[0] <= solimp[1] < 1 and solimp[2] > 0):
+        raise ConfigError(f"{where}.solimp needs 0 < dmin <= dmax < 1 and width > 0, got {list(solimp)}")
     return cls(
       name=name,
       primitive=primitive,
@@ -221,6 +238,8 @@ class ObjectConfig:
       mass=None if mass is None else float(mass),
       friction=friction,  # type: ignore[arg-type]
       color=_vec(f"{where}.color", data.get("color", cls.color), 4),  # type: ignore[arg-type]
+      solref=solref,  # type: ignore[arg-type]
+      solimp=solimp,  # type: ignore[arg-type]
     )
 
 

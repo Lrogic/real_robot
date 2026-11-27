@@ -87,6 +87,10 @@ def object_spec(obj: ObjectConfig, size_scale: float | None = None) -> mujoco.Mj
     body.add_freejoint(name=f"{obj.name}_joint")
 
   common = dict(friction=list(obj.friction))
+  if obj.solref is not None:
+    common["solref"] = list(obj.solref)
+  if obj.solimp is not None:
+    common["solimp"] = list(obj.solimp)
   if obj.mass is not None:
     common["mass"] = obj.mass * s**3
   else:

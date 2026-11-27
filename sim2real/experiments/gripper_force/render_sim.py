@@ -58,8 +58,8 @@ def compile_scene(scene_name: str):
   from tabletop_sim.scene import load_scene_config
   from tabletop_sim.tasks.grasp.env_cfg import make_grasp_env_cfg
 
-  scene_path = SIM / "configs" / "scenes" / scene_name
-  cfg = make_grasp_env_cfg(scene_path, SIM / "configs" / "tasks" / "grasp_wxai.json", None, 1)
+  scene_path = SIM / "configs" / "grasp" / "scenes" / scene_name
+  cfg = make_grasp_env_cfg(scene_path, SIM / "configs" / "grasp" / "tasks" / "grasp_wxai.json", None, 1)
   model = Scene(cfg.scene, "cpu").compile()
   emb = get_embodiment(load_scene_config(scene_path).robot.embodiment)
   apply_training_solver(model, emb, 0.002)

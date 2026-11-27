@@ -180,7 +180,7 @@ def test_grip_model_changes_only_the_gripper():
 
 
 def test_grip_scene_is_the_friction_scene():
-  scenes = Path(__file__).resolve().parents[1] / "configs" / "scenes"
+  scenes = Path(__file__).resolve().parents[1] / "configs" / "grasp" / "scenes"
   grip = json.loads((scenes / "tabletop_jenga_wxai_friction_grip.json").read_text())
   fric = json.loads((scenes / "tabletop_jenga_wxai_friction.json").read_text())
   assert grip["robot"].pop("embodiment") == "trossen_wxai_base_real_friction_grip"

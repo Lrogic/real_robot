@@ -350,7 +350,7 @@ Consequences once applied:
 - A standing block's centre reads about 30.7 mm (section 9), against 37.5 mm in a sim with the
   table at base z = 0, and 44.7 mm before the correction.
 - The policy sees absolute heights, so the sim has to match. The scene
-  `sim/mujoco/configs/scenes/tabletop_jenga_wxai_friction_grip_base8mm.json` is
+  `sim/mujoco/configs/grasp/scenes/tabletop_jenga_wxai_friction_grip_base8mm.json` is
   `tabletop_jenga_wxai_friction_grip.json` with the robot's `base_pose` z at +0.0081: the base 8.1 mm
   above the table, so in the base frame (all the policy's observations) the table is at -8.1 mm and
   a standing block's centre at 29.4 mm, as on the real arm. Resets, the lift goal and rewards are in

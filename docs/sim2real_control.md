@@ -12,7 +12,7 @@ depth camera's part and the arm's part.
 
 - **The original policy is still the best one.** It is the run
   `grasp_jenga_DR_adjusted_gripper_width_with_grav_comp_real_robot_parameters_higher_gain_adjusted_quat/2026-10-28_14-55-03`,
-  trained on what is now `sim/mujoco/configs/tasks/grasp_wxai.json`.
+  trained on what is now `sim/mujoco/configs/grasp/tasks/grasp_wxai.json`.
 - **Its smoothest real setting needs no retraining:** `control.ik_solver: sim`,
   `sim_ik.goal_time_s: 0.05` (a joint goal time), `sim_ik.interpolate_goal: false`. It lifted
   4 of 5. `manipulation/policy/jenga/config.yaml` is set to this.
@@ -66,7 +66,7 @@ tick by `slow_time_dilation` (4). `shadow` computes everything and never command
 
 ## Policies trained
 
-All on the jenga scene. "Edits" are relative to `configs/tasks/grasp_wxai.json`; see
+All on the jenga scene. "Edits" are relative to `configs/grasp/tasks/grasp_wxai.json`; see
 [The task file](#the-task-file) for the exact keys.
 
 | Name here | Run folder under `sim/mujoco/logs/rsl_rl/` | Edits to the task | Outcome |
@@ -404,7 +404,7 @@ centres the block (2.5 mm finger offset without it); it does not change the slip
 
 ## What is in the simulator now
 
-All off in `configs/tasks/grasp_wxai.json`.
+All off in `configs/grasp/tasks/grasp_wxai.json`.
 
 | Option (task JSON key) | What it models | Value used in runs |
 |---|---|---|
@@ -419,7 +419,7 @@ All off in `configs/tasks/grasp_wxai.json`.
 
 The fitted friction values live in the robot model
 `wxai_base_real_robot_friction.xml` (embodiment `trossen_wxai_base_real_friction`), selected by
-the scene `configs/scenes/tabletop_jenga_wxai_friction.json`. The randomization option scales
+the scene `configs/grasp/scenes/tabletop_jenga_wxai_friction.json`. The randomization option scales
 whatever friction the scene's model has, so it only means something with that scene.
 
 The grip model `wxai_base_real_robot_friction_grip.xml` (embodiment
@@ -443,7 +443,7 @@ Things to know when changing the control rate to 10 Hz:
 
 ## The task file
 
-`sim/mujoco/configs/tasks/grasp_wxai.json` is the only task file. It lists every option, and
+`sim/mujoco/configs/grasp/tasks/grasp_wxai.json` is the only task file. It lists every option, and
 as written it is the original policy's task. Every other configuration is this file with a
 few values changed. A training run saves the task it used as `params/task.json` in its run
 folder (runs from 2026-11-10 16:22 on).

@@ -168,7 +168,10 @@ def test_multiple_initial_poses(tmp_path, scene_dict):
 def test_curriculum_disabled_by_default():
   task = load_task_config(STANDARD_TASK)
   assert not task.curriculum.enabled
-  assert make_grasp_env_cfg(CUBE_SCENE, STANDARD_TASK).curriculum == {}
+  # Only the always-on termination counter (it changes no difficulty).
+  assert list(make_grasp_env_cfg(CUBE_SCENE, STANDARD_TASK).curriculum) == [
+    mdp.termination_counts.TERM_NAME
+  ]
 
 
 def test_curriculum_config_loads():
@@ -181,7 +184,7 @@ def test_curriculum_config_loads():
 
 def test_curriculum_term_registered_when_enabled():
   cfg = make_grasp_env_cfg(CUBE_SCENE, CURRICULUM_TASK)
-  assert list(cfg.curriculum) == [mdp.curriculum.TERM_NAME]
+  assert list(cfg.curriculum) == [mdp.curriculum.TERM_NAME, mdp.termination_counts.TERM_NAME]
   term = cfg.curriculum[mdp.curriculum.TERM_NAME]
   assert term.func is mdp.curriculum.GraspDifficultyCurriculum
   assert term.params["metric_name"] == "grasped_lifted_frac"
@@ -486,7 +489,7 @@ def test_bad_penalty_weights_rejected(tmp_path, task_dict, key, value):
 
 
 def test_checked_in_task_lists_every_option():
-  """configs/tasks/grasp_wxai.json is the one task file: every option is written out."""
+  """configs/grasp/tasks/grasp_wxai.json is the one task file: every option is written out."""
   from dataclasses import asdict
 
   from task_files import MASTER_TASK

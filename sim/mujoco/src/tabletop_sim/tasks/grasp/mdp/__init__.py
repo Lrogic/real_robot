@@ -6,6 +6,7 @@ from tabletop_sim.tasks.grasp.mdp import (
   perception,
   rewards,
   task_state,
+  termination_counts,
 )
 from tabletop_sim.tasks.grasp.mdp.action_hold import ActionHold, ActionHoldCfg
 from tabletop_sim.tasks.grasp.mdp.actions import (
@@ -59,4 +60,5 @@ __all__ = [
   "reset_object_xy_in_disk_with_yaw",
   "rewards",
   "task_state",
+  "termination_counts",
 ]

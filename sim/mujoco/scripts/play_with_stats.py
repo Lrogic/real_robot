@@ -2,6 +2,7 @@
 
   python scripts/play_with_stats.py --checkpoint-file logs/rsl_rl/.../model_299.pt
   python scripts/play_with_stats.py --agent random --log-interval 0.25
+  python scripts/play_with_stats.py --skill release --num-envs 16 --checkpoint-file logs/rsl_rl/.../model_N.pt
 
 Remaining flags go to mjlab's PlayConfig (``--viewer viser``, ``--video`` ...).
 """
@@ -26,6 +27,7 @@ from tabletop_sim.embodiments import get_embodiment
 from tabletop_sim.scene import ACTION_SPACES, load_scene_config
 from tabletop_sim.tasks.grasp import register_play_task
 from tabletop_sim.tasks.grasp.env_cfg import DEFAULT_SCENE, DEFAULT_TASK
+from tabletop_sim.tasks.release import env_cfg as release_env_cfg
 
 if TYPE_CHECKING:
   from mjlab.envs import ManagerBasedRlEnv
@@ -205,8 +207,9 @@ def main() -> None:
   parser = argparse.ArgumentParser(
     description=__doc__, add_help=False, formatter_class=argparse.RawDescriptionHelpFormatter
   )
-  parser.add_argument("--scene", default=str(DEFAULT_SCENE), help="scene JSON")
-  parser.add_argument("--task", default=str(DEFAULT_TASK), help="task JSON")
+  parser.add_argument("--skill", choices=("grasp", "release"), default="grasp")
+  parser.add_argument("--scene", default=None, help="scene JSON (default: the skill's)")
+  parser.add_argument("--task", default=None, help="task JSON (default: the skill's)")
   parser.add_argument("--action-space", choices=ACTION_SPACES, default=None)
   parser.add_argument(
     "--log-interval",
@@ -237,6 +240,9 @@ def main() -> None:
     parser.print_help()
     print("\nmjlab PlayConfig flags:\n")
 
+  release = ours.skill == "release"
+  ours.scene = ours.scene or str(release_env_cfg.DEFAULT_SCENE if release else DEFAULT_SCENE)
+  ours.task = ours.task or str(release_env_cfg.DEFAULT_TASK if release else DEFAULT_TASK)
   _VISUAL_SPACING = ours.visual_spacing
   scene_cfg = load_scene_config(ours.scene)
   emb = get_embodiment(scene_cfg.robot.embodiment)
@@ -250,7 +256,12 @@ def main() -> None:
   if ours.no_obs_normalization:
     _disable_obs_normalization()
 
-  task_id = register_play_task(ours.scene, ours.task, ours.action_space)
+  if release:
+    from tabletop_sim.tasks.release import register_release_task
+
+    task_id = register_release_task(ours.scene, ours.task, ours.action_space)
+  else:
+    task_id = register_play_task(ours.scene, ours.task, ours.action_space)
   args = tyro.cli(PlayConfig, args=rest, prog=sys.argv[0], config=mjlab.TYRO_FLAGS)
   print(
     f"[joint_vel] logging arm ({len(emb.arm_joint_names)} joints) and "

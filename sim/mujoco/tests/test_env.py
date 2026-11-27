@@ -334,7 +334,7 @@ def test_partial_reset_leaves_other_envs(ee_env):
 
 
 def test_curriculum_disabled_by_default(ee_env):
-  assert ee_env.curriculum_manager.active_terms == []
+  assert ee_env.curriculum_manager.active_terms == ["termination_counts"]
   ee_env.reset()
   d = curriculum.episode_difficulty(ee_env)
   assert d.shape == (NUM_ENVS,) and (d == 0).all()

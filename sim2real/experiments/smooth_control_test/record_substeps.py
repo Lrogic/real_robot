@@ -29,8 +29,8 @@ DEFAULT_CKPT = (
   SIM_ROOT / "logs/rsl_rl/grasp_jenga_DR_adjusted_gripper_width_with_grav_comp_real_robot_parameters"
   "_higher_gain_adjusted_quat/2026-10-28_14-55-03/model_999.pt"
 )
-DEFAULT_SCENE = SIM_ROOT / "configs/scenes/tabletop_jenga_wxai.json"
-DEFAULT_TASK = SIM_ROOT / "configs/tasks/grasp_wxai.json"
+DEFAULT_SCENE = SIM_ROOT / "configs/grasp/scenes/tabletop_jenga_wxai.json"
+DEFAULT_TASK = SIM_ROOT / "configs/grasp/tasks/grasp_wxai.json"
 
 
 class SubstepRecorder:

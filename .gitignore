@@ -22,3 +22,6 @@ sim2real/experiments/joint_step/results/*.npz
 sim2real/experiments/follower_reach/results/*/
 # Gripper force experiment: keep scripts and result JSONs; render_sim.py regenerates the videos.
 sim2real/experiments/gripper_force/videos/
+
+# Release start-state datasets (scripts/generate_release_starts.py); regenerate, do not commit.
+sim/mujoco/data/release_starts/

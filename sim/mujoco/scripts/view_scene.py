@@ -1,7 +1,7 @@
 """Check a scene config: print a model summary, then either run the task env
 with a zero / random agent, or open the plain MuJoCo viewer on the reset state.
 
-  python scripts/view_scene.py [--scene JSON] [--task JSON] [--agent zero|random]
+  python scripts/view_scene.py [--skill grasp|release] [--scene JSON] [--task JSON] [--agent zero|random]
                                [--viewer auto|native|viser] [--static] [--no-viewer]
 """
 
@@ -16,14 +16,16 @@ from tabletop_sim.embodiments import build_entity_cfg, get_embodiment
 from tabletop_sim.scene import ACTION_SPACES, load_scene_config, scene_entity_cfgs
 from tabletop_sim.tasks.grasp import register_play_task
 from tabletop_sim.tasks.grasp.env_cfg import DEFAULT_SCENE, DEFAULT_TASK
+from tabletop_sim.tasks.release import env_cfg as release_env_cfg
 
 
 def main() -> None:
   parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
   )
-  parser.add_argument("--scene", default=str(DEFAULT_SCENE), help="scene JSON")
-  parser.add_argument("--task", default=str(DEFAULT_TASK), help="task JSON")
+  parser.add_argument("--skill", choices=("grasp", "release"), default="grasp")
+  parser.add_argument("--scene", default=None, help="scene JSON (default: the skill's)")
+  parser.add_argument("--task", default=None, help="task JSON (default: the skill's)")
   parser.add_argument("--action-space", choices=ACTION_SPACES, default=None)
   parser.add_argument("--agent", choices=("zero", "random"), default="zero")
   parser.add_argument("--num-envs", type=int, default=1)
@@ -31,6 +33,9 @@ def main() -> None:
   parser.add_argument("--static", action="store_true", help="plain MuJoCo viewer, no env")
   parser.add_argument("--no-viewer", action="store_true", help="only print the summary")
   args = parser.parse_args()
+  release = args.skill == "release"
+  args.scene = args.scene or str(release_env_cfg.DEFAULT_SCENE if release else DEFAULT_SCENE)
+  args.task = args.task or str(release_env_cfg.DEFAULT_TASK if release else DEFAULT_TASK)
 
   scene_cfg = load_scene_config(args.scene)
   emb = get_embodiment(scene_cfg.robot.embodiment)
@@ -56,7 +61,12 @@ def main() -> None:
     mujoco.viewer.launch(model, data)
     return
 
-  task_id = register_play_task(args.scene, args.task, args.action_space)
+  if release:
+    from tabletop_sim.tasks.release import register_release_task
+
+    task_id = register_release_task(args.scene, args.task, args.action_space, args.num_envs)
+  else:
+    task_id = register_play_task(args.scene, args.task, args.action_space)
   run_play(task_id, PlayConfig(agent=args.agent, num_envs=args.num_envs, viewer=args.viewer))
 
 

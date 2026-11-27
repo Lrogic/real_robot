@@ -47,8 +47,8 @@ GRIPPER_ACTION_NAME = "gripper"
 POSE_HISTORY_SENSOR = "object_pose_history"
 TABLE_CONTACT_SENSOR = "robot_table_contact"
 FINGER_SENSORS = ("left_finger_object_contact", "right_finger_object_contact")
-DEFAULT_SCENE = CONFIGS_DIR / "scenes" / "tabletop_jenga_wxai.json"
-DEFAULT_TASK = CONFIGS_DIR / "tasks" / "grasp_wxai.json"
+DEFAULT_SCENE = CONFIGS_DIR / "grasp" / "scenes" / "tabletop_jenga_wxai.json"
+DEFAULT_TASK = CONFIGS_DIR / "grasp" / "tasks" / "grasp_wxai.json"
 # Per-world contact / constraint budget. Elliptic cones use several constraint
 # rows per contact, and a gripped box can touch the fingers and table at once.
 NCONMAX_PER_OBJECT = 32
@@ -364,6 +364,13 @@ def _curriculum(
   }
 
 
+def _termination_counts() -> dict[str, CurriculumTermCfg]:
+  """Running totals of each termination term since the env was built, logged as
+  ``Curriculum/termination_counts/<term>`` (see ``mdp.termination_counts``)."""
+  tc = mdp.termination_counts
+  return {tc.TERM_NAME: CurriculumTermCfg(func=tc.TerminationCounts)}
+
+
 def _finger_sensors(emb: EmbodimentCfg, object_name: str) -> tuple[ContactSensorCfg, ...]:
   return tuple(
     ContactSensorCfg(
@@ -587,7 +594,7 @@ def make_grasp_env_cfg_from_configs(
     events=events,
     rewards=_rewards(task, ent),
     terminations=_terminations(),
-    curriculum=_curriculum(task, metrics),
+    curriculum={**_curriculum(task, metrics), **_termination_counts()},
     metrics=metrics,
     viewer=_viewer(scene.camera),
     sim=SimulationCfg(

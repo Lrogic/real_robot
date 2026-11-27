@@ -14,7 +14,7 @@ from tabletop_sim.scene import load_scene_config  # noqa: E402
 from tabletop_sim.scene.builder import object_spec  # noqa: E402
 
 np.set_printoptions(precision=6, suppress=True)
-scene = load_scene_config(ROOT / "sim/mujoco/configs/scenes/tabletop_jenga_wxai.json")
+scene = load_scene_config(ROOT / "sim/mujoco/configs/grasp/scenes/tabletop_jenga_wxai.json")
 obj = scene.manipulated
 print("asset", obj.asset_path, "scale", obj.scale, "collision_size", obj.collision_size)
 

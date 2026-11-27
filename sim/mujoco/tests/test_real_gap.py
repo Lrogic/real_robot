@@ -106,7 +106,7 @@ def test_defaults_add_nothing():
 def test_latency_task_wiring():
   task = load_task_config(LATENCY_TASK)
   assert task.object_pose_delay_substeps == DELAY_SUBSTEPS
-  scene = load_scene_config(CONFIGS_DIR / "scenes" / "tabletop_jenga_wxai.json")
+  scene = load_scene_config(CONFIGS_DIR / "grasp" / "scenes" / "tabletop_jenga_wxai.json")
   if not scene.manipulated.asset_path.exists():
     pytest.skip("jenga mesh missing")
   cfg = make_grasp_env_cfg_from_configs(scene, task)
@@ -672,8 +672,8 @@ def test_joints_task_wiring(tmp_path):
     make_grasp_env_cfg(
       _scene(tmp_path), _task(tmp_path, action={"command_delay_s": 0.006}), "delta_joint_abs_gripper"
     )
-  friction_scene = json.loads((CONFIGS_DIR / "scenes" / "tabletop_jenga_wxai_friction.json").read_text())
-  jenga_scene = json.loads((CONFIGS_DIR / "scenes" / "tabletop_jenga_wxai.json").read_text())
+  friction_scene = json.loads((CONFIGS_DIR / "grasp" / "scenes" / "tabletop_jenga_wxai_friction.json").read_text())
+  jenga_scene = json.loads((CONFIGS_DIR / "grasp" / "scenes" / "tabletop_jenga_wxai.json").read_text())
   assert friction_scene["robot"].pop("embodiment") == "trossen_wxai_base_real_friction"
   assert jenga_scene["robot"].pop("embodiment") == "trossen_wxai_base_real"
   assert friction_scene == jenga_scene

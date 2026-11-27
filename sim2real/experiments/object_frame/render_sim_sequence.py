@@ -58,7 +58,7 @@ from common.io import write_json  # noqa: E402
 from common.poses import quaternion_wxyz, rotvec_to_matrix  # noqa: E402
 
 RESEARCH = Path(__file__).resolve().parents[4]
-DEFAULT_SCENE = RESEARCH / "real_robot/sim/mujoco/configs/scenes/tabletop_jenga_wxai.json"
+DEFAULT_SCENE = RESEARCH / "real_robot/sim/mujoco/configs/grasp/scenes/tabletop_jenga_wxai.json"
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
 CAMERA_NAME = "fp_test_camera"
 DEPTH_SCALE_M = 1e-4

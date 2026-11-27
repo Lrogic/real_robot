@@ -3,7 +3,7 @@
 Compares how a gripped jenga block behaves with the original model, the joint-friction
 model, and the friction model with the gripper matched to the real one
 (trossen_wxai_base_real_friction_grip). Each model runs the jenga scene and
-configs/tasks/grasp_wxai.json with two edits: the block's reset yaw is 0, so the scripted
+configs/grasp/tasks/grasp_wxai.json with two edits: the block's reset yaw is 0, so the scripted
 grasp needs no rotation, and action.gripper_goal_time_s is --gripper-goal-time-s (the real
 loop's 0.5 s by default). Block size variants stay on.
 
@@ -55,7 +55,7 @@ STEPS = dict(above=30, descend=50, close=70, lift_end=90, push_end=100, hold_end
 
 
 def _task_file(tmp: Path, goal_time_s: float) -> Path:
-  data = json.loads((SIM / "configs" / "tasks" / "grasp_wxai.json").read_text())
+  data = json.loads((SIM / "configs" / "grasp" / "tasks" / "grasp_wxai.json").read_text())
   data["action"]["gripper_goal_time_s"] = goal_time_s
   data["domain_randomization"]["object_reset_yaw_range_deg"] = 0.0
   out = tmp / "task.json"
@@ -67,7 +67,7 @@ def _make_env(embodiment: str, task: Path, num_envs: int):
   from mjlab.envs import ManagerBasedRlEnv
   from tabletop_sim.tasks.grasp.env_cfg import make_grasp_env_cfg
 
-  cfg = make_grasp_env_cfg(SIM / "configs" / "scenes" / SCENES[embodiment], task, None, num_envs)
+  cfg = make_grasp_env_cfg(SIM / "configs" / "grasp" / "scenes" / SCENES[embodiment], task, None, num_envs)
   return ManagerBasedRlEnv(cfg, device=DEVICE)
 
 
