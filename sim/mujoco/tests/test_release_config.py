@@ -78,6 +78,8 @@ def test_dataset_path_resolves_against_the_task_file():
     (lambda d: d["start"].update(min_height_above_goal=0.05), "min_height_above_goal"),
     (lambda d: d["start"].update(settle_steps_range=[5, 2]), "settle_steps_range"),
     (lambda d: d["domain_randomization"]["friction"].update(support_object=[0.5, 0.0, 0.1]), "support_object"),
+    (lambda d: d.update(release_stillness_speed_scale=-1.0), "release_stillness_speed_scale"),
+    (lambda d: d.update(release_stillness_spin_scale=-0.5), "release_stillness_spin_scale"),
   ],
 )
 def test_invalid_options_raise(tmp_path, edit, message):
@@ -181,3 +183,9 @@ def test_object_solref_reaches_the_compiled_geom():
   model = object_spec(obj).compile()
   geom = next(g for g in range(model.ngeom) if model.geom_contype[g])
   assert tuple(model.geom_solref[geom]) == pytest.approx((0.004, 1.0))
+
+
+def test_stillness_scaling_is_off_except_in_the_wide_bridge():
+  for path in TASKS:
+    on = load_release_task_config(path).release_scale_by_stillness
+    assert on == (path.name == "release_bridge_wide_wxai.json"), path.name

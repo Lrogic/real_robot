@@ -341,12 +341,24 @@ class ReleaseTaskConfig:
   disturb_pos_scale: float = 50.0
   disturb_rot_scale: float = 5.0
   w_terminated: float = -5.0
+  """Weight (nonpositive) on the step an episode terminates (drop or topple)."""
   w_release_moving: float = -5.0
   """Weight (nonpositive) on the control step whose gripper command switches from
   closed to open, times how much the object is moving then (1 - stillness, the
   form ``released`` uses): opening on a still object costs about nothing. 0
   disables it, together with the ``moving_release_frac`` metric."""
-  """Weight (nonpositive) on the step an episode terminates (drop or topple)."""
+  release_scale_by_stillness: bool = False
+  """Scale ``released`` and ``retreat`` by how still the object was when the gripper was
+  last commanded open: (1 - tanh(speed_scale * speed)) * (1 - tanh(spin_scale * spin)),
+  recorded at that step and kept until the next opening or the episode ends. A release at
+  rest keeps the full reward; a hurried one keeps little of it. Adds the
+  ``release_stillness`` metric (the recorded value; 1 when the gripper never opened)."""
+  release_stillness_speed_scale: float = 11.0
+  """1/(m/s). 11 puts the score's midpoint at 0.05 m/s, where a release toward the edge of
+  the 25 mm support tops starts to cost sideways margin."""
+  release_stillness_spin_scale: float = 0.5
+  """1/(rad/s). Spin barely affects whether a released bridge stays on the supports, so it
+  is scored leniently (midpoint about 1.1 rad/s)."""
 
   # Terminations.
   drop_below_goal_m: float = 0.03
@@ -411,6 +423,8 @@ class ReleaseTaskConfig:
       "w_retreat",
       "place_pos_scale",
       "place_rot_scale",
+      "release_stillness_speed_scale",
+      "release_stillness_spin_scale",
       "disturb_pos_scale",
       "disturb_rot_scale",
     ):
@@ -485,7 +499,7 @@ class ReleaseTaskConfig:
         kwargs[f.name] = PoseNoiseSourceConfig.from_dict(
           value, "task.goal_pose_noise", _default_goal_noise()
         )
-      elif f.name == "include_is_grasped_obs":
+      elif f.name in ("include_is_grasped_obs", "release_scale_by_stillness"):
         kwargs[f.name] = bool(value)
       else:
         kwargs[f.name] = _number(f"task.{f.name}", value)

@@ -148,8 +148,14 @@ def _observations(task: ReleaseTaskConfig, ent: grasp_cfg._Entities) -> dict[str
   }
 
 
-def _released_params(task: ReleaseTaskConfig, ent: grasp_cfg._Entities) -> dict:
+def _released_params(task: ReleaseTaskConfig, ent: grasp_cfg._Entities, scaled: bool = True) -> dict:
+  """Params of ``released``. ``scaled`` adds the stillness-at-release factor when the task
+  enables it (rewards); metrics pass ``scaled=False`` to count releases as they are."""
+  extra = (
+    {"stillness_action_name": GRIPPER_ACTION_NAME} if scaled and task.release_scale_by_stillness else {}
+  )
   return {
+    **extra,
     "command_name": COMMAND_NAME,
     "object_cfg": ent.object(),
     "pos_tol": task.release_pos_tol,
@@ -261,7 +267,7 @@ def _metrics(task: ReleaseTaskConfig, ent: grasp_cfg._Entities, collision: tuple
   metrics = {
     # Curriculum default: released steps / max episode length.
     "released_frac": MetricsTermCfg(
-      func=m.released_fraction, params=_released_params(task, ent), reduce="sum"
+      func=m.released_fraction, params=_released_params(task, ent, scaled=False), reduce="sum"
     ),
     "placed_frac": MetricsTermCfg(func=m.placed_fraction, params={**goal(), **tol}, reduce="sum"),
     "final_pos_err": MetricsTermCfg(func=m.position_error, params=goal(), reduce="last"),
@@ -290,6 +296,10 @@ def _metrics(task: ReleaseTaskConfig, ent: grasp_cfg._Entities, collision: tuple
       reduce="max",
     ),
   }
+  if task.release_scale_by_stillness:
+    metrics["release_stillness"] = MetricsTermCfg(
+      func=m.release_stillness, params={"action_name": GRIPPER_ACTION_NAME}, reduce="last"
+    )
   if task.w_release_moving != 0:
     # Fraction of episodes with an opening while the object was clearly moving.
     metrics["moving_release_frac"] = MetricsTermCfg(
@@ -427,7 +437,16 @@ def make_release_env_cfg_from_configs(
     commands[ACTION_HOLD_NAME] = grasp_mdp.ActionHoldCfg(probability=dr.action_hold_probability)
 
   actions = grasp_cfg._actions(emb, action_space, task)  # type: ignore[arg-type]
-  actions[GRIPPER_ACTION_NAME] = mdp.HeldGripperActionCfg.from_grasp(actions[GRIPPER_ACTION_NAME])  # type: ignore[arg-type]
+  stillness = (
+    {
+      "stillness_object": obj.name,
+      "stillness_speed_scale": task.release_stillness_speed_scale,
+      "stillness_spin_scale": task.release_stillness_spin_scale,
+    }
+    if task.release_scale_by_stillness
+    else {}
+  )
+  actions[GRIPPER_ACTION_NAME] = mdp.HeldGripperActionCfg.from_grasp(actions[GRIPPER_ACTION_NAME], **stillness)  # type: ignore[arg-type]
 
   return ManagerBasedRlEnvCfg(
     scene=SceneCfg(

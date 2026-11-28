@@ -222,3 +222,48 @@ def test_release_moving_penalizes_opening_on_a_moving_object(tmp_path, dataset):
   assert float(still.median()) < 0.1
   assert float(moving.median()) > 0.3
   env.close()
+
+
+def test_release_rewards_scale_with_stillness_at_the_last_opening(tmp_path, dataset):
+  """With release_scale_by_stillness, the gripper action records the object's stillness when
+  the command switches to open; released (and retreat through it) are multiplied by it."""
+  env = _env(tmp_path, dataset, num_envs=16, release_scale_by_stillness=True)
+  grip = env.action_manager.get_term("gripper")
+  params = dict(env.reward_manager.get_term_cfg("released").params)
+  assert params["stillness_action_name"] == "gripper"
+  unscaled = {k: v for k, v in params.items() if k != "stillness_action_name"}
+  dim = env.action_manager.total_action_dim
+
+  def open_after(arm_action, steps=3):
+    env.reset()
+    assert bool((grip.release_stillness == 1.0).all())  # reset
+    hold = torch.zeros(env.num_envs, dim, device=DEVICE); hold[:, -1] = -1.0
+    for _ in range(15):
+      env.step(hold)
+    move = hold.clone(); move[:, :6] = torch.tensor(arm_action, device=DEVICE)
+    for _ in range(steps):
+      env.step(move)
+    opened = move.clone(); opened[:, -1] = 1.0
+    env.step(opened)
+    return grip.release_stillness.clone(), hold, opened
+
+  still, _, _ = open_after([0.0] * 6)
+  assert float(still.min()) > 0.95
+  moving, hold, opened = open_after([0.0, 0.0, -1.0, 0.0, 0.0, 1.0])  # descend and turn at full speed
+  assert float(moving.median()) < 0.5
+  # The rewards are the unscaled ones times the recorded value.
+  scaled = rewards.released(env, **params)
+  assert torch.allclose(scaled, rewards.released(env, **unscaled) * grip.release_stillness)
+  # A regrasp and a calm second release overwrite the hurried first one.
+  for _ in range(10):
+    env.step(hold)
+  env.step(opened)
+  assert float(grip.release_stillness.median()) > 0.9
+  env.close()
+
+
+def test_stillness_scaling_off_leaves_released_unchanged(tmp_path, dataset):
+  env = _env(tmp_path, dataset, num_envs=4)
+  assert "stillness_action_name" not in env.reward_manager.get_term_cfg("released").params
+  assert "release_stillness" not in env.metrics_manager.active_terms
+  env.close()

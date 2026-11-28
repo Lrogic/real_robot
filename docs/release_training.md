@@ -4,8 +4,9 @@ What was tried to train the release skill: placing a grasped jenga block at a go
 relative to other blocks, opening the gripper and backing away. Covers the bridge goal's reachability
 problem, the tower goal used to test the pipeline, the flat-block grasp that makes the bridge
 possible, the real-arm test of that grasp, how the perception noise in training compares with
-FoundationPose, and ideas for a stable release that are not implemented yet. Results are from
-2026-11-26 and 2026-11-27.
+FoundationPose, the stillness-scaled release reward, and where the wide bridge's anchor was placed
+and why the start-state transport loses about half its attempts. Results are from 2026-11-26 and
+2026-11-27.
 
 Code: `sim/mujoco/src/tabletop_sim/tasks/release/`, task schema in `scene/release_config.py`,
 start states from `scripts/generate_release_starts.py`. Configs: `configs/release/{scenes,tasks}`.
@@ -21,7 +22,9 @@ start states from `scripts/generate_release_starts.py`. Configs: `configs/releas
 - **Start states are a saved dataset.** The release policy starts with the block already held
   near the goal. `generate_release_starts.py` produces those states by running the trained grasp
   policy, then a scripted IK transport:
-  1. lift to a safe height, turning the block toward the goal orientation;
+  1. lift straight up to a safe height, turning the block toward the goal orientation (the
+     height is the support tops + `transport_clearance` + how far the fingers and block reach
+     below the TCP *at the goal orientation*; the supports are still parked during the lift);
   2. move the supports from their parking spot to the sampled anchor;
   3. cross to above the target;
   4. descend to the goal plus a random offset in a ball above it;
@@ -36,12 +39,20 @@ start states from `scripts/generate_release_starts.py`. Configs: `configs/releas
 - **Rewards.** `place` (closeness to the goal), `released` (within tolerance, no finger contact,
   gripper open, block still), `retreat` (`released` times how far the TCP has risen), and
   penalties for robot contact with the table or supports, disturbing the supports, ending the
-  episode (block dropped or support toppled), arm speed and joint limits, and `release_moving`
-  (below).
+  episode (block dropped or support toppled), arm speed and joint limits, and `release_moving`.
+  With `release_scale_by_stillness`, `released` and `retreat` are also multiplied by the block's
+  stillness when the gripper was last commanded open (see "Stable release").
 - **Logging.** `Episode_Termination/<term>` is the number of envs that term ended per control
   step, averaged over the iteration's steps, so one NaN reset in a 32-step iteration shows as
   0.0312. `Curriculum/termination_counts/<term>` (grasp and release) is the running total since the
-  start of training.
+  start of training. `Episode_Metrics/released_frac` counts releases without the stillness factor
+  and drives the curriculum. `Episode_Metrics/release_stillness` (only with
+  `release_scale_by_stillness`) is the stillness recorded at the episode's last opening, and 1 for
+  an episode that never opened, so it reads near 1 until `released_frac` is clearly above 0.
+- **Generator counts.** The generator's `attempts` counts every lift started, including the
+  attempts still in progress when it stops (about one per env), and leaves out grasp timeouts. The
+  kept share of *finished* attempts is `kept / (kept + rejections other than grasp_timeout)`. The
+  rates in this document use that.
 
 ## The bridge goal could not be reached with the upright grasp
 
@@ -173,7 +184,10 @@ This led to **`release_bridge_wide_wxai.json`**:
 - **Supports:** at anchor (0, ∓22.5 mm), each standing with its **25 mm side across the bridge**.
 - **Bridge:** long axis along anchor y, covering the full 25 × 15 mm top of each support with
   7.5 mm overhanging past each outer edge. There is a 30 mm gap for the fingers.
-- **Status:** not trained yet. Its start states (`bridge_wide_wxai.pt`) are not generated.
+- **Anchor:** centre base (0.25, −0.13) m, radius 50 mm, yaw 0 ± 30 deg. See "Anchor placement
+  for the wide bridge".
+- **Status:** start states generated (20,000 rows, below). Training started 2026-11-27 as
+  `release_bridge_wide/2026-11-27_16-52-50` (1500 iterations).
 
 ## Flat block on the real arm
 
@@ -320,7 +334,82 @@ The `--log-variation` run that set the original values was not found on disk, in
 trash. Measuring the flat block at rest with `./run.sh --setup-track ... --num-seconds 60
 --log-variation` (once `parked`, once `move`) would pin the jitter down.
 
-## Stable release (not implemented)
+## Anchor placement for the wide bridge
+
+The anchor disk was first centred at base (0.309, −0.127) m, 2 cm right of where a real support
+stood in the shadow run `vision/foundationpose_runs/anchor_check` (support at base (309, −107) mm,
+target block at (356, +18) mm). It moved closer to the base for two reasons:
+- **Reach.** With the tool pointing down, `joint_3`'s soft limit (0.85 of its range) limits the
+  lift and the descent from about 0.33 m out. The first disk reached 0.384 m.
+- **Real-arm clearance.** On the real arm the supports already stand while the arm grasps (in sim
+  they are parked until the lift ends). The measured arm joints of the 43 real flat-block grasps
+  (`flat_jenga_real_test_logging*`, every second tick, turned about the base so the block is at base
+  y = +12 mm) were replayed in the bridge scene with supports at the disk centre and edges, and the
+  ticks where a robot geom overlaps a support were counted.
+
+Each candidate got a 300-row trial generation. Rates are kept / finished attempts; the
+overlap columns are at anchor yaw −30 / +30 deg.
+
+| Centre (base, m) | Radius | Distance | Kept, max hang | Kept, goal hang | Lift timeouts (goal hang) | Overlap at centre | Overlap at edge toward the grasp |
+|---|---|---|---|---|---|---|---|
+| (0.309, −0.127) | 50 mm | 0.334 m | 43% | 46% | 248 | 1 / 0 | 65 / 51 |
+| (0.265, −0.15) | 50 mm | 0.305 m | 45% | 49% | 221 | 0 / 0 | 5 / 6 |
+| (0.23, −0.15) | 50 mm | 0.275 m | 39% | 41% | 270 | 0 / 0 | 5 / 1 |
+| (0.23, −0.15) | 30 mm | 0.275 m | 41% | 45% | 241 | – | – |
+| (0.23, −0.18) | 50 mm | 0.292 m | 37% | – | – | 0 / 0 | 0 / 0 |
+| (0.20, −0.18) | 50 mm | 0.269 m | 30% | – | – | 0 / 0 | 0 / 0 |
+| (0.25, −0.10) | 50 mm | 0.269 m | – | 55% | 183 | 6 / 6 | 164 / 87 (3 cm in: 86 / 25) |
+| **(0.25, −0.13)** | 50 mm | 0.282 m | – | **53%** | 190 | 0 / 0 | 18 / 10 (3 cm in: 6 / 6) |
+| (0.25, −0.15) | 50 mm | 0.292 m | – | 48% | 229 | 0 / 0 | 6 / 7 |
+
+"Max hang" and "goal hang" are the generator before and after the transport-height change below.
+
+- **(0.25, −0.13) was chosen.** It keeps nearly the most attempts, its far edge (0.332 m) stays
+  about where `joint_3` starts to limit, and the real grasps touch a support only at the disk edge
+  nearest the grasp.
+- **(0.25, −0.10) keeps the most in sim but is unusable on the real arm.** It lies on the line
+  from the base to the block, so the arm passes over it on the way to the grasp.
+- **Anchors nearer the base's x axis had fewer lift timeouts,** although the lift goes straight up
+  above the grasp before the supports appear. Probably the anchor's direction from the base
+  changes which symmetric copy of the goal is chosen, and with it the wrist turn the lift asks for.
+  Not checked; 300-row counts vary by about ±20.
+- **On the real arm** the support must stand about 6 cm closer to the base and 2 cm further right
+  than in `anchor_check`.
+
+**The full dataset** (`bridge_wide_wxai.pt`, 20,001 rows at 2048 envs, 504 s) kept 53% of finished
+attempts. Rejections: `timeout_lift` 11,587, `timeout_across` 3,658, `timeout_noise` 1,237,
+`joint_limits` 471, `outside_ball` 467, `timeout_down` 376, `collision_in_transport` 158,
+`lost_grasp` 11, and 1,290 grasp timeouts.
+
+### Why the lift times out
+
+The lift is the main loss (31% of finished attempts in the full dataset). An instrumented trial
+logged every lift:
+- **The turn finishes, the rise does not.** Timed-out lifts end with about 2 deg of rotation error
+  but 28 mm of position error (median): about 20 mm short in height and about 20 mm back toward the
+  base. `joint_3` sits near its lower soft limit (median 0.05 of its range).
+- **The transport height was set by the grasp's tilt.** `hang` was the larger of how far the
+  fingers and block reach below the TCP at the grasp orientation and at the goal orientation. The
+  grasp ends with the tool tilted about 23 deg, and the 75 mm block's end then hangs 19.5 mm below
+  the TCP, against 5.3 mm at the goal orientation. Nothing can be hit at the grasp tilt during the
+  lift (the supports are parked) and the turn completes long before the rise, so the generator now
+  uses the goal orientation only. That lowered the transport height from about 97 to 90 mm and the
+  rise from about 69 to 62 mm. Kept rates rose 3–4 points, and lift timeouts fell about 20%.
+- **There is no fixed height limit; the outcome depends on the path.** Before the change, lifts
+  that arrived rose 69 mm (median) and timed-out ones 72 mm. After it, 62 and 64 mm: the cut-off
+  moved down with the target. A timed-out lift aims at the same kind of pose as one that arrives.
+  The turn (rotation action scale 0.05 rad per step, 1 rad/s) completes near the bottom of the lift
+  (0.2 m/s), `joint_3` then sits near its limit, and the per-substep IK stalls. Turn size, tool
+  tilt and lean, reach, block size and how the block sits in the hand do not predict it on their
+  own (AUC 0.4–0.6; the rise and `joint_3`'s starting position reach 0.7).
+- **Next fix (not done):** change the lift's order: rise first and turn at the top, turn more
+  slowly, or lift diagonally toward the target.
+
+`collision_in_transport` means a moving robot link or the block touched the table or a support
+during across, down, noise or settle (the supports are placed when the lift ends). It is about 0.4%
+of finished attempts; which phase and body was not checked.
+
+## Stable release
 
 `release_moving` (`w_release_moving`, −5 in the release tasks) is a penalty on the step the gripper
 command switches to open, times (1 − stillness) of the block. Stillness is
@@ -331,29 +420,43 @@ enters the reward through `released` (every step, after the release) and `releas
 opening step only). So a block that settles at the goal after a moving release still earns almost
 the full release reward.
 
-Two options:
-1. **Raise `w_release_moving`** to about −20 to −30, so a moving release costs about as much as a
-   drop. One number, but it needs tuning against the other rewards: too strong and the policy may
-   never open.
-2. **Gate `released` and `retreat` on how the release happened (preferred).** Track each episode's
-   last opening, and multiply the release rewards by the block's stillness at that moment. A
-   release at rest keeps the full reward. The current policy's typical release (0.1 m/s, 1.4 rad/s)
-   keeps under 1%.
+Two options were considered: raise `w_release_moving` to about −20 to −30, or gate `released`
+and `retreat` on how the release happened. The second is implemented.
 
-**Setting the stillness scales.** The scales (5 per m/s, 2 per rad/s now) should come from two
-sim measurements:
-- **Floor:** the block's leftover speed and spin during a deliberate hold at the goal, across the
-  randomized arms (expected well under 0.01 m/s and 0.05 rad/s). The score must be near 1 there.
-- **Ceiling:** the release speed and spin at which the bridge starts falling off. Rest the bridge
-  at the goal and give it controlled velocities (0–0.15 m/s, 0–2 rad/s).
+**Stillness-scaled release (`release_scale_by_stillness`).**
+- `HeldGripperAction` (`tasks/release/mdp/actions.py`) records the block's stillness on each step
+  whose gripper command switches to open: `(1 − tanh(s_v·speed))·(1 − tanh(s_w·spin))`, measured
+  when the command is processed. It is 1 at reset, and every later opening overwrites it, so a
+  regrasp and a calmer second release replace a hurried first one.
+- `released`, and `retreat` through it, are multiplied by the recorded value. `released_frac`
+  (the curriculum metric) stays unscaled. The `release_stillness` metric logs the recorded value.
+- Options: `release_stillness_speed_scale` (s_v, default 11 per m/s) and
+  `release_stillness_spin_scale` (s_w, default 0.5 per rad/s). On only in
+  `release_bridge_wide_wxai.json`, which also sets `w_release_moving` to 0.
+- Tests: `test_release_env.py` (still and moving releases, the overwrite, scaling off) and
+  `test_release_config.py`.
 
-The thresholds should land around 0.02–0.03 m/s and 0.1–0.2 rad/s. The spin scale probably needs
-raising: at 2, a spin of 0.3 rad/s still scores 0.54.
+**How the scales were set,** from two sim measurements on the wide bridge:
+- **Floor:** during a deliberate hold at the goal the block moves under 1 mm/s, which scores about
+  0.99.
+- **Ceiling:** a bridge put down still stays on the supports out to about 11 mm of sideways offset.
+  Releasing at 0.05 m/s toward the edge costs about 2 mm of that, 0.1 m/s about 5 mm. Spin hardly
+  matters.
+
+So s_v = 11 puts the score's midpoint at 0.05 m/s (0.1 m/s scores about 0.2), and s_w = 0.5 is
+lenient (midpoint about 1.1 rad/s). The first bridge run's typical release (0.1 m/s, 1.4 rad/s)
+would keep about 0.08 of the release reward.
 
 ## Open items
 
-- Generate the `release_bridge_wide_wxai` start states and train it.
-- Implement a stable-release option, after measuring the stillness floor and ceiling.
+- Evaluate `release_bridge_wide/2026-11-27_16-52-50`.
+- Start-state lift: change the lift's order so `joint_3` is not pinned (see "Why the lift times
+  out"). Make the generator report kept / finished attempts.
+- Simplify the gripper "opened" check to `target == open_pos` for binary grippers, in
+  `HeldGripperAction` and in `gripper_opened` (`rewards.py`).
+- Real side: in `anchor_check` the support was masked first, so `tracked_name: obj1` in
+  `manipulation/policy/jenga/config.yaml` tracked the support. Set it to `obj2`, or mask the block
+  first, for real runs.
 - Measure FoundationPose jitter with `--log-variation`, `parked` and `move`.
 - Rerun `hardware_control` vertical and wrist-rotation moves on the current arm, to explain the
   faster real descent and the up/down asymmetry.

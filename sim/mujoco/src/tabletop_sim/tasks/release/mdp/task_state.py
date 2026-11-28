@@ -59,10 +59,17 @@ def gripper_open(
   return grasp_state.gripper_closure(q[:, 0], q[:, 1], open_pos, closed_pos) <= max_closure
 
 
+def stillness_from_speeds(
+  lin: torch.Tensor, ang: torch.Tensor, speed_scale: float = 5.0, spin_scale: float = 2.0
+) -> torch.Tensor:
+  """In (0, 1]: (1 - tanh(speed_scale * speed)) * (1 - tanh(spin_scale * spin)); 1 at rest."""
+  return (1.0 - torch.tanh(speed_scale * lin)) * (1.0 - torch.tanh(spin_scale * ang))
+
+
 def stillness(env: ManagerBasedRlEnv, object_cfg: SceneEntityCfg) -> torch.Tensor:
-  """In (0, 1]: 1 at rest (grasp's ``stable_hold`` form)."""
+  """In (0, 1]: 1 at rest (grasp's ``stable_hold`` form, scales 5 and 2)."""
   lin, ang = grasp_state.object_speeds(env, object_cfg)
-  return (1.0 - torch.tanh(5.0 * lin)) * (1.0 - torch.tanh(2.0 * ang))
+  return stillness_from_speeds(lin, ang)
 
 
 

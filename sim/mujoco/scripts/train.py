@@ -7,7 +7,7 @@ on the release task (which needs a start-state dataset from
 
 Any remaining flags go to mjlab's TrainConfig, e.g. ``--agent.max-iterations
 2000``, ``--agent.algorithm.gamma 0.8 --agent.algorithm.lam 0.9`` (the old
-ManiSkill run's values), ``--agent.logger wandb``, ``--video``.
+ManiSkill run's values), ``--agent.logger wandb``, ``--video True``.
 Logs are written to ``logs/rsl_rl/<experiment_name>/`` under the current dir.
 Next to mjlab's ``params/env.yaml`` and ``agent.yaml``, each run folder gets
 ``params/scene.json`` and ``params/task.json`` (copies of the files as they

@@ -6,9 +6,9 @@
     },
     "goal_pose": [0.0, 0.0, 0.0825, 0.5, 0.5, 0.5, 0.5],
     "goal_symmetry": "box",
-    "anchor_center": [-0.35, 0.1],
+    "anchor_center": [-0.365, -0.13],
     "anchor_radius": 0.05,
-    "anchor_yaw_deg": 20.0,
+    "anchor_yaw_deg": 0.0,
     "anchor_yaw_range_deg": 30.0
   },
   "start": {
@@ -43,7 +43,10 @@
   "disturb_pos_scale": 50.0,
   "disturb_rot_scale": 5.0,
   "w_terminated": -5.0,
-  "w_release_moving": -5.0,
+  "w_release_moving": 0.0,
+  "release_scale_by_stillness": true,
+  "release_stillness_speed_scale": 11.0,
+  "release_stillness_spin_scale": 0.5,
   "drop_below_goal_m": 0.03,
   "topple_tilt_deg": 30.0,
   "topple_displacement_m": 0.03,

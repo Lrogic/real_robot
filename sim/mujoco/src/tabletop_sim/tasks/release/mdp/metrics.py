@@ -57,3 +57,9 @@ def moving_release(env: ManagerBasedRlEnv, action_name: str, object_cfg: SceneEn
   """Use with ``reduce="max"``: 1 for an episode in which the gripper was opened
   while the object was clearly moving (``release_moving`` > 0.5)."""
   return (rewards.release_moving(env, action_name, object_cfg) > 0.5).float()
+
+
+def release_stillness(env: ManagerBasedRlEnv, action_name: str) -> torch.Tensor:
+  """Use with ``reduce="last"``: the stillness recorded at the episode's last opening
+  (1 if the gripper was never opened)."""
+  return env.action_manager.get_term(action_name).release_stillness  # type: ignore[attr-defined]

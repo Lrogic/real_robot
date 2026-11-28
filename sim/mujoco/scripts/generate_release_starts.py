@@ -12,8 +12,9 @@ Per env, repeated until ``--rows`` states are kept:
      goal (symmetric copy closest to the object's orientation) and the arrival
      offset (ball cap above the goal, world axes); drive the TCP straight up to
      z_safe = top of the relative objects + transport_clearance + how far the
-     fingers and object reach below the TCP, turning it to the goal orientation
-     on the way (the relative objects are still parked; turning first keeps the
+     fingers and object reach below the TCP at the goal orientation, turning
+     it to that orientation on the way (the relative objects are still parked,
+     so the tilt the grasp ends with cannot hit them; turning first keeps the
      arm inside its joint limits at that height).
   3. Place the relative objects at the anchor. A contact with the robot or the
      object on the next step rejects the attempt.
@@ -286,7 +287,9 @@ class Generator:
     tcp_t_pos = obj_t_pos - quat_apply(tcp_t_quat, p_to)
     self.final_pos[ids], self.final_quat[ids] = tcp_t_pos, tcp_t_quat
 
-    hang = torch.maximum(self.hang_below_tcp(ids, tcp_t_quat), self.hang_below_tcp(ids, tq))
+    # Only the goal orientation: the lift turns to it before reaching z_safe, and the
+    # relative objects are parked until then.
+    hang = self.hang_below_tcp(ids, tcp_t_quat)
     z_safe = origins[:, 2] + top + st.transport_clearance + hang
     self.z_safe[ids] = torch.maximum(z_safe, tp[:, 2])
     self.wp_pos[ids] = torch.cat((tp[:, :2], self.z_safe[ids, None]), dim=-1)

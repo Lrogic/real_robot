@@ -36,15 +36,20 @@ def released(
   open_pos: float,
   closed_pos: float,
   max_closure: float,
+  stillness_action_name: str | None = None,
 ) -> torch.Tensor:
   """In [0, 1]: placed within the tolerances, no finger contact, gripper open,
-  times the object's stillness."""
+  times the object's stillness. With ``stillness_action_name``, also times the
+  stillness recorded at the last opening (``HeldGripperAction.release_stillness``)."""
   ok = (
     task_state.is_placed(env, command_name, object_cfg, pos_tol, rot_tol_deg)
     & task_state.fingers_clear(env, sensor_names)
     & task_state.gripper_open(env, gripper_cfg, open_pos, closed_pos, max_closure)
   )
-  return ok.float() * task_state.stillness(env, object_cfg)
+  out = ok.float() * task_state.stillness(env, object_cfg)
+  if stillness_action_name is not None:
+    out = out * env.action_manager.get_term(stillness_action_name).release_stillness  # type: ignore[attr-defined]
+  return out
 
 
 def retreat(
